@@ -120,6 +120,7 @@ add_library(vxnative SHARED
     src/Velthoric/BodyPairIgnore/BodyPairIgnoreHandler.cpp
     src/Velthoric/JNI/ClassLoaderUtil.cpp
     src/Velthoric/JNI/ShapeBridge.cpp
+    src/Velthoric/Entity/EntityBridgeManager.cpp
 )
 
 target_include_directories(vxnative PRIVATE
