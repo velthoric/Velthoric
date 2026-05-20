@@ -7,7 +7,7 @@ package net.xmx.velthoric.mixin.impl.entity;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.CollisionGetter;
 import net.minecraft.world.phys.AABB;
-import net.xmx.velthoric.core.entity.interaction.VxEntityBridgeManager;
+import net.xmx.velthoric.core.entity.interaction.VxEntityCollisionManager;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -34,8 +34,8 @@ public interface MixinCollisionGetter {
     private void velthoric_noCollision(Entity entity, AABB collisionBox, CallbackInfoReturnable<Boolean> cir) {
         // Only perform additional checks if Minecraft already thinks there is no collision
         if (cir.getReturnValue() && entity != null) {
-            // Check against Velthoric physics bodies via the bridge manager
-            if (VxEntityBridgeManager.isColliding(entity, collisionBox)) {
+            // Check against Velthoric physics bodies via the collision manager
+            if (VxEntityCollisionManager.isColliding(entity, collisionBox)) {
                 // If a physics body is hit, the space is not free
                 cir.setReturnValue(false);
             }

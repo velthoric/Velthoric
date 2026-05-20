@@ -7,13 +7,11 @@ package net.xmx.velthoric.mixin.impl.entity;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.phys.Vec3;
-import net.xmx.velthoric.core.entity.interaction.VxEntityBridgeManager;
-import net.xmx.velthoric.core.entity.interaction.VxPlatformController;
+import net.xmx.velthoric.core.entity.interaction.VxEntityCollisionManager;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
@@ -35,23 +33,6 @@ public abstract class MixinEntityCollision {
     private Vec3 velthoric_lastSlideVector = null;
 
     /**
-     * Injects the movement of the physics body underneath the entity into the move() method.
-     * This ensures the entity moves with the platform it is standing on.
-     *
-     * @param pos The original movement vector intended by the entity.
-     * @return The combined movement vector (original + body delta).
-     */
-    @ModifyVariable(method = "move", at = @At("HEAD"), ordinal = 0, argsOnly = true)
-    private Vec3 velthoric_injectBodyDelta(Vec3 pos) {
-        Entity self = (Entity) (Object) this;
-        Vec3 bodyDelta = VxPlatformController.getDeltaAndTick(self);
-        if (bodyDelta != null) {
-            return pos.add(bodyDelta);
-        }
-        return pos;
-    }
-
-    /**
      * Hooks into the collide() method to perform narrow-phase collision resolution
      * using the Jolt Physics backend.
      *
@@ -63,8 +44,8 @@ public abstract class MixinEntityCollision {
         Entity self = (Entity) (Object) this;
         Vec3 currentMovement = cir.getReturnValue();
 
-        // Pass the movement to the bridge manager for native Jolt resolution
-        Vec3 newMovement = VxEntityBridgeManager.handleCollision(self, currentMovement);
+        // Pass the movement to the collision manager for native Jolt resolution
+        Vec3 newMovement = VxEntityCollisionManager.handleCollision(self, currentMovement);
 
         if (currentMovement != newMovement) {
             cir.setReturnValue(newMovement);
@@ -83,6 +64,9 @@ public abstract class MixinEntityCollision {
 
     /**
      * Prevents the entity from losing sprint state when sliding along a physics body.
+     *
+     * @param deltaMovement Current delta movement of the entity.
+     * @param cir Callback returnable containing the evaluation result.
      */
     @Inject(method = "isHorizontalCollisionMinor", at = @At("HEAD"), cancellable = true)
     private void velthoric_keepSprintWhenSliding(Vec3 deltaMovement, CallbackInfoReturnable<Boolean> cir) {
@@ -99,18 +83,40 @@ public abstract class MixinEntityCollision {
     /**
      * Redirects the zeroing of delta movement to allow continued horizontal velocity
      * if the entity is sliding along a slanted physics body.
+     *
+     * @param instance Target Entity instance.
+     * @param x Proposed delta X movement.
+     * @param y Proposed delta Y movement.
+     * @param z Proposed delta Z movement.
      */
     @Redirect(method = "move", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;setDeltaMovement(DDD)V"))
     private void velthoric_redirectHorizontalZeroing(Entity instance, double x, double y, double z) {
         if (this.velthoric_lastSlideVector != null) {
             Vec3 slide = this.velthoric_lastSlideVector;
 
-            // Restore the sliding component if Minecraft tried to zero it due to collision
-            if (x == 0.0D && Math.abs(slide.x) > 1.0E-5) {
-                x = slide.x;
+            double platformVx = 0.0;
+            double platformVz = 0.0;
+            int groundSlotIdx = VxEntityCollisionManager.getGroundSlotIdx(instance);
+
+            // Fetch exact frame movement of the supporting platform
+            if (groundSlotIdx >= 0) {
+                Vec3 pVel = VxEntityCollisionManager.getPlatformVelocity(instance, groundSlotIdx);
+                platformVx = pVel.x;
+                platformVz = pVel.z;
             }
-            if (z == 0.0D && Math.abs(slide.z) > 1.0E-5) {
-                z = slide.z;
+
+            // Adjust delta deceleration around platform movement to retain local velocity.
+            if (x == 0.0D) {
+                double relativeSlideX = slide.x - platformVx;
+                if (Math.abs(relativeSlideX) > 1.0E-5) {
+                    x = relativeSlideX;
+                }
+            }
+            if (z == 0.0D) {
+                double relativeSlideZ = slide.z - platformVz;
+                if (Math.abs(relativeSlideZ) > 1.0E-5) {
+                    z = relativeSlideZ;
+                }
             }
         }
 
@@ -119,6 +125,10 @@ public abstract class MixinEntityCollision {
 
     /**
      * Clears the slide vector state at the end of the move call.
+     *
+     * @param type MoverType defining origin context.
+     * @param pos New spatial coordinates of the entity.
+     * @param ci Callback info instance.
      */
     @Inject(method = "move", at = @At("TAIL"))
     private void velthoric_clearSlideVector(MoverType type, Vec3 pos, CallbackInfo ci) {
@@ -126,15 +136,18 @@ public abstract class MixinEntityCollision {
     }
 
     /**
-     * Handles custom sneak behavior (not falling off edges) for generic entities
-     * when they are standing on physics bodies.
+     * Hook to invoke sneak edge-blocking capabilities on generic physics bodies.
+     *
+     * @param movement Proposed movement vector.
+     * @param moverType Trigger MoverType context.
+     * @param cir Callback returnable containing adjusted movement vector.
      */
     @Inject(method = "maybeBackOffFromEdge", at = @At("HEAD"), cancellable = true)
     private void velthoric_customBackOff(Vec3 movement, MoverType moverType, CallbackInfoReturnable<Vec3> cir) {
         Entity self = (Entity) (Object) this;
-        // Check if the entity is sneaking and associated with a physics body
-        if (self.isShiftKeyDown() && movement.y <= 0.0D && VxPlatformController.getController(self) != null) {
-            Vec3 adjusted = VxEntityBridgeManager.handleSneakBackOff(self, movement);
+        // Check if the entity is sneaking and standing on a physics platform
+        if (self.isShiftKeyDown() && movement.y <= 0.0D && VxEntityCollisionManager.isStandingOnPlatform(self)) {
+            Vec3 adjusted = VxEntityCollisionManager.handleSneakBackOff(self, movement);
             cir.setReturnValue(adjusted);
         }
     }
