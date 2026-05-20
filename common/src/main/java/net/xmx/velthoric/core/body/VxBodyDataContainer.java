@@ -64,6 +64,19 @@ public class VxBodyDataContainer {
     public final FloatBuffer velZ;
 
     /**
+     * X-component of the angular velocity (radians/sec).
+     */
+    public final FloatBuffer angVelX;
+    /**
+     * Y-component of the angular velocity (radians/sec).
+     */
+    public final FloatBuffer angVelY;
+    /**
+     * Z-component of the angular velocity (radians/sec).
+     */
+    public final FloatBuffer angVelZ;
+
+    /**
      * Per-vertex data for complex collision shapes or rendering (e.g. heightmaps, meshes).
      */
     public final float[][] vertexData;
@@ -108,6 +121,9 @@ public class VxBodyDataContainer {
         this.velX = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
         this.velY = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
         this.velZ = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.angVelX = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.angVelY = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.angVelZ = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
         this.vertexData = new float[capacity][];
         this.shape = new VxCollisionShape[capacity];
         this.isActive = ByteBuffer.allocateDirect(capacity).order(ByteOrder.nativeOrder());
@@ -136,6 +152,9 @@ public class VxBodyDataContainer {
         copyFloatBuffer(this.velX, other.velX, copyLength);
         copyFloatBuffer(this.velY, other.velY, copyLength);
         copyFloatBuffer(this.velZ, other.velZ, copyLength);
+        copyFloatBuffer(this.angVelX, other.angVelX, copyLength);
+        copyFloatBuffer(this.angVelY, other.angVelY, copyLength);
+        copyFloatBuffer(this.angVelZ, other.angVelZ, copyLength);
         System.arraycopy(this.vertexData, 0, other.vertexData, 0, copyLength);
         System.arraycopy(this.shape, 0, other.shape, 0, copyLength);
         copyByteBuffer(this.isActive, other.isActive, copyLength);
@@ -253,6 +272,9 @@ public class VxBodyDataContainer {
         this.velX.put(index, 0f);
         this.velY.put(index, 0f);
         this.velZ.put(index, 0f);
+        this.angVelX.put(index, 0f);
+        this.angVelY.put(index, 0f);
+        this.angVelZ.put(index, 0f);
         this.vertexData[index] = null;
         this.shape[index] = null;
         this.isActive.put(index, (byte) 0);

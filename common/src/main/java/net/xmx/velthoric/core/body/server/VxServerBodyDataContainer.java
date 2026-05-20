@@ -23,19 +23,6 @@ import java.nio.ByteOrder;
  */
 public class VxServerBodyDataContainer extends VxBodyDataContainer {
     /**
-     * X-component of the angular velocity (radians/sec).
-     */
-    public final FloatBuffer angVelX;
-    /**
-     * Y-component of the angular velocity (radians/sec).
-     */
-    public final FloatBuffer angVelY;
-    /**
-     * Z-component of the angular velocity (radians/sec).
-     */
-    public final FloatBuffer angVelZ;
-
-    /**
      * Minimum X-coordinate of the world-space Axis-Aligned Bounding Box (AABB).
      */
     public final FloatBuffer aabbMinX;
@@ -115,9 +102,6 @@ public class VxServerBodyDataContainer extends VxBodyDataContainer {
      */
     public VxServerBodyDataContainer(int capacity) {
         super(capacity);
-        this.angVelX = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
-        this.angVelY = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
-        this.angVelZ = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
         this.aabbMinX = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
         this.aabbMinY = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
         this.aabbMinZ = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
@@ -157,9 +141,6 @@ public class VxServerBodyDataContainer extends VxBodyDataContainer {
         super.copyTo(other);
         if (other instanceof VxServerBodyDataContainer next) {
             int len = Math.min(this.capacity, next.capacity);
-            copyFloatBuffer(this.angVelX, next.angVelX, len);
-            copyFloatBuffer(this.angVelY, next.angVelY, len);
-            copyFloatBuffer(this.angVelZ, next.angVelZ, len);
             copyFloatBuffer(this.aabbMinX, next.aabbMinX, len);
             copyFloatBuffer(this.aabbMinY, next.aabbMinY, len);
             copyFloatBuffer(this.aabbMinZ, next.aabbMinZ, len);
@@ -190,9 +171,6 @@ public class VxServerBodyDataContainer extends VxBodyDataContainer {
     @Override
     public void reset(int index) {
         super.reset(index);
-        this.angVelX.put(index, 0f);
-        this.angVelY.put(index, 0f);
-        this.angVelZ.put(index, 0f);
         this.aabbMinX.put(index, 0f);
         this.aabbMinY.put(index, 0f);
         this.aabbMinZ.put(index, 0f);

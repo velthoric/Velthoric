@@ -63,6 +63,15 @@ public class VxClientBodyDataContainer extends VxBodyDataContainer {
     public final FloatBuffer state1_velX, state1_velY, state1_velZ;
 
     /**
+     * Angular velocity at state0 used for extrapolation.
+     */
+    public final FloatBuffer state0_angVelX, state0_angVelY, state0_angVelZ;
+    /**
+     * Angular velocity at state1 used for extrapolation.
+     */
+    public final FloatBuffer state1_angVelX, state1_angVelY, state1_angVelZ;
+
+    /**
      * Activation state at state0.
      */
     public final ByteBuffer state0_isActive;
@@ -138,6 +147,13 @@ public class VxClientBodyDataContainer extends VxBodyDataContainer {
         this.state1_velY = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
         this.state1_velZ = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
 
+        this.state0_angVelX = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.state0_angVelY = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.state0_angVelZ = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.state1_angVelX = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.state1_angVelY = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.state1_angVelZ = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+
         this.state0_isActive = ByteBuffer.allocateDirect(capacity).order(ByteOrder.nativeOrder());
         this.state1_isActive = ByteBuffer.allocateDirect(capacity).order(ByteOrder.nativeOrder());
 
@@ -194,6 +210,13 @@ public class VxClientBodyDataContainer extends VxBodyDataContainer {
             copyByteBuffer(this.state1_isActive, next.state1_isActive, len);
             System.arraycopy(this.state1_vertexData, 0, next.state1_vertexData, 0, len);
 
+            copyFloatBuffer(this.state0_angVelX, next.state0_angVelX, len);
+            copyFloatBuffer(this.state0_angVelY, next.state0_angVelY, len);
+            copyFloatBuffer(this.state0_angVelZ, next.state0_angVelZ, len);
+            copyFloatBuffer(this.state1_angVelX, next.state1_angVelX, len);
+            copyFloatBuffer(this.state1_angVelY, next.state1_angVelY, len);
+            copyFloatBuffer(this.state1_angVelZ, next.state1_angVelZ, len);
+
             copyDoubleBuffer(this.prev_posX, next.prev_posX, len);
             copyDoubleBuffer(this.prev_posY, next.prev_posY, len);
             copyDoubleBuffer(this.prev_posZ, next.prev_posZ, len);
@@ -241,6 +264,12 @@ public class VxClientBodyDataContainer extends VxBodyDataContainer {
         this.state1_velX.put(index, 0f);
         this.state1_velY.put(index, 0f);
         this.state1_velZ.put(index, 0f);
+        this.state0_angVelX.put(index, 0f);
+        this.state0_angVelY.put(index, 0f);
+        this.state0_angVelZ.put(index, 0f);
+        this.state1_angVelX.put(index, 0f);
+        this.state1_angVelY.put(index, 0f);
+        this.state1_angVelZ.put(index, 0f);
         this.state0_posX.put(index, 0.0);
         this.state0_posY.put(index, 0.0);
         this.state0_posZ.put(index, 0.0);

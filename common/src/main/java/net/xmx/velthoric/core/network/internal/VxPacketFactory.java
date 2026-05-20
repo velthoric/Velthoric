@@ -86,9 +86,8 @@ public class VxPacketFactory {
      */
     public S2CUpdateBodyStateBatchPacket createStatePacket(long chunkPosLong, IntArrayList indices, net.minecraft.server.level.ServerLevel serverLevel) {
         // Allocate a direct buffer from the pool.
-        // Size estimation: Header (24 bytes) + per body (~64 bytes).
-        // We estimate conservatively to avoid resizing, but ByteBuf grows automatically if needed.
-        int estimatedSize = 24 + (indices.size() * 64);
+        // Size estimation: Header (24 bytes) + per body (~76 bytes: 4 netId + 12 pos + 16 rot + 1 active + 12 vel + 12 angVel).
+        int estimatedSize = 24 + (indices.size() * 76);
         ByteBuf rawBuf = ALLOCATOR.directBuffer(estimatedSize);
 
         try {
@@ -131,6 +130,9 @@ public class VxPacketFactory {
                     rawBuf.writeFloat(c.velX.get(idx));
                     rawBuf.writeFloat(c.velY.get(idx));
                     rawBuf.writeFloat(c.velZ.get(idx));
+                    rawBuf.writeFloat(c.angVelX.get(idx));
+                    rawBuf.writeFloat(c.angVelY.get(idx));
+                    rawBuf.writeFloat(c.angVelZ.get(idx));
                 }
             }
 

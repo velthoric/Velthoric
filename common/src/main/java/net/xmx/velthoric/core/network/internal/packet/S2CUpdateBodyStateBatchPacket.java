@@ -166,7 +166,8 @@ public class S2CUpdateBodyStateBatchPacket implements IVxNetPacket {
 
                         boolean isActive = db.readBoolean(); // Must read the activity flag
                         if (isActive) {
-                            db.skipBytes(12); // Velocity (3 floats * 4 bytes)
+                            db.skipBytes(12); // Linear velocity (3 floats * 4 bytes)
+                            db.skipBytes(12); // Angular velocity (3 floats * 4 bytes)
                         }
                         continue;
                     }
@@ -178,7 +179,8 @@ public class S2CUpdateBodyStateBatchPacket implements IVxNetPacket {
                         db.skipBytes(12); // Position
                         db.skipBytes(16); // Rotation
                         if (db.readBoolean()) { // isActive
-                            db.skipBytes(12); // Velocity
+                            db.skipBytes(12); // Linear velocity
+                            db.skipBytes(12); // Angular velocity
                         }
                         continue;
                     }
@@ -211,6 +213,12 @@ public class S2CUpdateBodyStateBatchPacket implements IVxNetPacket {
                         c.state1_velX.put(index, db.readFloat());
                         c.state1_velY.put(index, db.readFloat());
                         c.state1_velZ.put(index, db.readFloat());
+                        c.state0_angVelX.put(index, c.state1_angVelX.get(index));
+                        c.state0_angVelY.put(index, c.state1_angVelY.get(index));
+                        c.state0_angVelZ.put(index, c.state1_angVelZ.get(index));
+                        c.state1_angVelX.put(index, db.readFloat());
+                        c.state1_angVelY.put(index, db.readFloat());
+                        c.state1_angVelZ.put(index, db.readFloat());
                     }
 
                     // Update culling position for renderer frustum checks
