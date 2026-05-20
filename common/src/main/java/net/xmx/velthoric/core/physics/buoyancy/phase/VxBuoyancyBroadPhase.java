@@ -103,18 +103,18 @@ public final class VxBuoyancyBroadPhase {
 
         for (int i = 0; i < capacity; ++i) {
             // Static bodies or inactive slots are ignored.
-            if (c.motionType[i] == EMotionType.Static || ds.getIdForIndex(i) == null || !c.isActive[i]) {
+            if (c.motionType[i] == EMotionType.Static || ds.getIdForIndex(i) == null || c.isActive.get(i) == 0) {
                 continue;
             }
-            if ((c.behaviorBits[i] & VxBuoyancyBehavior.ID.getMask()) == 0) continue;
+            if ((c.behaviorBits.get(i) & VxBuoyancyBehavior.ID.getMask()) == 0) continue;
 
             // Retrieve world-space bounds from the data store.
-            float minX = c.aabbMinX[i];
-            float minY = c.aabbMinY[i];
-            float minZ = c.aabbMinZ[i];
-            float maxX = c.aabbMaxX[i];
-            float maxY = c.aabbMaxY[i];
-            float maxZ = c.aabbMaxZ[i];
+            float minX = c.aabbMinX.get(i);
+            float minY = c.aabbMinY.get(i);
+            float minZ = c.aabbMinZ.get(i);
+            float maxX = c.aabbMaxX.get(i);
+            float maxY = c.aabbMaxY.get(i);
+            float maxZ = c.aabbMaxZ.get(i);
 
             int minBlockX, maxBlockX;
             int minBlockY, maxBlockY;
@@ -136,9 +136,9 @@ public final class VxBuoyancyBroadPhase {
                 bottomThreshold = minY;
             } else {
                 // Use a default radius if the bounding box is not yet initialized.
-                double posX = c.posX[i];
-                double posY = c.posY[i];
-                double posZ = c.posZ[i];
+                double posX = c.posX.get(i);
+                double posY = c.posY.get(i);
+                double posZ = c.posZ.get(i);
 
                 minBlockX = (int) Math.floor(posX - SCAN_RADIUS);
                 maxBlockX = (int) Math.floor(posX + SCAN_RADIUS);

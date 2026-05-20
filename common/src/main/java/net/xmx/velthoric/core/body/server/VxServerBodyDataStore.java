@@ -65,7 +65,7 @@ public class VxServerBodyDataStore extends VxBodyDataStore {
         // Initialize server-specific data
         VxServerBodyDataContainer c = serverCurrent();
         c.bodyType[index] = type;
-        c.chunkKey[index] = Long.MAX_VALUE; // Sentinel for "no chunk"
+        c.chunkKey.put(index, Long.MAX_VALUE); // Sentinel for "no chunk"
         return index;
     }
 
@@ -98,7 +98,7 @@ public class VxServerBodyDataStore extends VxBodyDataStore {
         VxServerBodyDataContainer c = serverCurrent();
 
         // Handle Network ID cleanup before resetting the array slot
-        int netId = c.networkId[index];
+        int netId = c.networkId.get(index);
         if (netId != -1) {
             unregisterNetworkId(netId);
         }

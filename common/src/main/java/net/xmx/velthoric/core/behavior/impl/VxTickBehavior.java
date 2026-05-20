@@ -68,7 +68,7 @@ public class VxTickBehavior implements VxBehavior {
         for (int i = 0; i < capacity; i++) {
             VxBody obj = bodies[i];
             if (obj == null) continue;
-            if ((c.behaviorBits[i] & mask) == 0) continue;
+            if ((c.behaviorBits.get(i) & mask) == 0) continue;
 
             obj.onServerTick(level);
         }
@@ -90,8 +90,8 @@ public class VxTickBehavior implements VxBehavior {
         for (int i = 0; i < capacity; i++) {
             VxBody obj = bodies[i];
             if (obj == null) continue;
-            if ((c.behaviorBits[i] & mask) == 0) continue;
-            if (!c.isActive[i]) continue;
+            if ((c.behaviorBits.get(i) & mask) == 0) continue;
+            if (c.isActive.get(i) == 0) continue;
 
             obj.onPrePhysicsTick(world);
         }
@@ -113,8 +113,8 @@ public class VxTickBehavior implements VxBehavior {
         for (int i = 0; i < capacity; i++) {
             VxBody obj = bodies[i];
             if (obj == null) continue;
-            if ((c.behaviorBits[i] & mask) == 0) continue;
-            if (!c.isActive[i]) continue;
+            if ((c.behaviorBits.get(i) & mask) == 0) continue;
+            if (c.isActive.get(i) == 0) continue;
 
             obj.onPhysicsTick(world);
         }

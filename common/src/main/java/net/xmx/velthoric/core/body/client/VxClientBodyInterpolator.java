@@ -154,23 +154,23 @@ public class VxClientBodyInterpolator {
 
             // Fast-fail check: Skip slots that are not initialized.
             // This boolean check is faster than a Map.get() or Set iteration.
-            if (!c.render_isInitialized[i]) {
+            if (c.render_isInitialized.get(i) == 0) {
                 continue;
             }
 
             // Ensure we have a valid target state from the server before interpolating
-            if (c.state1_timestamp[i] == 0) {
+            if (c.state1_timestamp.get(i) == 0) {
                 continue;
             }
 
             // 1. Backup the current render state to 'prev' arrays for frame interpolation.
-            c.prev_posX[i] = c.posX[i];
-            c.prev_posY[i] = c.posY[i];
-            c.prev_posZ[i] = c.posZ[i];
-            c.prev_rotX[i] = c.rotX[i];
-            c.prev_rotY[i] = c.rotY[i];
-            c.prev_rotZ[i] = c.rotZ[i];
-            c.prev_rotW[i] = c.rotW[i];
+            c.prev_posX.put(i, c.posX.get(i));
+            c.prev_posY.put(i, c.posY.get(i));
+            c.prev_posZ.put(i, c.posZ.get(i));
+            c.prev_rotX.put(i, c.rotX.get(i));
+            c.prev_rotY.put(i, c.rotY.get(i));
+            c.prev_rotZ.put(i, c.rotZ.get(i));
+            c.prev_rotW.put(i, c.rotW.get(i));
 
             // 2. Backup vertex data if it exists (Soft Bodies)
             float[] currentVerts = c.vertexData[i];
@@ -200,13 +200,13 @@ public class VxClientBodyInterpolator {
      */
     private void calculateInterpolatedState(VxClientBodyDataContainer c, int i, long renderTimestamp) {
         // If the body is inactive on the server, just snap to its final state.
-        if (!c.state1_isActive[i]) {
+        if (c.state1_isActive.get(i) == 0) {
             setRenderStateToLatest(c, i);
             return;
         }
 
-        long fromTime = c.state0_timestamp[i];
-        long toTime = c.state1_timestamp[i];
+        long fromTime = c.state0_timestamp.get(i);
+        long toTime = c.state1_timestamp.get(i);
 
         // If we don't have valid history, snap to latest.
         if (fromTime == 0 || toTime <= fromTime) {
@@ -221,9 +221,9 @@ public class VxClientBodyInterpolator {
             // --- Extrapolation Case ---
             // The render time is past the latest known state.
             double extrapolationTime = (double) (renderTimestamp - toTime) / 1_000_000_000.0;
-            float velX = c.state1_velX[i];
-            float velY = c.state1_velY[i];
-            float velZ = c.state1_velZ[i];
+            float velX = c.state1_velX.get(i);
+            float velY = c.state1_velY.get(i);
+            float velZ = c.state1_velZ.get(i);
             float velSq = velX * velX + velY * velY + velZ * velZ;
 
             // Only extrapolate if the time is within limits and the body has significant velocity.
@@ -232,20 +232,20 @@ public class VxClientBodyInterpolator {
                 // Use a decay factor to smoothly reduce extrapolation confidence over time
                 double decay = Math.max(0.0, 1.0 - extrapolationTime / MAX_EXTRAPOLATION_SECONDS);
                 double blendedTime = extrapolationTime * decay;
-                c.posX[i] = c.state1_posX[i] + velX * blendedTime;
-                c.posY[i] = c.state1_posY[i] + velY * blendedTime;
-                c.posZ[i] = c.state1_posZ[i] + velZ * blendedTime;
+                c.posX.put(i, c.state1_posX.get(i) + velX * blendedTime);
+                c.posY.put(i, c.state1_posY.get(i) + velY * blendedTime);
+                c.posZ.put(i, c.state1_posZ.get(i) + velZ * blendedTime);
             } else {
                 // If extrapolating too far or velocity is negligible, clamp to the last known position.
-                c.posX[i] = c.state1_posX[i];
-                c.posY[i] = c.state1_posY[i];
-                c.posZ[i] = c.state1_posZ[i];
+                c.posX.put(i, c.state1_posX.get(i));
+                c.posY.put(i, c.state1_posY.get(i));
+                c.posZ.put(i, c.state1_posZ.get(i));
             }
             // Do not extrapolate rotation, as it can be unstable. Just use the latest.
-            c.rotX[i] = c.state1_rotX[i];
-            c.rotY[i] = c.state1_rotY[i];
-            c.rotZ[i] = c.state1_rotZ[i];
-            c.rotW[i] = c.state1_rotW[i];
+            c.rotX.put(i, c.state1_rotX.get(i));
+            c.rotY.put(i, c.state1_rotY.get(i));
+            c.rotZ.put(i, c.state1_rotZ.get(i));
+            c.rotW.put(i, c.state1_rotW.get(i));
             c.vertexData[i] = c.state1_vertexData[i];
             return;
         }
@@ -257,20 +257,20 @@ public class VxClientBodyInterpolator {
         // The render time is between the two known states.
 
         // Position: Linear interpolation (Lerp)
-        c.posX[i] = c.state0_posX[i] + alpha * (c.state1_posX[i] - c.state0_posX[i]);
-        c.posY[i] = c.state0_posY[i] + alpha * (c.state1_posY[i] - c.state0_posY[i]);
-        c.posZ[i] = c.state0_posZ[i] + alpha * (c.state1_posZ[i] - c.state0_posZ[i]);
+        c.posX.put(i, c.state0_posX.get(i) + alpha * (c.state1_posX.get(i) - c.state0_posX.get(i)));
+        c.posY.put(i, c.state0_posY.get(i) + alpha * (c.state1_posY.get(i) - c.state0_posY.get(i)));
+        c.posZ.put(i, c.state0_posZ.get(i) + alpha * (c.state1_posZ.get(i) - c.state0_posZ.get(i)));
 
         // Rotation: Spherical Linear Interpolation (Slerp)
         float alphaF = (float) alpha;
-        tempFromRot.set(c.state0_rotX[i], c.state0_rotY[i], c.state0_rotZ[i], c.state0_rotW[i]);
-        tempToRot.set(c.state1_rotX[i], c.state1_rotY[i], c.state1_rotZ[i], c.state1_rotW[i]);
+        tempFromRot.set(c.state0_rotX.get(i), c.state0_rotY.get(i), c.state0_rotZ.get(i), c.state0_rotW.get(i));
+        tempToRot.set(c.state1_rotX.get(i), c.state1_rotY.get(i), c.state1_rotZ.get(i), c.state1_rotW.get(i));
         VxOperations.slerp(tempFromRot, tempToRot, alphaF, tempRenderRot);
 
-        c.rotX[i] = tempRenderRot.getX();
-        c.rotY[i] = tempRenderRot.getY();
-        c.rotZ[i] = tempRenderRot.getZ();
-        c.rotW[i] = tempRenderRot.getW();
+        c.rotX.put(i, tempRenderRot.getX());
+        c.rotY.put(i, tempRenderRot.getY());
+        c.rotZ.put(i, tempRenderRot.getZ());
+        c.rotW.put(i, tempRenderRot.getW());
 
         // Vertex Data: Linear Interpolation
         float[] fromVerts = c.state0_vertexData[i];
@@ -295,13 +295,13 @@ public class VxClientBodyInterpolator {
      * @param i The index of the body.
      */
     private void setRenderStateToLatest(VxClientBodyDataContainer c, int i) {
-        c.posX[i] = c.state1_posX[i];
-        c.posY[i] = c.state1_posY[i];
-        c.posZ[i] = c.state1_posZ[i];
-        c.rotX[i] = c.state1_rotX[i];
-        c.rotY[i] = c.state1_rotY[i];
-        c.rotZ[i] = c.state1_rotZ[i];
-        c.rotW[i] = c.state1_rotW[i];
+        c.posX.put(i, c.state1_posX.get(i));
+        c.posY.put(i, c.state1_posY.get(i));
+        c.posZ.put(i, c.state1_posZ.get(i));
+        c.rotX.put(i, c.state1_rotX.get(i));
+        c.rotY.put(i, c.state1_rotY.get(i));
+        c.rotZ.put(i, c.state1_rotZ.get(i));
+        c.rotW.put(i, c.state1_rotW.get(i));
         c.vertexData[i] = c.state1_vertexData[i] != null ? c.state1_vertexData[i] : c.state0_vertexData[i];
     }
 
@@ -345,9 +345,9 @@ public class VxClientBodyInterpolator {
      */
     private void interpolatePosition(VxClientBodyDataContainer c, int i, float partialTicks, RVec3 outPos) {
         // Use double precision for the position interpolation to maintain accuracy
-        double x = c.prev_posX[i] + (double) partialTicks * (c.posX[i] - c.prev_posX[i]);
-        double y = c.prev_posY[i] + (double) partialTicks * (c.posY[i] - c.prev_posY[i]);
-        double z = c.prev_posZ[i] + (double) partialTicks * (c.posZ[i] - c.prev_posZ[i]);
+        double x = c.prev_posX.get(i) + (double) partialTicks * (c.posX.get(i) - c.prev_posX.get(i));
+        double y = c.prev_posY.get(i) + (double) partialTicks * (c.posY.get(i) - c.prev_posY.get(i));
+        double z = c.prev_posZ.get(i) + (double) partialTicks * (c.posZ.get(i) - c.prev_posZ.get(i));
         outPos.set(x, y, z);
     }
 
@@ -373,8 +373,8 @@ public class VxClientBodyInterpolator {
      * @param outRot       The output quaternion.
      */
     private void interpolateRotation(VxClientBodyDataContainer c, int i, float partialTicks, Quat outRot) {
-        tempFromRot.set(c.prev_rotX[i], c.prev_rotY[i], c.prev_rotZ[i], c.prev_rotW[i]);
-        tempToRot.set(c.rotX[i], c.rotY[i], c.rotZ[i], c.rotW[i]);
+        tempFromRot.set(c.prev_rotX.get(i), c.prev_rotY.get(i), c.prev_rotZ.get(i), c.prev_rotW.get(i));
+        tempToRot.set(c.rotX.get(i), c.rotY.get(i), c.rotZ.get(i), c.rotW.get(i));
         VxOperations.slerp(tempFromRot, tempToRot, partialTicks, outRot);
     }
 

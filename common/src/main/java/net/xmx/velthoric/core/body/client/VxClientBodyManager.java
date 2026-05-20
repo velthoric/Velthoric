@@ -276,33 +276,63 @@ public class VxClientBodyManager extends VxAbstractBodyManager {
         float rw = transform.getRotation().getW();
 
         // Initialize timestamps
-        c.state0_timestamp[index] = timestamp;
-        c.state1_timestamp[index] = timestamp;
+        c.state0_timestamp.put(index, timestamp);
+        c.state1_timestamp.put(index, timestamp);
 
         // Mark as active
-        c.state0_isActive[index] = true;
-        c.state1_isActive[index] = true;
+        c.state0_isActive.put(index, (byte) 1);
+        c.state1_isActive.put(index, (byte) 1);
 
         // Initialize Position Buffers (State 0, State 1, Render, Previous Frame)
-        c.state0_posX[index] = c.state1_posX[index] = c.posX[index] = c.prev_posX[index] = x;
-        c.state0_posY[index] = c.state1_posY[index] = c.posY[index] = c.prev_posY[index] = y;
-        c.state0_posZ[index] = c.state1_posZ[index] = c.posZ[index] = c.prev_posZ[index] = z;
+        c.state0_posX.put(index, x);
+        c.state1_posX.put(index, x);
+        c.posX.put(index, x);
+        c.prev_posX.put(index, x);
+
+        c.state0_posY.put(index, y);
+        c.state1_posY.put(index, y);
+        c.posY.put(index, y);
+        c.prev_posY.put(index, y);
+
+        c.state0_posZ.put(index, z);
+        c.state1_posZ.put(index, z);
+        c.posZ.put(index, z);
+        c.prev_posZ.put(index, z);
 
         // Initialize Rotation Buffers
-        c.state0_rotX[index] = c.state1_rotX[index] = c.rotX[index] = c.prev_rotX[index] = rx;
-        c.state0_rotY[index] = c.state1_rotY[index] = c.rotY[index] = c.prev_rotY[index] = ry;
-        c.state0_rotZ[index] = c.state1_rotZ[index] = c.rotZ[index] = c.prev_rotZ[index] = rz;
-        c.state0_rotW[index] = c.state1_rotW[index] = c.rotW[index] = c.prev_rotW[index] = rw;
+        c.state0_rotX.put(index, rx);
+        c.state1_rotX.put(index, rx);
+        c.rotX.put(index, rx);
+        c.prev_rotX.put(index, rx);
+
+        c.state0_rotY.put(index, ry);
+        c.state1_rotY.put(index, ry);
+        c.rotY.put(index, ry);
+        c.prev_rotY.put(index, ry);
+
+        c.state0_rotZ.put(index, rz);
+        c.state1_rotZ.put(index, rz);
+        c.rotZ.put(index, rz);
+        c.prev_rotZ.put(index, rz);
+
+        c.state0_rotW.put(index, rw);
+        c.state1_rotW.put(index, rw);
+        c.rotW.put(index, rw);
+        c.prev_rotW.put(index, rw);
 
         // Reset Velocities
-        c.state0_velX[index] = c.state0_velY[index] = c.state0_velZ[index] = 0f;
-        c.state1_velX[index] = c.state1_velX[index] = c.state1_velZ[index] = 0f;
+        c.state0_velX.put(index, 0f);
+        c.state0_velY.put(index, 0f);
+        c.state0_velZ.put(index, 0f);
+        c.state1_velX.put(index, 0f);
+        c.state1_velY.put(index, 0f);
+        c.state1_velZ.put(index, 0f);
 
         // Initialize Last Known Position (for Frustum Culling or Logic)
         c.lastKnownPosition[index].set(x, y, z);
 
         // Mark render state as initialized
-        c.render_isInitialized[index] = true;
+        c.render_isInitialized.put(index, (byte) 1);
     }
 
     /**

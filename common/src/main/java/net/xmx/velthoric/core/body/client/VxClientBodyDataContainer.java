@@ -6,6 +6,11 @@ package net.xmx.velthoric.core.body.client;
 
 import com.github.stephengold.joltjni.RVec3;
 import net.xmx.velthoric.core.body.VxBodyDataContainer;
+import java.nio.ByteBuffer;
+import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
+import java.nio.LongBuffer;
+import java.nio.ByteOrder;
 
 /**
  * Client-specific container for physics body data, including interpolation buffers.
@@ -16,55 +21,55 @@ public class VxClientBodyDataContainer extends VxBodyDataContainer {
     /**
      * The timestamp (ns) of the previous interpolation state (state0).
      */
-    public final long[] state0_timestamp;
+    public final LongBuffer state0_timestamp;
     /**
      * The timestamp (ns) of the current interpolation state (state1).
      */
-    public final long[] state1_timestamp;
+    public final LongBuffer state1_timestamp;
 
     /**
      * Previous X, Y, Z coordinates for interpolation (state0).
      */
-    public final double[] state0_posX, state0_posY, state0_posZ;
+    public final DoubleBuffer state0_posX, state0_posY, state0_posZ;
     /**
      * Current X, Y, Z coordinates received from the server (state1).
      */
-    public final double[] state1_posX, state1_posY, state1_posZ;
+    public final DoubleBuffer state1_posX, state1_posY, state1_posZ;
     /**
      * Last rendered X, Y, Z coordinates for smooth frame transitions.
      */
-    public final double[] prev_posX, prev_posY, prev_posZ;
+    public final DoubleBuffer prev_posX, prev_posY, prev_posZ;
 
     /**
      * Previous rotation quaternion for interpolation (state0).
      */
-    public final float[] state0_rotX, state0_rotY, state0_rotZ, state0_rotW;
+    public final FloatBuffer state0_rotX, state0_rotY, state0_rotZ, state0_rotW;
     /**
      * Current rotation quaternion received from the server (state1).
      */
-    public final float[] state1_rotX, state1_rotY, state1_rotZ, state1_rotW;
+    public final FloatBuffer state1_rotX, state1_rotY, state1_rotZ, state1_rotW;
     /**
      * Last rendered rotation quaternion for smooth frame transitions.
      */
-    public final float[] prev_rotX, prev_rotY, prev_rotZ, prev_rotW;
+    public final FloatBuffer prev_rotX, prev_rotY, prev_rotZ, prev_rotW;
 
     /**
      * Lineary velocity at state0 used for extrapolation.
      */
-    public final float[] state0_velX, state0_velY, state0_velZ;
+    public final FloatBuffer state0_velX, state0_velY, state0_velZ;
     /**
      * Linear velocity at state1 used for extrapolation.
      */
-    public final float[] state1_velX, state1_velY, state1_velZ;
+    public final FloatBuffer state1_velX, state1_velY, state1_velZ;
 
     /**
      * Activation state at state0.
      */
-    public final boolean[] state0_isActive;
+    public final ByteBuffer state0_isActive;
     /**
      * Activation state at state1.
      */
-    public final boolean[] state1_isActive;
+    public final ByteBuffer state1_isActive;
 
     /**
      * Vertex data at state0.
@@ -82,7 +87,7 @@ public class VxClientBodyDataContainer extends VxBodyDataContainer {
     /**
      * Whether the renderer has finished initializing resources (e.g. GPU buffers) for this body.
      */
-    public final boolean[] render_isInitialized;
+    public final ByteBuffer render_isInitialized;
     /**
      * Arbitrary custom data objects attached to the body for client-side logic.
      */
@@ -100,47 +105,47 @@ public class VxClientBodyDataContainer extends VxBodyDataContainer {
      */
     public VxClientBodyDataContainer(int capacity) {
         super(capacity);
-        this.state0_timestamp = new long[capacity];
-        this.state1_timestamp = new long[capacity];
+        this.state0_timestamp = ByteBuffer.allocateDirect(capacity * Long.BYTES).order(ByteOrder.nativeOrder()).asLongBuffer();
+        this.state1_timestamp = ByteBuffer.allocateDirect(capacity * Long.BYTES).order(ByteOrder.nativeOrder()).asLongBuffer();
 
-        this.state0_posX = new double[capacity];
-        this.state0_posY = new double[capacity];
-        this.state0_posZ = new double[capacity];
-        this.state1_posX = new double[capacity];
-        this.state1_posY = new double[capacity];
-        this.state1_posZ = new double[capacity];
-        this.prev_posX = new double[capacity];
-        this.prev_posY = new double[capacity];
-        this.prev_posZ = new double[capacity];
+        this.state0_posX = ByteBuffer.allocateDirect(capacity * Double.BYTES).order(ByteOrder.nativeOrder()).asDoubleBuffer();
+        this.state0_posY = ByteBuffer.allocateDirect(capacity * Double.BYTES).order(ByteOrder.nativeOrder()).asDoubleBuffer();
+        this.state0_posZ = ByteBuffer.allocateDirect(capacity * Double.BYTES).order(ByteOrder.nativeOrder()).asDoubleBuffer();
+        this.state1_posX = ByteBuffer.allocateDirect(capacity * Double.BYTES).order(ByteOrder.nativeOrder()).asDoubleBuffer();
+        this.state1_posY = ByteBuffer.allocateDirect(capacity * Double.BYTES).order(ByteOrder.nativeOrder()).asDoubleBuffer();
+        this.state1_posZ = ByteBuffer.allocateDirect(capacity * Double.BYTES).order(ByteOrder.nativeOrder()).asDoubleBuffer();
+        this.prev_posX = ByteBuffer.allocateDirect(capacity * Double.BYTES).order(ByteOrder.nativeOrder()).asDoubleBuffer();
+        this.prev_posY = ByteBuffer.allocateDirect(capacity * Double.BYTES).order(ByteOrder.nativeOrder()).asDoubleBuffer();
+        this.prev_posZ = ByteBuffer.allocateDirect(capacity * Double.BYTES).order(ByteOrder.nativeOrder()).asDoubleBuffer();
 
-        this.state0_rotX = new float[capacity];
-        this.state0_rotY = new float[capacity];
-        this.state0_rotZ = new float[capacity];
-        this.state0_rotW = new float[capacity];
-        this.state1_rotX = new float[capacity];
-        this.state1_rotY = new float[capacity];
-        this.state1_rotZ = new float[capacity];
-        this.state1_rotW = new float[capacity];
-        this.prev_rotX = new float[capacity];
-        this.prev_rotY = new float[capacity];
-        this.prev_rotZ = new float[capacity];
-        this.prev_rotW = new float[capacity];
+        this.state0_rotX = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.state0_rotY = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.state0_rotZ = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.state0_rotW = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.state1_rotX = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.state1_rotY = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.state1_rotZ = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.state1_rotW = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.prev_rotX = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.prev_rotY = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.prev_rotZ = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.prev_rotW = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
 
-        this.state0_velX = new float[capacity];
-        this.state0_velY = new float[capacity];
-        this.state0_velZ = new float[capacity];
-        this.state1_velX = new float[capacity];
-        this.state1_velY = new float[capacity];
-        this.state1_velZ = new float[capacity];
+        this.state0_velX = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.state0_velY = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.state0_velZ = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.state1_velX = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.state1_velY = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.state1_velZ = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
 
-        this.state0_isActive = new boolean[capacity];
-        this.state1_isActive = new boolean[capacity];
+        this.state0_isActive = ByteBuffer.allocateDirect(capacity).order(ByteOrder.nativeOrder());
+        this.state1_isActive = ByteBuffer.allocateDirect(capacity).order(ByteOrder.nativeOrder());
 
         this.state0_vertexData = new float[capacity][];
         this.state1_vertexData = new float[capacity][];
         this.prev_vertexData = new float[capacity][];
 
-        this.render_isInitialized = new boolean[capacity];
+        this.render_isInitialized = ByteBuffer.allocateDirect(capacity).order(ByteOrder.nativeOrder());
         this.customData = new Object[capacity];
         this.lastKnownPosition = new RVec3[capacity];
         for (int i = 0; i < capacity; i++) {
@@ -161,44 +166,44 @@ public class VxClientBodyDataContainer extends VxBodyDataContainer {
         super.copyTo(other);
         if (other instanceof VxClientBodyDataContainer next) {
             int len = Math.min(this.capacity, next.capacity);
-            System.arraycopy(this.state0_timestamp, 0, next.state0_timestamp, 0, len);
-            System.arraycopy(this.state0_posX, 0, next.state0_posX, 0, len);
-            System.arraycopy(this.state0_posY, 0, next.state0_posY, 0, len);
-            System.arraycopy(this.state0_posZ, 0, next.state0_posZ, 0, len);
-            System.arraycopy(this.state0_rotX, 0, next.state0_rotX, 0, len);
-            System.arraycopy(this.state0_rotY, 0, next.state0_rotY, 0, len);
-            System.arraycopy(this.state0_rotZ, 0, next.state0_rotZ, 0, len);
-            System.arraycopy(this.state0_rotW, 0, next.state0_rotW, 0, len);
-            System.arraycopy(this.state0_velX, 0, next.state0_velX, 0, len);
-            System.arraycopy(this.state0_velY, 0, next.state0_velY, 0, len);
-            System.arraycopy(this.state0_velZ, 0, next.state0_velZ, 0, len);
-            System.arraycopy(this.state0_isActive, 0, next.state0_isActive, 0, len);
+            copyLongBuffer(this.state0_timestamp, next.state0_timestamp, len);
+            copyDoubleBuffer(this.state0_posX, next.state0_posX, len);
+            copyDoubleBuffer(this.state0_posY, next.state0_posY, len);
+            copyDoubleBuffer(this.state0_posZ, next.state0_posZ, len);
+            copyFloatBuffer(this.state0_rotX, next.state0_rotX, len);
+            copyFloatBuffer(this.state0_rotY, next.state0_rotY, len);
+            copyFloatBuffer(this.state0_rotZ, next.state0_rotZ, len);
+            copyFloatBuffer(this.state0_rotW, next.state0_rotW, len);
+            copyFloatBuffer(this.state0_velX, next.state0_velX, len);
+            copyFloatBuffer(this.state0_velY, next.state0_velY, len);
+            copyFloatBuffer(this.state0_velZ, next.state0_velZ, len);
+            copyByteBuffer(this.state0_isActive, next.state0_isActive, len);
             System.arraycopy(this.state0_vertexData, 0, next.state0_vertexData, 0, len);
 
-            System.arraycopy(this.state1_timestamp, 0, next.state1_timestamp, 0, len);
-            System.arraycopy(this.state1_posX, 0, next.state1_posX, 0, len);
-            System.arraycopy(this.state1_posY, 0, next.state1_posY, 0, len);
-            System.arraycopy(this.state1_posZ, 0, next.state1_posZ, 0, len);
-            System.arraycopy(this.state1_rotX, 0, next.state1_rotX, 0, len);
-            System.arraycopy(this.state1_rotY, 0, next.state1_rotY, 0, len);
-            System.arraycopy(this.state1_rotZ, 0, next.state1_rotZ, 0, len);
-            System.arraycopy(this.state1_rotW, 0, next.state1_rotW, 0, len);
-            System.arraycopy(this.state1_velX, 0, next.state1_velX, 0, len);
-            System.arraycopy(this.state1_velY, 0, next.state1_velY, 0, len);
-            System.arraycopy(this.state1_velZ, 0, next.state1_velZ, 0, len);
-            System.arraycopy(this.state1_isActive, 0, next.state1_isActive, 0, len);
+            copyLongBuffer(this.state1_timestamp, next.state1_timestamp, len);
+            copyDoubleBuffer(this.state1_posX, next.state1_posX, len);
+            copyDoubleBuffer(this.state1_posY, next.state1_posY, len);
+            copyDoubleBuffer(this.state1_posZ, next.state1_posZ, len);
+            copyFloatBuffer(this.state1_rotX, next.state1_rotX, len);
+            copyFloatBuffer(this.state1_rotY, next.state1_rotY, len);
+            copyFloatBuffer(this.state1_rotZ, next.state1_rotZ, len);
+            copyFloatBuffer(this.state1_rotW, next.state1_rotW, len);
+            copyFloatBuffer(this.state1_velX, next.state1_velX, len);
+            copyFloatBuffer(this.state1_velY, next.state1_velY, len);
+            copyFloatBuffer(this.state1_velZ, next.state1_velZ, len);
+            copyByteBuffer(this.state1_isActive, next.state1_isActive, len);
             System.arraycopy(this.state1_vertexData, 0, next.state1_vertexData, 0, len);
 
-            System.arraycopy(this.prev_posX, 0, next.prev_posX, 0, len);
-            System.arraycopy(this.prev_posY, 0, next.prev_posY, 0, len);
-            System.arraycopy(this.prev_posZ, 0, next.prev_posZ, 0, len);
-            System.arraycopy(this.prev_rotX, 0, next.prev_rotX, 0, len);
-            System.arraycopy(this.prev_rotY, 0, next.prev_rotY, 0, len);
-            System.arraycopy(this.prev_rotZ, 0, next.prev_rotZ, 0, len);
-            System.arraycopy(this.prev_rotW, 0, next.prev_rotW, 0, len);
+            copyDoubleBuffer(this.prev_posX, next.prev_posX, len);
+            copyDoubleBuffer(this.prev_posY, next.prev_posY, len);
+            copyDoubleBuffer(this.prev_posZ, next.prev_posZ, len);
+            copyFloatBuffer(this.prev_rotX, next.prev_rotX, len);
+            copyFloatBuffer(this.prev_rotY, next.prev_rotY, len);
+            copyFloatBuffer(this.prev_rotZ, next.prev_rotZ, len);
+            copyFloatBuffer(this.prev_rotW, next.prev_rotW, len);
             System.arraycopy(this.prev_vertexData, 0, next.prev_vertexData, 0, len);
 
-            System.arraycopy(this.render_isInitialized, 0, next.render_isInitialized, 0, len);
+            copyByteBuffer(this.render_isInitialized, next.render_isInitialized, len);
             System.arraycopy(this.customData, 0, next.customData, 0, len);
             for (int i = 0; i < len; i++) {
                 next.lastKnownPosition[i].set(this.lastKnownPosition[i]);
@@ -216,13 +221,13 @@ public class VxClientBodyDataContainer extends VxBodyDataContainer {
     @Override
     public void reset(int index) {
         super.reset(index);
-        this.state0_timestamp[index] = 0;
-        this.state1_timestamp[index] = 0;
-        this.state0_isActive[index] = false;
-        this.state1_isActive[index] = false;
+        this.state0_timestamp.put(index, 0L);
+        this.state1_timestamp.put(index, 0L);
+        this.state0_isActive.put(index, (byte) 0);
+        this.state1_isActive.put(index, (byte) 0);
         this.state0_vertexData[index] = null;
         this.state1_vertexData[index] = null;
-        this.render_isInitialized[index] = false;
+        this.render_isInitialized.put(index, (byte) 0);
         this.prev_vertexData[index] = null;
         this.customData[index] = null;
 
@@ -230,16 +235,32 @@ public class VxClientBodyDataContainer extends VxBodyDataContainer {
             this.lastKnownPosition[index].loadZero();
         }
 
-        this.state0_velX[index] = this.state0_velY[index] = this.state0_velZ[index] = 0;
-        this.state1_velX[index] = this.state1_velY[index] = this.state1_velZ[index] = 0;
-        this.state0_posX[index] = this.state0_posY[index] = this.state0_posZ[index] = 0.0;
-        this.state1_posX[index] = this.state1_posY[index] = this.state1_posZ[index] = 0.0;
-        this.prev_posX[index] = this.prev_posY[index] = this.prev_posZ[index] = 0.0;
-        this.state0_rotX[index] = this.state0_rotY[index] = this.state0_rotZ[index] = 0f;
-        this.state0_rotW[index] = 1f;
-        this.state1_rotX[index] = this.state1_rotY[index] = this.state1_rotZ[index] = 0f;
-        this.state1_rotW[index] = 1f;
-        this.prev_rotX[index] = this.prev_rotY[index] = this.prev_rotZ[index] = 0f;
-        this.prev_rotW[index] = 1f;
+        this.state0_velX.put(index, 0f);
+        this.state0_velY.put(index, 0f);
+        this.state0_velZ.put(index, 0f);
+        this.state1_velX.put(index, 0f);
+        this.state1_velY.put(index, 0f);
+        this.state1_velZ.put(index, 0f);
+        this.state0_posX.put(index, 0.0);
+        this.state0_posY.put(index, 0.0);
+        this.state0_posZ.put(index, 0.0);
+        this.state1_posX.put(index, 0.0);
+        this.state1_posY.put(index, 0.0);
+        this.state1_posZ.put(index, 0.0);
+        this.prev_posX.put(index, 0.0);
+        this.prev_posY.put(index, 0.0);
+        this.prev_posZ.put(index, 0.0);
+        this.state0_rotX.put(index, 0f);
+        this.state0_rotY.put(index, 0f);
+        this.state0_rotZ.put(index, 0f);
+        this.state0_rotW.put(index, 1f);
+        this.state1_rotX.put(index, 0f);
+        this.state1_rotY.put(index, 0f);
+        this.state1_rotZ.put(index, 0f);
+        this.state1_rotW.put(index, 1f);
+        this.prev_rotX.put(index, 0f);
+        this.prev_rotY.put(index, 0f);
+        this.prev_rotZ.put(index, 0f);
+        this.prev_rotW.put(index, 1f);
     }
 }

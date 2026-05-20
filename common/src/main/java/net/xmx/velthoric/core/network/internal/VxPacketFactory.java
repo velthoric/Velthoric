@@ -110,27 +110,27 @@ public class VxPacketFactory {
             for (int i = 0; i < indices.size(); i++) {
                 int idx = indices.getInt(i);
 
-                rawBuf.writeInt(c.networkId[idx]);
+                rawBuf.writeInt(c.networkId.get(idx));
                 
                 // Relative positions are sent as floats to save bandwidth (double -> float precision loss is acceptable for rendering relative to chunk)
-                rawBuf.writeFloat((float) (c.posX[idx] - chunkBaseX));
-                rawBuf.writeFloat((float) (c.posY[idx] - chunkBaseY));
-                rawBuf.writeFloat((float) (c.posZ[idx] - chunkBaseZ));
+                rawBuf.writeFloat((float) (c.posX.get(idx) - chunkBaseX));
+                rawBuf.writeFloat((float) (c.posY.get(idx) - chunkBaseY));
+                rawBuf.writeFloat((float) (c.posZ.get(idx) - chunkBaseZ));
                 
                 // Rotations (quaternion)
-                rawBuf.writeFloat(c.rotX[idx]);
-                rawBuf.writeFloat(c.rotY[idx]);
-                rawBuf.writeFloat(c.rotZ[idx]);
-                rawBuf.writeFloat(c.rotW[idx]);
+                rawBuf.writeFloat(c.rotX.get(idx));
+                rawBuf.writeFloat(c.rotY.get(idx));
+                rawBuf.writeFloat(c.rotZ.get(idx));
+                rawBuf.writeFloat(c.rotW.get(idx));
 
-                boolean active = c.isActive[idx];
+                boolean active = c.isActive.get(idx) != 0;
                 rawBuf.writeBoolean(active);
                 
                 // Only send velocity if the body is active/awake
                 if (active) {
-                    rawBuf.writeFloat(c.velX[idx]);
-                    rawBuf.writeFloat(c.velY[idx]);
-                    rawBuf.writeFloat(c.velZ[idx]);
+                    rawBuf.writeFloat(c.velX.get(idx));
+                    rawBuf.writeFloat(c.velY.get(idx));
+                    rawBuf.writeFloat(c.velZ.get(idx));
                 }
             }
 
@@ -165,7 +165,7 @@ public class VxPacketFactory {
             VxServerBodyDataContainer c = dataStore.serverCurrent();
             for (int i = 0; i < indices.size(); i++) {
                 int idx = indices.getInt(i);
-                rawBuf.writeInt(c.networkId[idx]);
+                rawBuf.writeInt(c.networkId.get(idx));
                 
                 float[] vData = c.vertexData[idx];
                 if (vData != null && vData.length > 0) {
@@ -253,7 +253,7 @@ public class VxPacketFactory {
             VxServerBodyDataContainer c = dataStore.serverCurrent();
             for (int i = 0; i < indices.size(); i++) {
                 int idx = indices.getInt(i);
-                wrapped.writeVarInt(c.networkId[idx]);
+                wrapped.writeVarInt(c.networkId.get(idx));
 
                 VxCollisionShape shape = c.shape[idx];
                 if (shape != null) {

@@ -30,9 +30,8 @@ namespace Velthoric {
  * - Native motion types (Static, Kinematic, Dynamic)
  * - Soft body vertex locations (float[] per body)
  *
- * It utilizes JNI Critical regions for maximum throughput when processing large batches
- * of rigid bodies. Soft body vertex extraction is handled in a secondary pass to 
- * safely manage Java object array access.
+ * It utilizes direct Java NIO Buffer addresses via GetDirectBufferAddress to completely
+ * avoid JNI Critical pinning overhead for the primary 20+ physics buffers.
  *
  * @param env Pointer to the JNI environment.
  * @param thiz Reference to the Java BatchPhysicsSync instance.
@@ -41,29 +40,29 @@ namespace Velthoric {
  * @param indicesArr Java int[] containing the target indices in the SoA store.
  * @param bodyIdsArr Java int[] containing the Jolt BodyIDs.
  * @param behaviorBitsArr Java long[] containing the behavior bitmasks for each body.
- * @param posXArr Java double[] for X-positions.
- * @param posYArr Java double[] for Y-positions.
- * @param posZArr Java double[] for Z-positions.
- * @param rotXArr Java float[] for rotation X.
- * @param rotYArr Java float[] for rotation Y.
- * @param rotZArr Java float[] for rotation Z.
- * @param rotWArr Java float[] for rotation W.
- * @param velXArr Java float[] for linear velocity X.
- * @param velYArr Java float[] for linear velocity Y.
- * @param velZArr Java float[] for linear velocity Z.
- * @param angVelXArr Java float[] for angular velocity X.
- * @param angVelYArr Java float[] for angular velocity Y.
- * @param angVelZArr Java float[] for angular velocity Z.
- * @param aabbMinXArr Java float[] for AABB minimum X.
- * @param aabbMinYArr Java float[] for AABB minimum Y.
- * @param aabbMinZArr Java float[] for AABB minimum Z.
- * @param aabbMaxXArr Java float[] for AABB maximum X.
- * @param aabbMaxYArr Java float[] for AABB maximum Y.
- * @param aabbMaxZArr Java float[] for AABB maximum Z.
- * @param isActiveArr Java boolean[] for activity state.
- * @param isTransformDirtyArr Java boolean[] to mark transform updates for networking.
- * @param isVertexDataDirtyArr Java boolean[] to mark vertex updates for networking.
- * @param lastUpdateTimestampArr Java long[] for simulation timestamps.
+ * @param posXBuf Java DoubleBuffer for X-positions.
+ * @param posYBuf Java DoubleBuffer for Y-positions.
+ * @param posZBuf Java DoubleBuffer for Z-positions.
+ * @param rotXBuf Java FloatBuffer for rotation X.
+ * @param rotYBuf Java FloatBuffer for rotation Y.
+ * @param rotZBuf Java FloatBuffer for rotation Z.
+ * @param rotWBuf Java FloatBuffer for rotation W.
+ * @param velXBuf Java FloatBuffer for linear velocity X.
+ * @param velYBuf Java FloatBuffer for linear velocity Y.
+ * @param velZBuf Java FloatBuffer for linear velocity Z.
+ * @param angVelXBuf Java FloatBuffer for angular velocity X.
+ * @param angVelYBuf Java FloatBuffer for angular velocity Y.
+ * @param angVelZBuf Java FloatBuffer for angular velocity Z.
+ * @param aabbMinXBuf Java FloatBuffer for AABB minimum X.
+ * @param aabbMinYBuf Java FloatBuffer for AABB minimum Y.
+ * @param aabbMinZBuf Java FloatBuffer for AABB minimum Z.
+ * @param aabbMaxXBuf Java FloatBuffer for AABB maximum X.
+ * @param aabbMaxYBuf Java FloatBuffer for AABB maximum Y.
+ * @param aabbMaxZBuf Java FloatBuffer for AABB maximum Z.
+ * @param isActiveBuf Java ByteBuffer for activity state.
+ * @param isTransformDirtyBuf Java ByteBuffer to mark transform updates for networking.
+ * @param isVertexDataDirtyBuf Java ByteBuffer to mark vertex updates for networking.
+ * @param lastUpdateTimestampBuf Java LongBuffer for simulation timestamps.
  * @param motionTypeOutputArr Java byte[] to store native EMotionType ordinals.
  * @param dirtyIndicesOutputArr Java int[] to collect indices that need network broadcasting.
  * @param vertexDataArr Java float[][] containing vertex data for soft bodies.
@@ -78,16 +77,16 @@ extern "C" JNIEXPORT jint JNICALL Java_net_xmx_velthoric_jni_BatchPhysicsSync_sy
     jintArray indicesArr,
     jintArray bodyIdsArr,
     jlongArray behaviorBitsArr,
-    jdoubleArray posXArr, jdoubleArray posYArr, jdoubleArray posZArr,
-    jfloatArray rotXArr, jfloatArray rotYArr, jfloatArray rotZArr, jfloatArray rotWArr,
-    jfloatArray velXArr, jfloatArray velYArr, jfloatArray velZArr,
-    jfloatArray angVelXArr, jfloatArray angVelYArr, jfloatArray angVelZArr,
-    jfloatArray aabbMinXArr, jfloatArray aabbMinYArr, jfloatArray aabbMinZArr,
-    jfloatArray aabbMaxXArr, jfloatArray aabbMaxYArr, jfloatArray aabbMaxZArr,
-    jbooleanArray isActiveArr,
-    jbooleanArray isTransformDirtyArr,
-    jbooleanArray isVertexDataDirtyArr,
-    jlongArray lastUpdateTimestampArr,
+    jobject posXBuf, jobject posYBuf, jobject posZBuf,
+    jobject rotXBuf, jobject rotYBuf, jobject rotZBuf, jobject rotWBuf,
+    jobject velXBuf, jobject velYBuf, jobject velZBuf,
+    jobject angVelXBuf, jobject angVelYBuf, jobject angVelZBuf,
+    jobject aabbMinXBuf, jobject aabbMinYBuf, jobject aabbMinZBuf,
+    jobject aabbMaxXBuf, jobject aabbMaxYBuf, jobject aabbMaxZBuf,
+    jobject isActiveBuf,
+    jobject isTransformDirtyBuf,
+    jobject isVertexDataDirtyBuf,
+    jobject lastUpdateTimestampBuf,
     jbyteArray motionTypeOutputArr,
     jintArray dirtyIndicesOutputArr,
     jobjectArray vertexDataArr,
@@ -105,41 +104,42 @@ extern "C" JNIEXPORT jint JNICALL Java_net_xmx_velthoric_jni_BatchPhysicsSync_sy
     int softBodyBatchIndices[512]; 
     int softBodyCount = 0;
     
-    // Pass 1: JNI Critical section for high-speed transform synchronization.
-    // We avoid calling any JNI functions that could trigger GC during this block.
+    // Retrieve direct native addresses for direct buffers
+    jdouble* posX = (jdouble*)env->GetDirectBufferAddress(posXBuf);
+    jdouble* posY = (jdouble*)env->GetDirectBufferAddress(posYBuf);
+    jdouble* posZ = (jdouble*)env->GetDirectBufferAddress(posZBuf);
+    
+    jfloat* rotX = (jfloat*)env->GetDirectBufferAddress(rotXBuf);
+    jfloat* rotY = (jfloat*)env->GetDirectBufferAddress(rotYBuf);
+    jfloat* rotZ = (jfloat*)env->GetDirectBufferAddress(rotZBuf);
+    jfloat* rotW = (jfloat*)env->GetDirectBufferAddress(rotWBuf);
+    
+    jfloat* velX = (jfloat*)env->GetDirectBufferAddress(velXBuf);
+    jfloat* velY = (jfloat*)env->GetDirectBufferAddress(velYBuf);
+    jfloat* velZ = (jfloat*)env->GetDirectBufferAddress(velZBuf);
+    
+    jfloat* angVelX = (jfloat*)env->GetDirectBufferAddress(angVelXBuf);
+    jfloat* angVelY = (jfloat*)env->GetDirectBufferAddress(angVelYBuf);
+    jfloat* angVelZ = (jfloat*)env->GetDirectBufferAddress(angVelZBuf);
+    
+    jfloat* aabbMinX = (jfloat*)env->GetDirectBufferAddress(aabbMinXBuf);
+    jfloat* aabbMinY = (jfloat*)env->GetDirectBufferAddress(aabbMinYBuf);
+    jfloat* aabbMinZ = (jfloat*)env->GetDirectBufferAddress(aabbMinZBuf);
+    
+    jfloat* aabbMaxX = (jfloat*)env->GetDirectBufferAddress(aabbMaxXBuf);
+    jfloat* aabbMaxY = (jfloat*)env->GetDirectBufferAddress(aabbMaxYBuf);
+    jfloat* aabbMaxZ = (jfloat*)env->GetDirectBufferAddress(aabbMaxZBuf);
+    
+    jboolean* isActive = (jboolean*)env->GetDirectBufferAddress(isActiveBuf);
+    jboolean* isTransformDirty = (jboolean*)env->GetDirectBufferAddress(isTransformDirtyBuf);
+    jboolean* isVertexDataDirty = (jboolean*)env->GetDirectBufferAddress(isVertexDataDirtyBuf);
+    jlong* lastUpdateTimestamp = (jlong*)env->GetDirectBufferAddress(lastUpdateTimestampBuf);
+
+    // Pass 1: Fast synchronization using direct buffer addresses and temporary primitive arrays.
     {
         jint* indices = (jint*)env->GetPrimitiveArrayCritical(indicesArr, nullptr);
         jint* bodyIds = (jint*)env->GetPrimitiveArrayCritical(bodyIdsArr, nullptr);
         jlong* behaviorBits = (jlong*)env->GetPrimitiveArrayCritical(behaviorBitsArr, nullptr);
-        
-        jdouble* posX = (jdouble*)env->GetPrimitiveArrayCritical(posXArr, nullptr);
-        jdouble* posY = (jdouble*)env->GetPrimitiveArrayCritical(posYArr, nullptr);
-        jdouble* posZ = (jdouble*)env->GetPrimitiveArrayCritical(posZArr, nullptr);
-        
-        jfloat* rotX = (jfloat*)env->GetPrimitiveArrayCritical(rotXArr, nullptr);
-        jfloat* rotY = (jfloat*)env->GetPrimitiveArrayCritical(rotYArr, nullptr);
-        jfloat* rotZ = (jfloat*)env->GetPrimitiveArrayCritical(rotZArr, nullptr);
-        jfloat* rotW = (jfloat*)env->GetPrimitiveArrayCritical(rotWArr, nullptr);
-        
-        jfloat* velX = (jfloat*)env->GetPrimitiveArrayCritical(velXArr, nullptr);
-        jfloat* velY = (jfloat*)env->GetPrimitiveArrayCritical(velYArr, nullptr);
-        jfloat* velZ = (jfloat*)env->GetPrimitiveArrayCritical(velZArr, nullptr);
-        
-        jfloat* angVelX = (jfloat*)env->GetPrimitiveArrayCritical(angVelXArr, nullptr);
-        jfloat* angVelY = (jfloat*)env->GetPrimitiveArrayCritical(angVelYArr, nullptr);
-        jfloat* angVelZ = (jfloat*)env->GetPrimitiveArrayCritical(angVelZArr, nullptr);
-        
-        jfloat* aabbMinX = (jfloat*)env->GetPrimitiveArrayCritical(aabbMinXArr, nullptr);
-        jfloat* aabbMinY = (jfloat*)env->GetPrimitiveArrayCritical(aabbMinYArr, nullptr);
-        jfloat* aabbMinZ = (jfloat*)env->GetPrimitiveArrayCritical(aabbMinZArr, nullptr);
-        
-        jfloat* aabbMaxX = (jfloat*)env->GetPrimitiveArrayCritical(aabbMaxXArr, nullptr);
-        jfloat* aabbMaxY = (jfloat*)env->GetPrimitiveArrayCritical(aabbMaxYArr, nullptr);
-        jfloat* aabbMaxZ = (jfloat*)env->GetPrimitiveArrayCritical(aabbMaxZArr, nullptr);
-        
-        jboolean* isActive = (jboolean*)env->GetPrimitiveArrayCritical(isActiveArr, nullptr);
-        jboolean* isTransformDirty = (jboolean*)env->GetPrimitiveArrayCritical(isTransformDirtyArr, nullptr);
-        jlong* lastUpdateTimestamp = (jlong*)env->GetPrimitiveArrayCritical(lastUpdateTimestampArr, nullptr);
         jbyte* motionTypes = (jbyte*)env->GetPrimitiveArrayCritical(motionTypeOutputArr, nullptr);
 
         for (int b = 0; b < count; ++b) {
@@ -207,28 +207,6 @@ extern "C" JNIEXPORT jint JNICALL Java_net_xmx_velthoric_jni_BatchPhysicsSync_sy
         }
 
         env->ReleasePrimitiveArrayCritical(motionTypeOutputArr, motionTypes, 0);
-        env->ReleasePrimitiveArrayCritical(lastUpdateTimestampArr, lastUpdateTimestamp, 0);
-        env->ReleasePrimitiveArrayCritical(isTransformDirtyArr, isTransformDirty, 0);
-        env->ReleasePrimitiveArrayCritical(isActiveArr, isActive, 0);
-        env->ReleasePrimitiveArrayCritical(aabbMaxZArr, aabbMaxZ, 0);
-        env->ReleasePrimitiveArrayCritical(aabbMaxYArr, aabbMaxY, 0);
-        env->ReleasePrimitiveArrayCritical(aabbMaxXArr, aabbMaxX, 0);
-        env->ReleasePrimitiveArrayCritical(aabbMinZArr, aabbMinZ, 0);
-        env->ReleasePrimitiveArrayCritical(aabbMinYArr, aabbMinY, 0);
-        env->ReleasePrimitiveArrayCritical(aabbMinXArr, aabbMinX, 0);
-        env->ReleasePrimitiveArrayCritical(angVelZArr, angVelZ, 0);
-        env->ReleasePrimitiveArrayCritical(angVelYArr, angVelY, 0);
-        env->ReleasePrimitiveArrayCritical(angVelXArr, angVelX, 0);
-        env->ReleasePrimitiveArrayCritical(velZArr, velZ, 0);
-        env->ReleasePrimitiveArrayCritical(velYArr, velY, 0);
-        env->ReleasePrimitiveArrayCritical(velXArr, velX, 0);
-        env->ReleasePrimitiveArrayCritical(rotWArr, rotW, 0);
-        env->ReleasePrimitiveArrayCritical(rotZArr, rotZ, 0);
-        env->ReleasePrimitiveArrayCritical(rotYArr, rotY, 0);
-        env->ReleasePrimitiveArrayCritical(rotXArr, rotX, 0);
-        env->ReleasePrimitiveArrayCritical(posZArr, posZ, 0);
-        env->ReleasePrimitiveArrayCritical(posYArr, posY, 0);
-        env->ReleasePrimitiveArrayCritical(posXArr, posX, 0);
         env->ReleasePrimitiveArrayCritical(behaviorBitsArr, behaviorBits, 0);
         env->ReleasePrimitiveArrayCritical(bodyIdsArr, bodyIds, 0);
         env->ReleasePrimitiveArrayCritical(indicesArr, indices, 0);
@@ -291,8 +269,7 @@ extern "C" JNIEXPORT jint JNICALL Java_net_xmx_velthoric_jni_BatchPhysicsSync_sy
                 env->ReleaseFloatArrayElements(innerArr, javaVertices, 0);
                 
                 if (changed) {
-                    jboolean val = 1;
-                    env->SetBooleanArrayRegion(isVertexDataDirtyArr, i, 1, &val);
+                    isVertexDataDirty[i] = 1;
                     vertexDirtyIndices[vertexDirtyCount++] = i;
                 }
                 
@@ -302,11 +279,9 @@ extern "C" JNIEXPORT jint JNICALL Java_net_xmx_velthoric_jni_BatchPhysicsSync_sy
     }
 
     // Pass 3: Finalize dirty indices list for network broadcasting.
-    // Re-acquires the dirty index array to consolidate results from both passes.
     int totalDirtyCount = 0;
     {
         jint* dirtyIndices = (jint*)env->GetPrimitiveArrayCritical(dirtyIndicesOutputArr, nullptr);
-        jboolean* isTransformDirty = (jboolean*)env->GetPrimitiveArrayCritical(isTransformDirtyArr, nullptr);
         
         // Collect indices marked in Pass 1.
         for (int b = 0; b < count; ++b) {
@@ -325,7 +300,6 @@ extern "C" JNIEXPORT jint JNICALL Java_net_xmx_velthoric_jni_BatchPhysicsSync_sy
             }
         }
 
-        env->ReleasePrimitiveArrayCritical(isTransformDirtyArr, isTransformDirty, 0);
         env->ReleasePrimitiveArrayCritical(dirtyIndicesOutputArr, dirtyIndices, 0);
     }
 

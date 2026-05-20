@@ -5,6 +5,12 @@
 package net.xmx.velthoric.core.body;
 
 import net.xmx.velthoric.core.body.shape.VxCollisionShape;
+import java.nio.ByteBuffer;
+import java.nio.DoubleBuffer;
+import java.nio.IntBuffer;
+import java.nio.FloatBuffer;
+import java.nio.LongBuffer;
+import java.nio.ByteOrder;
 
 /**
  * A container for the base Structure of Arrays (SoA) physics data.
@@ -17,45 +23,45 @@ public class VxBodyDataContainer {
     /**
      * X-coordinate of the body position in world space.
      */
-    public final double[] posX;
+    public final DoubleBuffer posX;
     /**
      * Y-coordinate of the body position in world space.
      */
-    public final double[] posY;
+    public final DoubleBuffer posY;
     /**
      * Z-coordinate of the body position in world space.
      */
-    public final double[] posZ;
+    public final DoubleBuffer posZ;
 
     /**
      * X-component of the body rotation quaternion.
      */
-    public final float[] rotX;
+    public final FloatBuffer rotX;
     /**
      * Y-component of the body rotation quaternion.
      */
-    public final float[] rotY;
+    public final FloatBuffer rotY;
     /**
      * Z-component of the body rotation quaternion.
      */
-    public final float[] rotZ;
+    public final FloatBuffer rotZ;
     /**
      * W-component of the body rotation quaternion.
      */
-    public final float[] rotW;
+    public final FloatBuffer rotW;
 
     /**
      * X-component of the linear velocity.
      */
-    public final float[] velX;
+    public final FloatBuffer velX;
     /**
      * Y-component of the linear velocity.
      */
-    public final float[] velY;
+    public final FloatBuffer velY;
     /**
      * Z-component of the linear velocity.
      */
-    public final float[] velZ;
+    public final FloatBuffer velZ;
 
     /**
      * Per-vertex data for complex collision shapes or rendering (e.g. heightmaps, meshes).
@@ -70,11 +76,11 @@ public class VxBodyDataContainer {
     /**
      * Whether the body is currently active and ticking in the physics simulation.
      */
-    public final boolean[] isActive;
+    public final ByteBuffer isActive;
     /**
      * Bitmask representing attached behaviors and their network/tick states.
      */
-    public final long[] behaviorBits;
+    public final LongBuffer behaviorBits;
     /**
      * Reference to the high-level {@link VxBody} wrapper objects for each slot.
      */
@@ -92,20 +98,20 @@ public class VxBodyDataContainer {
      */
     public VxBodyDataContainer(int capacity) {
         this.capacity = capacity;
-        this.posX = new double[capacity];
-        this.posY = new double[capacity];
-        this.posZ = new double[capacity];
-        this.rotX = new float[capacity];
-        this.rotY = new float[capacity];
-        this.rotZ = new float[capacity];
-        this.rotW = new float[capacity];
-        this.velX = new float[capacity];
-        this.velY = new float[capacity];
-        this.velZ = new float[capacity];
+        this.posX = ByteBuffer.allocateDirect(capacity * Double.BYTES).order(ByteOrder.nativeOrder()).asDoubleBuffer();
+        this.posY = ByteBuffer.allocateDirect(capacity * Double.BYTES).order(ByteOrder.nativeOrder()).asDoubleBuffer();
+        this.posZ = ByteBuffer.allocateDirect(capacity * Double.BYTES).order(ByteOrder.nativeOrder()).asDoubleBuffer();
+        this.rotX = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.rotY = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.rotZ = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.rotW = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.velX = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.velY = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.velZ = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
         this.vertexData = new float[capacity][];
         this.shape = new VxCollisionShape[capacity];
-        this.isActive = new boolean[capacity];
-        this.behaviorBits = new long[capacity];
+        this.isActive = ByteBuffer.allocateDirect(capacity).order(ByteOrder.nativeOrder());
+        this.behaviorBits = ByteBuffer.allocateDirect(capacity * Long.BYTES).order(ByteOrder.nativeOrder()).asLongBuffer();
         this.bodies = new VxBody[capacity];
     }
 
@@ -120,21 +126,111 @@ public class VxBodyDataContainer {
      */
     public void copyTo(VxBodyDataContainer other) {
         int copyLength = Math.min(this.capacity, other.capacity);
-        System.arraycopy(this.posX, 0, other.posX, 0, copyLength);
-        System.arraycopy(this.posY, 0, other.posY, 0, copyLength);
-        System.arraycopy(this.posZ, 0, other.posZ, 0, copyLength);
-        System.arraycopy(this.rotX, 0, other.rotX, 0, copyLength);
-        System.arraycopy(this.rotY, 0, other.rotY, 0, copyLength);
-        System.arraycopy(this.rotZ, 0, other.rotZ, 0, copyLength);
-        System.arraycopy(this.rotW, 0, other.rotW, 0, copyLength);
-        System.arraycopy(this.velX, 0, other.velX, 0, copyLength);
-        System.arraycopy(this.velY, 0, other.velY, 0, copyLength);
-        System.arraycopy(this.velZ, 0, other.velZ, 0, copyLength);
+        copyDoubleBuffer(this.posX, other.posX, copyLength);
+        copyDoubleBuffer(this.posY, other.posY, copyLength);
+        copyDoubleBuffer(this.posZ, other.posZ, copyLength);
+        copyFloatBuffer(this.rotX, other.rotX, copyLength);
+        copyFloatBuffer(this.rotY, other.rotY, copyLength);
+        copyFloatBuffer(this.rotZ, other.rotZ, copyLength);
+        copyFloatBuffer(this.rotW, other.rotW, copyLength);
+        copyFloatBuffer(this.velX, other.velX, copyLength);
+        copyFloatBuffer(this.velY, other.velY, copyLength);
+        copyFloatBuffer(this.velZ, other.velZ, copyLength);
         System.arraycopy(this.vertexData, 0, other.vertexData, 0, copyLength);
         System.arraycopy(this.shape, 0, other.shape, 0, copyLength);
-        System.arraycopy(this.isActive, 0, other.isActive, 0, copyLength);
-        System.arraycopy(this.behaviorBits, 0, other.behaviorBits, 0, copyLength);
+        copyByteBuffer(this.isActive, other.isActive, copyLength);
+        copyLongBuffer(this.behaviorBits, other.behaviorBits, copyLength);
         System.arraycopy(this.bodies, 0, other.bodies, 0, copyLength);
+    }
+
+    /**
+     * Copies a range of elements from one direct {@link DoubleBuffer} to another.
+     * <p>
+     * Sets positions and limits to transfer precisely the requested amount of elements,
+     * resetting buffer states upon completion to avoid side effects.
+     *
+     * @param src    The source buffer.
+     * @param dest   The destination buffer.
+     * @param length The number of elements to copy.
+     */
+    protected void copyDoubleBuffer(DoubleBuffer src, DoubleBuffer dest, int length) {
+        src.position(0).limit(length);
+        dest.position(0).limit(length);
+        dest.put(src);
+        src.clear();
+        dest.clear();
+    }
+
+    /**
+     * Copies a range of elements from one direct {@link FloatBuffer} to another.
+     * <p>
+     * Sets positions and limits to transfer precisely the requested amount of elements,
+     * resetting buffer states upon completion to avoid side effects.
+     *
+     * @param src    The source buffer.
+     * @param dest   The destination buffer.
+     * @param length The number of elements to copy.
+     */
+    protected void copyFloatBuffer(FloatBuffer src, FloatBuffer dest, int length) {
+        src.position(0).limit(length);
+        dest.position(0).limit(length);
+        dest.put(src);
+        src.clear();
+        dest.clear();
+    }
+
+    /**
+     * Copies a range of elements from one direct {@link ByteBuffer} to another.
+     * <p>
+     * Sets positions and limits to transfer precisely the requested amount of elements,
+     * resetting buffer states upon completion to avoid side effects.
+     *
+     * @param src    The source buffer.
+     * @param dest   The destination buffer.
+     * @param length The number of elements to copy.
+     */
+    protected void copyByteBuffer(ByteBuffer src, ByteBuffer dest, int length) {
+        src.position(0).limit(length);
+        dest.position(0).limit(length);
+        dest.put(src);
+        src.clear();
+        dest.clear();
+    }
+
+    /**
+     * Copies a range of elements from one direct {@link LongBuffer} to another.
+     * <p>
+     * Sets positions and limits to transfer precisely the requested amount of elements,
+     * resetting buffer states upon completion to avoid side effects.
+     *
+     * @param src    The source buffer.
+     * @param dest   The destination buffer.
+     * @param length The number of elements to copy.
+     */
+    protected void copyLongBuffer(LongBuffer src, LongBuffer dest, int length) {
+        src.position(0).limit(length);
+        dest.position(0).limit(length);
+        dest.put(src);
+        src.clear();
+        dest.clear();
+    }
+
+    /**
+     * Copies a range of elements from one direct {@link IntBuffer} to another.
+     * <p>
+     * Sets positions and limits to transfer precisely the requested amount of elements,
+     * resetting buffer states upon completion to avoid side effects.
+     *
+     * @param src    The source buffer.
+     * @param dest   The destination buffer.
+     * @param length The number of elements to copy.
+     */
+    protected void copyIntBuffer(IntBuffer src, IntBuffer dest, int length) {
+        src.position(0).limit(length);
+        dest.position(0).limit(length);
+        dest.put(src);
+        src.clear();
+        dest.clear();
     }
 
     /**
@@ -147,14 +243,20 @@ public class VxBodyDataContainer {
      */
     public void reset(int index) {
         this.bodies[index] = null;
-        this.posX[index] = this.posY[index] = this.posZ[index] = 0.0;
-        this.rotX[index] = this.rotY[index] = this.rotZ[index] = 0f;
-        this.rotW[index] = 1f; // Identity Quaternion
-        this.velX[index] = this.velY[index] = this.velZ[index] = 0f;
+        this.posX.put(index, 0.0);
+        this.posY.put(index, 0.0);
+        this.posZ.put(index, 0.0);
+        this.rotX.put(index, 0f);
+        this.rotY.put(index, 0f);
+        this.rotZ.put(index, 0f);
+        this.rotW.put(index, 1f); // Identity Quaternion
+        this.velX.put(index, 0f);
+        this.velY.put(index, 0f);
+        this.velZ.put(index, 0f);
         this.vertexData[index] = null;
         this.shape[index] = null;
-        this.isActive[index] = false;
-        this.behaviorBits[index] = 0L;
+        this.isActive.put(index, (byte) 0);
+        this.behaviorBits.put(index, 0L);
     }
 
     /**

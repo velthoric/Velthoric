@@ -136,11 +136,11 @@ public final class VxBehaviorManager {
         if (index == -1 || index >= c.capacity) return; // Case: index too new for cached container
 
         long mask = behavior.getId().getMask();
-        if ((c.behaviorBits[index] & mask) != 0) {
+        if ((c.behaviorBits.get(index) & mask) != 0) {
             return; // Already attached
         }
 
-        c.behaviorBits[index] |= mask;
+        c.behaviorBits.put(index, c.behaviorBits.get(index) | mask);
         behavior.onAttached(index, body);
     }
 
@@ -180,12 +180,12 @@ public final class VxBehaviorManager {
         if (index == -1 || index >= c.capacity) return;
 
         long mask = behavior.getId().getMask();
-        if ((c.behaviorBits[index] & mask) == 0) {
+        if ((c.behaviorBits.get(index) & mask) == 0) {
             return; // Not attached
         }
 
         behavior.onDetached(index, body);
-        c.behaviorBits[index] &= ~mask;
+        c.behaviorBits.put(index, c.behaviorBits.get(index) & ~mask);
     }
 
     /**
@@ -201,7 +201,7 @@ public final class VxBehaviorManager {
         int index = body.getDataStoreIndex();
         if (index == -1 || index >= c.capacity) return;
 
-        long bits = c.behaviorBits[index];
+        long bits = c.behaviorBits.get(index);
         if (bits == 0) return;
 
         for (VxBehavior behavior : behaviors) {
@@ -209,7 +209,7 @@ public final class VxBehaviorManager {
                 behavior.onDetached(index, body);
             }
         }
-        c.behaviorBits[index] = 0;
+        c.behaviorBits.put(index, 0L);
     }
 
     /**
@@ -229,7 +229,7 @@ public final class VxBehaviorManager {
         // Safety check: skip if index is invalid or too new for this container reference
         if (index == -1 || index >= c.capacity) return false;
 
-        return behaviorId.isSet(c.behaviorBits[index]);
+        return behaviorId.isSet(c.behaviorBits.get(index));
     }
 
     /**

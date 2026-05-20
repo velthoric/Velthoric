@@ -281,15 +281,15 @@ public class VxBody {
             VxBodyDataContainer c = this.dataStore.current();
             if (this.dataStoreIndex < c.capacity) {
                 outTransform.getTranslation().set(
-                        c.posX[this.dataStoreIndex],
-                        c.posY[this.dataStoreIndex],
-                        c.posZ[this.dataStoreIndex]
+                        c.posX.get(this.dataStoreIndex),
+                        c.posY.get(this.dataStoreIndex),
+                        c.posZ.get(this.dataStoreIndex)
                 );
                 outTransform.getRotation().set(
-                        c.rotX[this.dataStoreIndex],
-                        c.rotY[this.dataStoreIndex],
-                        c.rotZ[this.dataStoreIndex],
-                        c.rotW[this.dataStoreIndex]
+                        c.rotX.get(this.dataStoreIndex),
+                        c.rotY.get(this.dataStoreIndex),
+                        c.rotZ.get(this.dataStoreIndex),
+                        c.rotW.get(this.dataStoreIndex)
                 );
             }
         }
@@ -345,7 +345,7 @@ public class VxBody {
     @Environment(EnvType.CLIENT)
     public boolean isInitialized() {
         VxClientBodyDataContainer c = VxClientBodyManager.getInstance().getStore().clientCurrent();
-        return c.render_isInitialized[dataStoreIndex];
+        return c.render_isInitialized.get(dataStoreIndex) != 0;
     }
 
     /**
@@ -460,7 +460,7 @@ public class VxBody {
 
         if (this.physicsWorld != null) { // Server-side specific dirty flagging
             VxServerBodyDataContainer sc = (VxServerBodyDataContainer) c;
-            sc.isShapeDirty[this.dataStoreIndex] = true;
+            sc.isShapeDirty.put(this.dataStoreIndex, (byte) 1);
             synchronized (store) {
                 sc.dirtyIndices.add(this.dataStoreIndex);
             }

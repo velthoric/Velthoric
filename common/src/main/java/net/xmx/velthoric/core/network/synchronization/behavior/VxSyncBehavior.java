@@ -239,9 +239,9 @@ public class VxSyncBehavior implements VxBehavior {
         VxServerBodyDataContainer c = dataStore.serverCurrent();
         synchronized (dataStore) {
             for (int i = 0; i < dataStore.getCapacity(); i++) {
-                if (c.isCustomDataDirty[i]) {
+                if (c.isCustomDataDirty.get(i) != 0) {
                     dirtyIndices.add(i);
-                    c.isCustomDataDirty[i] = false;
+                    c.isCustomDataDirty.put(i, (byte) 0);
                 }
             }
         }

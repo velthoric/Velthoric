@@ -135,8 +135,8 @@ public enum VxJoltBridge {
                     body.setShape(shape);
 
                     bcs.setShape(shapeRef);
-                    bcs.setPosition(c.posX[index], c.posY[index], c.posZ[index]);
-                    bcs.setRotation(new Quat(c.rotX[index], c.rotY[index], c.rotZ[index], c.rotW[index]));
+                    bcs.setPosition(c.posX.get(index), c.posY.get(index), c.posZ.get(index));
+                    bcs.setRotation(new Quat(c.rotX.get(index), c.rotY.get(index), c.rotZ.get(index), c.rotW.get(index)));
 
                     if (linearVelocity != null) bcs.setLinearVelocity(linearVelocity);
                     if (angularVelocity != null) bcs.setAngularVelocity(angularVelocity);
@@ -197,8 +197,8 @@ public enum VxJoltBridge {
                 try (sharedSettings; creationSettings) {
                     VxServerBodyDataContainer c = dataStore.serverCurrent();
                     int index = body.getDataStoreIndex();
-                    creationSettings.setPosition(c.posX[index], c.posY[index], c.posZ[index]);
-                    creationSettings.setRotation(new Quat(c.rotX[index], c.rotY[index], c.rotZ[index], c.rotW[index]));
+                    creationSettings.setPosition(c.posX.get(index), c.posY.get(index), c.posZ.get(index));
+                    creationSettings.setRotation(new Quat(c.rotX.get(index), c.rotY.get(index), c.rotZ.get(index), c.rotW.get(index)));
 
                     return world.getPhysicsSystem().getBodyInterface().createAndAddSoftBody(creationSettings, activation);
                 }

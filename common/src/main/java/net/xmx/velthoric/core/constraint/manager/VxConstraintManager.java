@@ -330,7 +330,7 @@ public class VxConstraintManager implements VxChunkPersistenceHandler {
         VxBody body = bodyManager.getVxBody(bodyId);
         if (body != null) {
             int index = body.getDataStoreIndex();
-            return index != -1 && bodyManager.getDataStore().serverCurrent().chunkKey[index] == pos.toLong();
+            return index != -1 && bodyManager.getDataStore().serverCurrent().chunkKey.get(index) == pos.toLong();
         }
         return false;
     }

@@ -49,17 +49,17 @@ public final class VxBodyCodec {
                 (body, buf) -> {
                     VxServerBodyDataContainer c = body.getPhysicsWorld().getBodyManager().getDataStore().serverCurrent();
                     int idx = body.getDataStoreIndex();
-                    buf.writeDouble(c.posX[idx]);
-                    buf.writeDouble(c.posY[idx]);
-                    buf.writeDouble(c.posZ[idx]);
+                    buf.writeDouble(c.posX.get(idx));
+                    buf.writeDouble(c.posY.get(idx));
+                    buf.writeDouble(c.posZ.get(idx));
                 },
                 (body, buf) -> {
                     if (body.getPhysicsWorld() != null && body.getDataStoreIndex() != -1) {
                         VxServerBodyDataContainer c = body.getPhysicsWorld().getBodyManager().getDataStore().serverCurrent();
                         int idx = body.getDataStoreIndex();
-                        c.posX[idx] = buf.readDouble();
-                        c.posY[idx] = buf.readDouble();
-                        c.posZ[idx] = buf.readDouble();
+                        c.posX.put(idx, buf.readDouble());
+                        c.posY.put(idx, buf.readDouble());
+                        c.posZ.put(idx, buf.readDouble());
                     } else {
                         buf.skipBytes(24);
                     }
@@ -72,19 +72,19 @@ public final class VxBodyCodec {
                 (body, buf) -> {
                     VxServerBodyDataContainer c = body.getPhysicsWorld().getBodyManager().getDataStore().serverCurrent();
                     int idx = body.getDataStoreIndex();
-                    buf.writeFloat(c.rotX[idx]);
-                    buf.writeFloat(c.rotY[idx]);
-                    buf.writeFloat(c.rotZ[idx]);
-                    buf.writeFloat(c.rotW[idx]);
+                    buf.writeFloat(c.rotX.get(idx));
+                    buf.writeFloat(c.rotY.get(idx));
+                    buf.writeFloat(c.rotZ.get(idx));
+                    buf.writeFloat(c.rotW.get(idx));
                 },
                 (body, buf) -> {
                     if (body.getPhysicsWorld() != null && body.getDataStoreIndex() != -1) {
                         VxServerBodyDataContainer c = body.getPhysicsWorld().getBodyManager().getDataStore().serverCurrent();
                         int idx = body.getDataStoreIndex();
-                        c.rotX[idx] = buf.readFloat();
-                        c.rotY[idx] = buf.readFloat();
-                        c.rotZ[idx] = buf.readFloat();
-                        c.rotW[idx] = buf.readFloat();
+                        c.rotX.put(idx, buf.readFloat());
+                        c.rotY.put(idx, buf.readFloat());
+                        c.rotZ.put(idx, buf.readFloat());
+                        c.rotW.put(idx, buf.readFloat());
                     } else {
                         buf.skipBytes(16);
                     }
@@ -97,22 +97,22 @@ public final class VxBodyCodec {
                     if (body.getPhysicsWorld() == null || body.getDataStoreIndex() == -1) return false;
                     VxServerBodyDataContainer c = body.getPhysicsWorld().getBodyManager().getDataStore().serverCurrent();
                     int idx = body.getDataStoreIndex();
-                    return c.velX[idx] != 0 || c.velY[idx] != 0 || c.velZ[idx] != 0;
+                    return c.velX.get(idx) != 0 || c.velY.get(idx) != 0 || c.velZ.get(idx) != 0;
                 },
                 (body, buf) -> {
                     VxServerBodyDataContainer c = body.getPhysicsWorld().getBodyManager().getDataStore().serverCurrent();
                     int idx = body.getDataStoreIndex();
-                    buf.writeFloat(c.velX[idx]);
-                    buf.writeFloat(c.velY[idx]);
-                    buf.writeFloat(c.velZ[idx]);
+                    buf.writeFloat(c.velX.get(idx));
+                    buf.writeFloat(c.velY.get(idx));
+                    buf.writeFloat(c.velZ.get(idx));
                 },
                 (body, buf) -> {
                     if (body.getPhysicsWorld() != null && body.getDataStoreIndex() != -1) {
                         VxServerBodyDataContainer c = body.getPhysicsWorld().getBodyManager().getDataStore().serverCurrent();
                         int idx = body.getDataStoreIndex();
-                        c.velX[idx] = buf.readFloat();
-                        c.velY[idx] = buf.readFloat();
-                        c.velZ[idx] = buf.readFloat();
+                        c.velX.put(idx, buf.readFloat());
+                        c.velY.put(idx, buf.readFloat());
+                        c.velZ.put(idx, buf.readFloat());
                     } else {
                         buf.skipBytes(12);
                     }
@@ -125,22 +125,22 @@ public final class VxBodyCodec {
                     if (body.getPhysicsWorld() == null || body.getDataStoreIndex() == -1) return false;
                     VxServerBodyDataContainer c = body.getPhysicsWorld().getBodyManager().getDataStore().serverCurrent();
                     int idx = body.getDataStoreIndex();
-                    return c.angVelX[idx] != 0 || c.angVelY[idx] != 0 || c.angVelZ[idx] != 0;
+                    return c.angVelX.get(idx) != 0 || c.angVelY.get(idx) != 0 || c.angVelZ.get(idx) != 0;
                 },
                 (body, buf) -> {
                     VxServerBodyDataContainer c = body.getPhysicsWorld().getBodyManager().getDataStore().serverCurrent();
                     int idx = body.getDataStoreIndex();
-                    buf.writeFloat(c.angVelX[idx]);
-                    buf.writeFloat(c.angVelY[idx]);
-                    buf.writeFloat(c.angVelZ[idx]);
+                    buf.writeFloat(c.angVelX.get(idx));
+                    buf.writeFloat(c.angVelY.get(idx));
+                    buf.writeFloat(c.angVelZ.get(idx));
                 },
                 (body, buf) -> {
                     if (body.getPhysicsWorld() != null && body.getDataStoreIndex() != -1) {
                         VxServerBodyDataContainer c = body.getPhysicsWorld().getBodyManager().getDataStore().serverCurrent();
                         int idx = body.getDataStoreIndex();
-                        c.angVelX[idx] = buf.readFloat();
-                        c.angVelY[idx] = buf.readFloat();
-                        c.angVelZ[idx] = buf.readFloat();
+                        c.angVelX.put(idx, buf.readFloat());
+                        c.angVelY.put(idx, buf.readFloat());
+                        c.angVelZ.put(idx, buf.readFloat());
                     } else {
                         buf.skipBytes(12);
                     }
@@ -172,12 +172,12 @@ public final class VxBodyCodec {
                 body -> body.getPhysicsWorld() != null && body.getDataStoreIndex() != -1,
                 (body, buf) -> {
                     VxServerBodyDataContainer c = body.getPhysicsWorld().getBodyManager().getDataStore().serverCurrent();
-                    buf.writeLong(c.behaviorBits[body.getDataStoreIndex()]);
+                    buf.writeLong(c.behaviorBits.get(body.getDataStoreIndex()));
                 },
                 (body, buf) -> {
                     if (body.getPhysicsWorld() != null && body.getDataStoreIndex() != -1) {
                         VxServerBodyDataContainer c = body.getPhysicsWorld().getBodyManager().getDataStore().serverCurrent();
-                        c.behaviorBits[body.getDataStoreIndex()] = buf.readLong();
+                        c.behaviorBits.put(body.getDataStoreIndex(), buf.readLong());
                     } else {
                         buf.skipBytes(8);
                     }
@@ -189,7 +189,7 @@ public final class VxBodyCodec {
                 body -> {
                     if (body.getPhysicsWorld() == null || body.getDataStoreIndex() == -1) return false;
                     VxServerBodyDataStore store = body.getPhysicsWorld().getBodyManager().getDataStore();
-                    long bits = store.serverCurrent().behaviorBits[body.getDataStoreIndex()];
+                    long bits = store.serverCurrent().behaviorBits.get(body.getDataStoreIndex());
                     return VxSoftPhysicsBehavior.ID.isSet(bits) && body.getPhysicsWorld().getBodyManager().retrieveSoftBodyVertices(body) != null;
                 },
                 (body, buf) -> {

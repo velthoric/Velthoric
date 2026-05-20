@@ -96,7 +96,7 @@ public class VxPhysicsGunBeamRenderer {
             Integer index = store.getIndexForId(objectUuid);
             VxBody body = bodyManager.getVxBody(objectUuid);
 
-            if (index == null || !store.clientCurrent().render_isInitialized[index] || !body.getType().isRigid()) continue;
+            if (index == null || store.clientCurrent().render_isInitialized.get(index) == 0 || !body.getType().isRigid()) continue;
 
             // Interpolate physics body position for smooth rendering
             interpolator.interpolateFrame(store, index, partialTicks, INTERPOLATED_POSITION, INTERPOLATED_ROTATION);
@@ -184,7 +184,7 @@ public class VxPhysicsGunBeamRenderer {
 
         for (UUID id : store.getAllPhysicsIds()) {
             Integer i = store.getIndexForId(id);
-            if (i == null || !store.clientCurrent().render_isInitialized[i]) {
+            if (i == null || store.clientCurrent().render_isInitialized.get(i) == 0) {
                 continue;
             }
 

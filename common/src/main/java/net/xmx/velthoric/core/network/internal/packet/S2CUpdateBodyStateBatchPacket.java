@@ -184,37 +184,37 @@ public class S2CUpdateBodyStateBatchPacket implements IVxNetPacket {
                     }
 
                     // Cycle history states (current -> old)
-                    c.state0_timestamp[index] = c.state1_timestamp[index];
-                    c.state0_posX[index] = c.state1_posX[index];
-                    c.state0_posY[index] = c.state1_posY[index];
-                    c.state0_posZ[index] = c.state1_posZ[index];
-                    c.state0_rotX[index] = c.state1_rotX[index];
-                    c.state0_rotY[index] = c.state1_rotY[index];
-                    c.state0_rotZ[index] = c.state1_rotZ[index];
-                    c.state0_rotW[index] = c.state1_rotW[index];
-                    c.state0_isActive[index] = c.state1_isActive[index];
+                    c.state0_timestamp.put(index, c.state1_timestamp.get(index));
+                    c.state0_posX.put(index, c.state1_posX.get(index));
+                    c.state0_posY.put(index, c.state1_posY.get(index));
+                    c.state0_posZ.put(index, c.state1_posZ.get(index));
+                    c.state0_rotX.put(index, c.state1_rotX.get(index));
+                    c.state0_rotY.put(index, c.state1_rotY.get(index));
+                    c.state0_rotZ.put(index, c.state1_rotZ.get(index));
+                    c.state0_rotW.put(index, c.state1_rotW.get(index));
+                    c.state0_isActive.put(index, c.state1_isActive.get(index));
 
                     // Read New State into state1
-                    c.state1_timestamp[index] = timestamp;
-                    c.state1_posX[index] = baseX + db.readFloat();
-                    c.state1_posY[index] = baseY + db.readFloat();
-                    c.state1_posZ[index] = baseZ + db.readFloat();
-                    c.state1_rotX[index] = db.readFloat();
-                    c.state1_rotY[index] = db.readFloat();
-                    c.state1_rotZ[index] = db.readFloat();
-                    c.state1_rotW[index] = db.readFloat();
+                    c.state1_timestamp.put(index, timestamp);
+                    c.state1_posX.put(index, baseX + db.readFloat());
+                    c.state1_posY.put(index, baseY + db.readFloat());
+                    c.state1_posZ.put(index, baseZ + db.readFloat());
+                    c.state1_rotX.put(index, db.readFloat());
+                    c.state1_rotY.put(index, db.readFloat());
+                    c.state1_rotZ.put(index, db.readFloat());
+                    c.state1_rotW.put(index, db.readFloat());
 
                     boolean active = db.readBoolean();
-                    c.state1_isActive[index] = active;
+                    c.state1_isActive.put(index, (byte) (active ? 1 : 0));
 
                     if (active) {
-                        c.state1_velX[index] = db.readFloat();
-                        c.state1_velY[index] = db.readFloat();
-                        c.state1_velZ[index] = db.readFloat();
+                        c.state1_velX.put(index, db.readFloat());
+                        c.state1_velY.put(index, db.readFloat());
+                        c.state1_velZ.put(index, db.readFloat());
                     }
 
                     // Update culling position for renderer frustum checks
-                    c.lastKnownPosition[index].set(c.state1_posX[index], c.state1_posY[index], c.state1_posZ[index]);
+                    c.lastKnownPosition[index].set(c.state1_posX.get(index), c.state1_posY.get(index), c.state1_posZ.get(index));
                 }
 
             } finally {

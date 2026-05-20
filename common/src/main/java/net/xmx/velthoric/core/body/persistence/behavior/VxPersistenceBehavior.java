@@ -66,6 +66,6 @@ public class VxPersistenceBehavior implements VxBehavior {
      * @return True if the body should be saved.
      */
     public static boolean isPersistent(VxServerBodyDataStore store, int index) {
-        return ID.isSet(store.serverCurrent().behaviorBits[index]);
+        return ID.isSet(store.serverCurrent().behaviorBits.get(index));
     }
 }

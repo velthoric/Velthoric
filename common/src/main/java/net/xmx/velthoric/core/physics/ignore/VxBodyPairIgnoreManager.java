@@ -74,7 +74,7 @@ public class VxBodyPairIgnoreManager implements VxChunkPersistenceHandler {
             VxServerBodyManager manager = world.getBodyManager();
             VxBody b1 = manager.getVxBody(id1);
             int idx = b1 != null ? b1.getDataStoreIndex() : -1;
-            long chunkKey = (idx != -1) ? manager.getDataStore().serverCurrent().chunkKey[idx] : 0;
+            long chunkKey = (idx != -1) ? manager.getDataStore().serverCurrent().chunkKey.get(idx) : 0;
             
             // Fallback: If the body was just spawned, it might not have its chunk key in the SoA yet.
             if (chunkKey == 0 || chunkKey == Long.MAX_VALUE) {

@@ -124,7 +124,7 @@ public class VxPhysicsSyncBehavior implements VxBehavior {
 
         for (int i = 0; i < capacity; ++i) {
             // Only process bodies that have the PhysicsSync behavior attached.
-            if ((c.behaviorBits[i] & mask) == 0) continue;
+            if ((c.behaviorBits.get(i) & mask) == 0) continue;
 
             VxBody obj = bodies[i];
             if (obj == null) continue;
@@ -174,7 +174,7 @@ public class VxPhysicsSyncBehavior implements VxBehavior {
         long[] behaviorBits = behaviorBitsBuffer.get();
         for (int b = 0; b < count; b++) {
             bodyIds[b] = ids.get(b);
-            behaviorBits[b] = c.behaviorBits[indices.getInt(b)];
+            behaviorBits[b] = c.behaviorBits.get(indices.getInt(b));
         }
 
         int[] dirtyIndices = dirtyIndicesBuffer.get();
@@ -216,7 +216,7 @@ public class VxPhysicsSyncBehavior implements VxBehavior {
         // Handle post-sync metadata updates (chunk tracking, motion types)
         for (int b = 0; b < count; b++) {
             int i = indices.getInt(b);
-            if (c.isActive[i] || c.isTransformDirty[i] || c.isVertexDataDirty[i]) {
+            if (c.isActive.get(i) != 0 || c.isTransformDirty.get(i) != 0 || c.isVertexDataDirty.get(i) != 0) {
                 VxBody obj = c.bodies[i];
                 if (obj == null) continue;
 
@@ -224,11 +224,11 @@ public class VxPhysicsSyncBehavior implements VxBehavior {
                 c.motionType[i] = EMotionType.values()[motionTypes[b]];
 
                 // Sync activation state based on the live activity flag from Jolt.
-                c.activation[i] = c.isActive[i] ? EActivation.Activate : EActivation.DontActivate;
+                c.activation[i] = (c.isActive.get(i) != 0) ? EActivation.Activate : EActivation.DontActivate;
 
                 // Update spatial tracking if the body crossed a chunk boundary.
-                final long lastKey = c.chunkKey[i];
-                final long currentKey = VxSpatialManager.calculateChunkKey(c.posX[i], c.posZ[i]);
+                final long lastKey = c.chunkKey.get(i);
+                final long currentKey = VxSpatialManager.calculateChunkKey(c.posX.get(i), c.posZ.get(i));
                 if (lastKey != currentKey) {
                     manager.updateBodyTracking(obj, lastKey, currentKey);
                 }
