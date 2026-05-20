@@ -4,14 +4,11 @@
  */
 package net.xmx.velthoric.mixin.impl.mounting.input;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.Input;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.world.entity.Entity;
 import net.xmx.velthoric.core.mounting.entity.VxMountingEntity;
 import net.xmx.velthoric.core.mounting.input.C2SMountInputPacket;
 import net.xmx.velthoric.core.mounting.input.VxMountInput;
-import net.xmx.velthoric.init.registry.KeyMappings;
 import net.xmx.velthoric.network.VxNetworking;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -21,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Hooks into the local player logic to capture and transmit custom vehicle inputs
+ * Hooks into the local player logic to capture and transmit custom mounting inputs
  * when the player is mounting a physics entity.
  *
  * @author xI-Mx-Ix
@@ -37,12 +34,8 @@ public abstract class MixinLocalPlayer {
     @Inject(method = "aiStep", at = @At("TAIL"))
     private void velthoric_handleRidingInput(CallbackInfo ci) {
         LocalPlayer player = (LocalPlayer) (Object) this;
-        Entity vehicle = player.getVehicle();
 
-        if (vehicle instanceof VxMountingEntity) {
-            // Retrieve the window handle to check raw keyboard input
-            long window = Minecraft.getInstance().getWindow().getWindow();
-
+        if (player.getVehicle() instanceof VxMountingEntity) {
             // 1. Calculate Analog Axis (Forward/Backward)
             // W = Forward (+1.0), S = Backward (-1.0)
             float forward = 0.0f;
@@ -59,15 +52,6 @@ public abstract class MixinLocalPlayer {
             int flags = 0;
             // Handbrake = Space
             if (input.jumping) flags |= VxMountInput.FLAG_HANDBRAKE;
-
-            // Shift Up = R
-            if (KeyMappings.VEHICLE_SHIFT_UP.isDown(window)) flags |= VxMountInput.FLAG_SHIFT_UP;
-
-            // Shift Down = F
-            if (KeyMappings.VEHICLE_SHIFT_DOWN.isDown(window)) flags |= VxMountInput.FLAG_SHIFT_DOWN;
-
-            // Horn / Special = H
-            if (KeyMappings.VEHICLE_SPECIAL.isDown(window)) flags |= VxMountInput.FLAG_SPECIAL_1;
 
             VxMountInput currentInput = new VxMountInput(forward, right, flags);
 

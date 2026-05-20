@@ -18,10 +18,6 @@ import net.xmx.velthoric.builtin.box.BoxRenderer;
 import net.xmx.velthoric.builtin.box.BoxRigidBody;
 import net.xmx.velthoric.builtin.cloth.ClothRenderer;
 import net.xmx.velthoric.builtin.cloth.ClothSoftBody;
-import net.xmx.velthoric.builtin.drivable.car.CarImpl;
-import net.xmx.velthoric.builtin.drivable.car.CarRenderer;
-import net.xmx.velthoric.builtin.drivable.motorcycle.MotorcycleImpl;
-import net.xmx.velthoric.builtin.drivable.motorcycle.MotorcycleRenderer;
 import net.xmx.velthoric.builtin.marble.MarbleRenderer;
 import net.xmx.velthoric.builtin.marble.MarbleRigidBody;
 import net.xmx.velthoric.builtin.rope.RopeRenderer;
@@ -30,7 +26,6 @@ import net.xmx.velthoric.builtin.sphere.SphereRenderer;
 import net.xmx.velthoric.builtin.sphere.SphereRigidBody;
 import net.xmx.velthoric.core.body.registry.VxBodyRegistry;
 import net.xmx.velthoric.core.body.VxBodyType;
-import net.xmx.velthoric.core.vehicle.VxWheeledVehicle;
 import net.xmx.velthoric.core.ragdoll.body.VxBodyPartRigidBody;
 import net.xmx.velthoric.core.ragdoll.body.VxRagdollBodyPartRenderer;
 import net.xmx.velthoric.item.chaincreator.body.VxChainPartRenderer;
@@ -104,30 +99,6 @@ public class VxRegisteredBodies {
             .persistence(RopeSoftBody::writePersistence, RopeSoftBody::readPersistence)
             .build(ResourceLocation.tryBuild("velthoric", "rope"));
 
-    // --- Vehicles ---
-
-    public static final VxBodyType<CarImpl> CAR = VxBodyType.Builder
-            .<CarImpl>create(CarImpl::new)
-            .rigidProvider(CarImpl::createJoltBody)
-            .behavior(VxBuoyancyBehavior.ID)
-            .behavior(VxNetSyncBehavior.ID)
-            .behavior(VxMountBehavior.ID)
-            .behavior(VxTickBehavior.ID)
-            .behavior(VxSyncBehavior.ID)
-            .persistence(VxWheeledVehicle::writePersistence, VxWheeledVehicle::readPersistence)
-            .build(ResourceLocation.tryBuild("velthoric", "car"));
-
-    public static final VxBodyType<MotorcycleImpl> MOTORCYCLE = VxBodyType.Builder
-            .<MotorcycleImpl>create(MotorcycleImpl::new)
-            .rigidProvider(MotorcycleImpl::createJoltBody)
-            .behavior(VxBuoyancyBehavior.ID)
-            .behavior(VxNetSyncBehavior.ID)
-            .behavior(VxMountBehavior.ID)
-            .behavior(VxTickBehavior.ID)
-            .behavior(VxSyncBehavior.ID)
-            .persistence(VxWheeledVehicle::writePersistence, VxWheeledVehicle::readPersistence)
-            .build(ResourceLocation.tryBuild("velthoric", "motorcycle"));
-
     // --- Internal Bodies ---
 
     public static final VxBodyType<VxChainPartRigidBody> CHAIN_PART = VxBodyType.Builder
@@ -162,8 +133,6 @@ public class VxRegisteredBodies {
         registry.register(MARBLE);
         registry.register(CLOTH);
         registry.register(ROPE);
-        registry.register(CAR);
-        registry.register(MOTORCYCLE);
         registry.register(CHAIN_PART);
         registry.register(BODY_PART);
     }
@@ -181,8 +150,6 @@ public class VxRegisteredBodies {
         registry.registerClientFactory(MARBLE.getTypeId(), (type, id) -> new MarbleRigidBody(type, id));
         registry.registerClientFactory(CLOTH.getTypeId(), (type, id) -> new ClothSoftBody(type, id));
         registry.registerClientFactory(ROPE.getTypeId(), (type, id) -> new RopeSoftBody(type, id));
-        registry.registerClientFactory(CAR.getTypeId(), (type, id) -> new CarImpl(type, id));
-        registry.registerClientFactory(MOTORCYCLE.getTypeId(), (type, id) -> new MotorcycleImpl(type, id));
         registry.registerClientFactory(CHAIN_PART.getTypeId(), (type, id) -> new VxChainPartRigidBody(type, id));
         registry.registerClientFactory(BODY_PART.getTypeId(), (type, id) -> new VxBodyPartRigidBody(type, id));
     }
@@ -200,8 +167,6 @@ public class VxRegisteredBodies {
         registry.registerClientRenderer(MARBLE.getTypeId(), new MarbleRenderer());
         registry.registerClientRenderer(CLOTH.getTypeId(), new ClothRenderer());
         registry.registerClientRenderer(ROPE.getTypeId(), new RopeRenderer());
-        registry.registerClientRenderer(CAR.getTypeId(), new CarRenderer());
-        registry.registerClientRenderer(MOTORCYCLE.getTypeId(), new MotorcycleRenderer());
         registry.registerClientRenderer(CHAIN_PART.getTypeId(), new VxChainPartRenderer());
         registry.registerClientRenderer(BODY_PART.getTypeId(), new VxRagdollBodyPartRenderer());
     }

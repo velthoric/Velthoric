@@ -9,10 +9,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.world.phys.Vec3;
 import net.xmx.velthoric.core.body.VxBody;
 import net.xmx.velthoric.core.body.client.VxClientBodyManager;
-import net.xmx.velthoric.core.vehicle.VxVehicle;
-import net.xmx.velthoric.core.vehicle.part.VxPart;
 import net.xmx.velthoric.debug.renderer.DebugBodyShapeRenderer;
-import net.xmx.velthoric.math.VxOBB;
 
 /**
  * A dedicated renderer for drawing debug information related to physics bodies,
@@ -43,39 +40,7 @@ public class VxDebugRenderDispatcher {
      * @param cameraPos    The absolute position of the camera in the world, used for relative rendering.
      */
     public void render(PoseStack poseStack, MultiBufferSource bufferSource, VxClientBodyManager manager, float partialTicks, Vec3 cameraPos) {
-        renderPartHitboxes(poseStack, bufferSource, manager, partialTicks, cameraPos);
         renderBodyShapes(poseStack, bufferSource, manager, partialTicks, cameraPos);
-    }
-
-    /**
-     * Renders the hitboxes for all vehicle parts as wireframe OBBs.
-     * All parts are rendered in yellow to distinguish them from standard hitboxes.
-     *
-     * @param poseStack    The current pose stack.
-     * @param bufferSource The buffer source.
-     * @param manager      The client body manager.
-     * @param partialTicks The current partial tick.
-     * @param cameraPos    The absolute position of the camera.
-     */
-    private void renderPartHitboxes(PoseStack poseStack, MultiBufferSource bufferSource, VxClientBodyManager manager, float partialTicks, Vec3 cameraPos) {
-        for (VxBody body : manager.getAllBodies()) {
-            if (!body.isInitialized()) continue;
-
-            // Only process vehicles as they have the modular part system
-            if (body instanceof VxVehicle vehicle) {
-                // Calculate the interpolated render state for the parent body.
-                vehicle.calculateRenderState(partialTicks, shapeRenderer.getRenderState(), null, null);
-
-                // Iterate over all attached parts (wheels, seats, doors, custom parts)
-                for (VxPart part : vehicle.getParts()) {
-                    // Get the precise Oriented Bounding Box for the part in absolute world space.
-                    VxOBB obb = part.getGlobalOBB(shapeRenderer.getRenderState());
-
-                    // Draw the OBB's wireframe in yellow, adjusting for the camera position.
-                    shapeRenderer.renderOBB(obb, poseStack, bufferSource, cameraPos, 1.0f, 1.0f, 0.0f, 1.0f);
-                }
-            }
-        }
     }
 
     /**

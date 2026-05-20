@@ -17,7 +17,6 @@ import net.xmx.velthoric.core.network.internal.packet.S2CUpdateShapeBatchPacket;
 import net.xmx.velthoric.core.network.internal.packet.S2CUpdateVerticesBatchPacket;
 import net.xmx.velthoric.core.network.synchronization.packet.C2SSynchronizedDataBatchPacket;
 import net.xmx.velthoric.core.network.synchronization.packet.S2CSynchronizedDataBatchPacket;
-import net.xmx.velthoric.core.vehicle.part.packet.C2SPartInteractPacket;
 
 import java.util.function.Function;
 
@@ -55,7 +54,6 @@ public class VxPacketRegistry {
         // IDs are managed independently for the C2S namespace.
         // ---------------------------------------------------------
 
-        registerC2S(C2SPartInteractPacket.class, C2SPartInteractPacket::decode);
         registerC2S(C2SMountInputPacket.class, C2SMountInputPacket::decode);
         registerC2S(VxPhysicsGunActionPacket.class, VxPhysicsGunActionPacket::decode);
         registerC2S(VxToolActionPacket.class, VxToolActionPacket::decode);
