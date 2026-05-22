@@ -155,6 +155,10 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                 Vec3 bodyVel(0.0f, 0.0f, 0.0f);
                 bool bodyIsActive = false;
 
+                // Rotational and positional metrics for advanced impulse calculation
+                RVec3 bodyCoM = RVec3::sZero();
+                Mat44 invInertia = Mat44::sIdentity();
+
                 // Handle server dynamics interaction
                 if (ctx.ps && bodyIdVal != 0) {
                     BodyID id(bodyIdVal);
@@ -166,6 +170,8 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                             bodyPos = body.GetPosition();
                             bodyVel = body.GetLinearVelocity();
                             bodyIsActive = body.IsActive();
+                            bodyCoM = body.GetCenterOfMassPosition();
+                            invInertia = body.GetInverseInertia();
                             if (body.GetMotionProperties()) {
                                 invMass = body.GetMotionProperties()->GetInverseMass();
                                 if (invMass > 0.0f) {
@@ -199,18 +205,33 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
 
                 // Dynamically apply impulses back to physics simulations
                 if (isDynamicBody && ctx.ps && bodyIdVal != 0) {
-                    float bodyPushRatio = 1.0f - entityPushRatio;
-                    Vec3 bodyPush = -push * bodyPushRatio;
                     BodyID id(bodyIdVal);
 
+                    // 1. Determine contact points
+                    RVec3 contactPoint(collector.result.mContactPointOn2);
+
+                    // r is the lever arm vector from the Body's Center of Mass to the Contact Point
+                    Vec3 r = Vec3(contactPoint - bodyCoM);
+
+                    // 2. Compute angular mass factor: ((I^-1 * (r x n)) x r) . n
+                    Vec3 rCrossN = r.Cross(normal);
+                    Vec3 invInertia_rCrossN = invInertia * rCrossN;
+                    float angularFactor = invInertia_rCrossN.Cross(r).Dot(normal);
+
+                    // Combined effective inverse mass at the specific contact point
+                    float K = (1.0f / ctx.entityMass) + invMass + angularFactor;
+                    if (K < 1e-6f) K = 1e-6f;
+
+                    // 3. Approach speed calculation for impact/landing
                     Vec3 entityVel(ctx.entityVelocityX, ctx.entityVelocityY, ctx.entityVelocityZ);
                     Vec3 relVel = entityVel - bodyVel;
                     float approachSpeed = -relVel.Dot(normal);
 
-                    float e = 0.25f;
+                    float e = 0.25f; // Restitution
                     float J_vel = 0.0f;
                     if (approachSpeed > 0.0f) {
-                        J_vel = (approachSpeed * (1.0f + e)) / ((1.0f / ctx.entityMass) + invMass);
+                        // Impact impulse using localized effective mass K
+                        J_vel = (approachSpeed * (1.0f + e)) / K;
 
                         if (bodyMass < 10.0f) {
                             float kickMultiplier = 1.0f + (10.0f - bodyMass) * 1.8f;
@@ -218,27 +239,33 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                         }
                     }
 
+                    // 4. Penetration impulse
                     float dtImpulse = 0.05f;
-                    float J_pen = depth / (dtImpulse * ((1.0f / ctx.entityMass) + invMass));
+                    float J_pen = depth / (dtImpulse * K);
 
+                    // Accumulate impulse forces along normal
                     float J_total = J_vel + J_pen * 0.5f;
+                    Vec3 impulse = -normal * J_total;
 
+                    // 5. Continuous weight force (gravity) applied straight down at the contact point
                     if (normal.GetY() >= 0.65f) {
-                        float J_weight = ctx.entityMass * 9.81f * dtImpulse * normal.GetY();
-                        J_total += J_weight;
+                        Vec3 weightImpulse(0.0f, -ctx.entityMass * 9.81f * dtImpulse, 0.0f);
+                        impulse += weightImpulse;
                     }
 
+                    // 6. Clamp total impulse to avoid game physics glitches
                     float maxVelChange = 15.0f;
                     if (bodyMass < 10.0f) {
                         maxVelChange = 15.0f + (10.0f - bodyMass) * 20.0f;
                     }
                     float maxImpulse = bodyMass * maxVelChange;
-                    if (J_total > maxImpulse) {
-                        J_total = maxImpulse;
+                    float impulseMag = impulse.Length();
+                    if (impulseMag > maxImpulse && impulseMag > 0.0f) {
+                        impulse = impulse * (maxImpulse / impulseMag);
                     }
 
-                    Vec3 impulse = -normal * J_total;
-                    ctx.ps->GetBodyInterface().AddImpulse(id, impulse);
+                    // Apply impulse at the exact contact point to generate translation AND rotation
+                    ctx.ps->GetBodyInterface().AddImpulse(id, impulse, contactPoint);
 
                     if (!bodyIsActive) {
                         ctx.ps->GetBodyInterface().ActivateBody(id);
