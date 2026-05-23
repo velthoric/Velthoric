@@ -93,12 +93,14 @@ bool CastShapeDown(const CollisionContext& ctx, float startX, float startY, floa
 
 bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, float& pz, float& outPushX, float& outPushY, float& outPushZ, Vec3& outMaxNormal, int& bodyIndexOut, float& outSlideFriction) {
     outMaxNormal = Vec3(0.0f, -1.0f, 0.0f);
-    int iterations = 4;
+    int iterations = 8;
     bool hitAny = false;
     bodyIndexOut = -1;
 
     for (int iter = 0; iter < iterations; iter++) {
         bool resolved = false;
+
+        // Vertical resolution pass
         for (int i = 0; i < ctx.capacity; i++) {
             const Shape* shape = reinterpret_cast<const Shape*>(ctx.shapes[i]);
             if (!shape) continue;
@@ -131,171 +133,338 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
             if (collector.hit && collector.result.mPenetrationDepth > 1e-4f) {
                 Vec3 normal = -collector.result.mPenetrationAxis.Normalized();
                 float depth = collector.result.mPenetrationDepth;
-                Vec3 push(0.0f, 0.0f, 0.0f);
-
                 float ny = normal.GetY();
-                float nHorizSq = normal.GetX() * normal.GetX() + normal.GetZ() * normal.GetZ();
 
-                // Compute exact correction translations
-                if (ny >= 0.65f) {
-                    push = Vec3(0.0f, depth / ny, 0.0f);
-                } else if (nHorizSq > 0.0001f) {
-                    float k = depth / nHorizSq;
-                    if (k > 2.0f / (std::sqrt(nHorizSq) + 0.001f)) k = 2.0f / (std::sqrt(nHorizSq) + 0.001f);
-                    push = Vec3(normal.GetX() * k, 0.0f, normal.GetZ() * k);
-                } else {
-                    push = Vec3(0.0f, -depth, 0.0f);
-                }
+                if (std::abs(ny) >= 0.65f) {
+                    // Vertical correction translation
+                    Vec3 push = Vec3(0.0f, depth / ny, 0.0f);
 
-                uint32_t bodyIdVal = (ctx.bIds && i < ctx.capacity) ? static_cast<uint32_t>(ctx.bIds[i]) : 0;
-                bool isDynamicBody = false;
-                float bodyMass = 0.0f;
-                float invMass = 0.0f;
-                RVec3 bodyPos = RVec3::sZero();
-                Vec3 bodyVel(0.0f, 0.0f, 0.0f);
-                bool bodyIsActive = false;
+                    uint32_t bodyIdVal = (ctx.bIds && i < ctx.capacity) ? static_cast<uint32_t>(ctx.bIds[i]) : 0;
+                    bool isDynamicBody = false;
+                    float bodyMass = 0.0f;
+                    float invMass = 0.0f;
+                    RVec3 bodyPos = RVec3::sZero();
+                    Vec3 bodyVel(0.0f, 0.0f, 0.0f);
+                    bool bodyIsActive = false;
 
-                // Rotational and positional metrics for advanced impulse calculation
-                RVec3 bodyCoM = RVec3::sZero();
-                Mat44 invInertia = Mat44::sIdentity();
+                    // Rotational and positional metrics for advanced impulse calculation
+                    RVec3 bodyCoM = RVec3::sZero();
+                    Mat44 invInertia = Mat44::sIdentity();
 
-                // Handle server dynamics interaction
-                if (ctx.ps && bodyIdVal != 0) {
-                    BodyID id(bodyIdVal);
-                    BodyLockRead lock(ctx.ps->GetBodyLockInterface(), id);
-                    if (lock.Succeeded()) {
-                        const Body& body = lock.GetBody();
-                        if (body.GetMotionType() == EMotionType::Dynamic) {
-                            isDynamicBody = true;
-                            bodyPos = body.GetPosition();
-                            bodyVel = body.GetLinearVelocity();
-                            bodyIsActive = body.IsActive();
-                            bodyCoM = body.GetCenterOfMassPosition();
-                            invInertia = body.GetInverseInertia();
-                            if (body.GetMotionProperties()) {
-                                invMass = body.GetMotionProperties()->GetInverseMass();
-                                if (invMass > 0.0f) {
-                                    bodyMass = 1.0f / invMass;
+                    // Handle server dynamics interaction
+                    if (ctx.ps && bodyIdVal != 0) {
+                        BodyID id(bodyIdVal);
+                        BodyLockRead lock(ctx.ps->GetBodyLockInterface(), id);
+                        if (lock.Succeeded()) {
+                            const Body& body = lock.GetBody();
+                            if (body.GetMotionType() == EMotionType::Dynamic) {
+                                isDynamicBody = true;
+                                bodyPos = body.GetPosition();
+                                bodyVel = body.GetLinearVelocity();
+                                bodyIsActive = body.IsActive();
+                                bodyCoM = body.GetCenterOfMassPosition();
+                                invInertia = body.GetInverseInertia();
+                                if (body.GetMotionProperties()) {
+                                    invMass = body.GetMotionProperties()->GetInverseMass();
+                                    if (invMass > 0.0f) {
+                                        bodyMass = 1.0f / invMass;
+                                    }
                                 }
                             }
                         }
                     }
-                }
 
-                float totalMass = ctx.entityMass + bodyMass;
-                float entityPushRatio = 1.0f;
-                if (isDynamicBody && totalMass > 0.0f) {
-                    entityPushRatio = bodyMass / totalMass;
+                    float totalMass = ctx.entityMass + bodyMass;
+                    float entityPushRatio = 1.0f;
+                    if (isDynamicBody && totalMass > 0.0f) {
+                        entityPushRatio = bodyMass / totalMass;
 
-                    float support = 0.0f;
-                    if (bodyMass >= 40.0f) {
-                        support = 1.0f;
-                    } else if (bodyMass > 10.0f) {
-                        support = (bodyMass - 10.0f) / 30.0f;
+                        float support = 0.0f;
+                        if (bodyMass >= 40.0f) {
+                            support = 1.0f;
+                        } else if (bodyMass > 10.0f) {
+                            support = (bodyMass - 10.0f) / 30.0f;
+                        }
+                        entityPushRatio *= support;
                     }
-                    entityPushRatio *= support;
-                }
 
-                px += push.GetX() * entityPushRatio;
-                py += push.GetY() * entityPushRatio;
-                pz += push.GetZ() * entityPushRatio;
-                outPushX += push.GetX() * entityPushRatio;
-                outPushY += push.GetY() * entityPushRatio;
-                outPushZ += push.GetZ() * entityPushRatio;
+                    px += push.GetX() * entityPushRatio;
+                    py += push.GetY() * entityPushRatio;
+                    pz += push.GetZ() * entityPushRatio;
+                    outPushX += push.GetX() * entityPushRatio;
+                    outPushY += push.GetY() * entityPushRatio;
+                    outPushZ += push.GetZ() * entityPushRatio;
 
-                // Dynamically apply impulses back to physics simulations
-                if (isDynamicBody && ctx.ps && bodyIdVal != 0) {
-                    BodyID id(bodyIdVal);
+                    // Dynamically apply impulses back to physics simulations
+                    if (isDynamicBody && ctx.ps && bodyIdVal != 0) {
+                        BodyID id(bodyIdVal);
 
-                    // 1. Determine contact points
-                    RVec3 contactPoint(collector.result.mContactPointOn2);
+                        // 1. Determine contact points
+                        RVec3 contactPoint(collector.result.mContactPointOn2);
 
-                    // r is the lever arm vector from the Body's Center of Mass to the Contact Point
-                    Vec3 r = Vec3(contactPoint - bodyCoM);
+                        // r is the lever arm vector from the Body's Center of Mass to the Contact Point
+                        Vec3 r = Vec3(contactPoint - bodyCoM);
 
-                    // 2. Compute angular mass factor: ((I^-1 * (r x n)) x r) . n
-                    Vec3 rCrossN = r.Cross(normal);
-                    Vec3 invInertia_rCrossN = invInertia * rCrossN;
-                    float angularFactor = invInertia_rCrossN.Cross(r).Dot(normal);
+                        // 2. Compute angular mass factor: ((I^-1 * (r x n)) x r) . n
+                        Vec3 rCrossN = r.Cross(normal);
+                        Vec3 invInertia_rCrossN = invInertia * rCrossN;
+                        float angularFactor = invInertia_rCrossN.Cross(r).Dot(normal);
 
-                    // Combined effective inverse mass at the specific contact point
-                    float K = (1.0f / ctx.entityMass) + invMass + angularFactor;
-                    if (K < 1e-6f) K = 1e-6f;
+                        // Combined effective inverse mass at the specific contact point
+                        float K = (1.0f / ctx.entityMass) + invMass + angularFactor;
+                        if (K < 1e-6f) K = 1e-6f;
 
-                    // 3. Approach speed calculation for impact/landing
-                    Vec3 entityVel(ctx.entityVelocityX, ctx.entityVelocityY, ctx.entityVelocityZ);
-                    Vec3 relVel = entityVel - bodyVel;
-                    float approachSpeed = -relVel.Dot(normal);
+                        // 3. Approach speed calculation for impact/landing
+                        Vec3 entityVel(ctx.entityVelocityX, ctx.entityVelocityY, ctx.entityVelocityZ);
+                        Vec3 relVel = entityVel - bodyVel;
+                        float approachSpeed = -relVel.Dot(normal);
 
-                    float e = 0.25f; // Restitution
-                    float J_vel = 0.0f;
-                    if (approachSpeed > 0.0f) {
-                        // Impact impulse using localized effective mass K
-                        J_vel = (approachSpeed * (1.0f + e)) / K;
+                        float e = 0.25f; // Restitution
+                        float J_vel = 0.0f;
+                        if (approachSpeed > 0.0f) {
+                            // Impact impulse using localized effective mass K
+                            J_vel = (approachSpeed * (1.0f + e)) / K;
 
+                            if (bodyMass < 10.0f) {
+                                float kickMultiplier = 1.0f + (10.0f - bodyMass) * 1.8f;
+                                J_vel *= kickMultiplier;
+                            }
+                        }
+
+                        // 4. Penetration impulse
+                        float dtImpulse = 0.05f;
+                        float J_pen = depth / (dtImpulse * K);
+
+                        // Accumulate impulse forces along normal
+                        float J_total = J_vel + J_pen * 0.5f;
+                        Vec3 impulse = -normal * J_total;
+
+                        // 5. Continuous weight force (gravity) applied straight down at the contact point
+                        if (normal.GetY() >= 0.65f) {
+                            Vec3 weightImpulse(0.0f, -ctx.entityMass * 9.81f * dtImpulse, 0.0f);
+                            impulse += weightImpulse;
+                        }
+
+                        // 6. Clamp total impulse to avoid game physics glitches
+                        float maxVelChange = 15.0f;
                         if (bodyMass < 10.0f) {
-                            float kickMultiplier = 1.0f + (10.0f - bodyMass) * 1.8f;
-                            J_vel *= kickMultiplier;
+                            maxVelChange = 15.0f + (10.0f - bodyMass) * 20.0f;
+                        }
+                        float maxImpulse = bodyMass * maxVelChange;
+                        float impulseMag = impulse.Length();
+                        if (impulseMag > maxImpulse && impulseMag > 0.0f) {
+                            impulse = impulse * (maxImpulse / impulseMag);
+                        }
+
+                        // Apply impulse at the exact contact point to generate translation and rotation
+                        ctx.ps->GetBodyInterface().AddImpulse(id, impulse, contactPoint);
+
+                        if (!bodyIsActive) {
+                            ctx.ps->GetBodyInterface().ActivateBody(id);
                         }
                     }
 
-                    // 4. Penetration impulse
-                    float dtImpulse = 0.05f;
-                    float J_pen = depth / (dtImpulse * K);
-
-                    // Accumulate impulse forces along normal
-                    float J_total = J_vel + J_pen * 0.5f;
-                    Vec3 impulse = -normal * J_total;
-
-                    // 5. Continuous weight force (gravity) applied straight down at the contact point
-                    if (normal.GetY() >= 0.65f) {
-                        Vec3 weightImpulse(0.0f, -ctx.entityMass * 9.81f * dtImpulse, 0.0f);
-                        impulse += weightImpulse;
-                    }
-
-                    // 6. Clamp total impulse to avoid game physics glitches
-                    float maxVelChange = 15.0f;
-                    if (bodyMass < 10.0f) {
-                        maxVelChange = 15.0f + (10.0f - bodyMass) * 20.0f;
-                    }
-                    float maxImpulse = bodyMass * maxVelChange;
-                    float impulseMag = impulse.Length();
-                    if (impulseMag > maxImpulse && impulseMag > 0.0f) {
-                        impulse = impulse * (maxImpulse / impulseMag);
-                    }
-
-                    // Apply impulse at the exact contact point to generate translation AND rotation
-                    ctx.ps->GetBodyInterface().AddImpulse(id, impulse, contactPoint);
-
-                    if (!bodyIsActive) {
-                        ctx.ps->GetBodyInterface().ActivateBody(id);
-                    }
-                }
-
-                if (normal.GetY() > outMaxNormal.GetY()) {
-                    outMaxNormal = normal;
-                    if (normal.GetY() > 0.1f) {
-                        if (!isDynamicBody) {
-                            bodyIndexOut = i;
-                            outSlideFriction = 1.0f;
-                        } else {
-                            float support = 0.0f;
-                            if (bodyMass >= 40.0f) {
-                                support = 1.0f;
-                            } else if (bodyMass > 10.0f) {
-                                support = (bodyMass - 10.0f) / 30.0f;
-                            }
-
-                            if (support > 0.01f) {
+                    if (normal.GetY() > outMaxNormal.GetY()) {
+                        outMaxNormal = normal;
+                        if (normal.GetY() > 0.1f) {
+                            if (!isDynamicBody) {
                                 bodyIndexOut = i;
-                                outSlideFriction = support;
+                                outSlideFriction = 1.0f;
+                            } else {
+                                float support = 0.0f;
+                                if (bodyMass >= 40.0f) {
+                                    support = 1.0f;
+                                } else if (bodyMass > 10.0f) {
+                                    support = (bodyMass - 10.0f) / 30.0f;
+                                }
+
+                                if (support > 0.01f) {
+                                    bodyIndexOut = i;
+                                    outSlideFriction = support;
+                                }
                             }
                         }
                     }
+                    resolved = true;
                 }
-                resolved = true;
             }
         }
+
+        // Horizontal resolution pass
+        for (int i = 0; i < ctx.capacity; i++) {
+            const Shape* shape = reinterpret_cast<const Shape*>(ctx.shapes[i]);
+            if (!shape) continue;
+
+            float sx = static_cast<float>(ctx.pX[i]);
+            float sy = static_cast<float>(ctx.pY[i]);
+            float sz = static_cast<float>(ctx.pZ[i]);
+            Quat sq(ctx.rX[i], ctx.rY[i], ctx.rZ[i], ctx.rW[i]);
+
+            BoxShape boxShape(Vec3(ctx.boxHx, ctx.boxHy, ctx.boxHz));
+            Mat44 shapeMat = Mat44::sRotationTranslation(sq, Vec3(sx, sy, sz));
+            Mat44 boxMat = Mat44::sTranslation(Vec3(px, py, pz));
+
+            CollideShapeSettings settings;
+            settings.mMaxSeparationDistance = 0.0f;
+
+            struct Collector : public CollideShapeCollector {
+                bool hit = false;
+                CollideShapeResult result;
+                virtual void AddHit(const CollideShapeResult& inResult) override {
+                    if (!hit || inResult.mPenetrationDepth > result.mPenetrationDepth) {
+                        hit = true;
+                        result = inResult;
+                    }
+                }
+            } collector;
+
+            CollisionDispatch::sCollideShapeVsShape(&boxShape, shape, Vec3::sReplicate(1.0f), Vec3::sReplicate(1.0f), boxMat, shapeMat, SubShapeIDCreator(), SubShapeIDCreator(), settings, collector);
+
+            if (collector.hit && collector.result.mPenetrationDepth > 1e-4f) {
+                Vec3 normal = -collector.result.mPenetrationAxis.Normalized();
+                float depth = collector.result.mPenetrationDepth;
+                float ny = normal.GetY();
+                float nHorizSq = normal.GetX() * normal.GetX() + normal.GetZ() * normal.GetZ();
+
+                if (std::abs(ny) < 0.65f && nHorizSq > 0.0001f) {
+                    // Horizontal correction translations
+                    float k = depth / nHorizSq;
+                    if (k > 2.0f / (std::sqrt(nHorizSq) + 0.001f)) k = 2.0f / (std::sqrt(nHorizSq) + 0.001f);
+                    Vec3 push = Vec3(normal.GetX() * k, 0.0f, normal.GetZ() * k);
+
+                    uint32_t bodyIdVal = (ctx.bIds && i < ctx.capacity) ? static_cast<uint32_t>(ctx.bIds[i]) : 0;
+                    bool isDynamicBody = false;
+                    float bodyMass = 0.0f;
+                    float invMass = 0.0f;
+                    RVec3 bodyPos = RVec3::sZero();
+                    Vec3 bodyVel(0.0f, 0.0f, 0.0f);
+                    bool bodyIsActive = false;
+
+                    // Rotational and positional metrics for advanced impulse calculation
+                    RVec3 bodyCoM = RVec3::sZero();
+                    Mat44 invInertia = Mat44::sIdentity();
+
+                    // Handle server dynamics interaction
+                    if (ctx.ps && bodyIdVal != 0) {
+                        BodyID id(bodyIdVal);
+                        BodyLockRead lock(ctx.ps->GetBodyLockInterface(), id);
+                        if (lock.Succeeded()) {
+                            const Body& body = lock.GetBody();
+                            if (body.GetMotionType() == EMotionType::Dynamic) {
+                                isDynamicBody = true;
+                                bodyPos = body.GetPosition();
+                                bodyVel = body.GetLinearVelocity();
+                                bodyIsActive = body.IsActive();
+                                bodyCoM = body.GetCenterOfMassPosition();
+                                invInertia = body.GetInverseInertia();
+                                if (body.GetMotionProperties()) {
+                                    invMass = body.GetMotionProperties()->GetInverseMass();
+                                    if (invMass > 0.0f) {
+                                        bodyMass = 1.0f / invMass;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    float totalMass = ctx.entityMass + bodyMass;
+                    float entityPushRatio = 1.0f;
+                    if (isDynamicBody && totalMass > 0.0f) {
+                        entityPushRatio = bodyMass / totalMass;
+
+                        float support = 0.0f;
+                        if (bodyMass >= 40.0f) {
+                            support = 1.0f;
+                        } else if (bodyMass > 10.0f) {
+                            support = (bodyMass - 10.0f) / 30.0f;
+                        }
+                        entityPushRatio *= support;
+                    }
+
+                    px += push.GetX() * entityPushRatio;
+                    py += push.GetY() * entityPushRatio;
+                    pz += push.GetZ() * entityPushRatio;
+                    outPushX += push.GetX() * entityPushRatio;
+                    outPushY += push.GetY() * entityPushRatio;
+                    outPushZ += push.GetZ() * entityPushRatio;
+
+                    // Dynamically apply impulses back to physics simulations
+                    if (isDynamicBody && ctx.ps && bodyIdVal != 0) {
+                        BodyID id(bodyIdVal);
+
+                        // 1. Determine contact points
+                        RVec3 contactPoint(collector.result.mContactPointOn2);
+
+                        // r is the lever arm vector from the Body's Center of Mass to the Contact Point
+                        Vec3 r = Vec3(contactPoint - bodyCoM);
+
+                        // 2. Compute angular mass factor: ((I^-1 * (r x n)) x r) . n
+                        Vec3 rCrossN = r.Cross(normal);
+                        Vec3 invInertia_rCrossN = invInertia * rCrossN;
+                        float angularFactor = invInertia_rCrossN.Cross(r).Dot(normal);
+
+                        // Combined effective inverse mass at the specific contact point
+                        float K = (1.0f / ctx.entityMass) + invMass + angularFactor;
+                        if (K < 1e-6f) K = 1e-6f;
+
+                        // 3. Approach speed calculation for impact/landing
+                        Vec3 entityVel(ctx.entityVelocityX, ctx.entityVelocityY, ctx.entityVelocityZ);
+                        Vec3 relVel = entityVel - bodyVel;
+                        float approachSpeed = -relVel.Dot(normal);
+
+                        float e = 0.25f; // Restitution
+                        float J_vel = 0.0f;
+                        if (approachSpeed > 0.0f) {
+                            // Impact impulse using localized effective mass K
+                            J_vel = (approachSpeed * (1.0f + e)) / K;
+
+                            if (bodyMass < 10.0f) {
+                                float kickMultiplier = 1.0f + (10.0f - bodyMass) * 1.8f;
+                                J_vel *= kickMultiplier;
+                            }
+                        }
+
+                        // 4. Penetration impulse
+                        float dtImpulse = 0.05f;
+                        float J_pen = depth / (dtImpulse * K);
+
+                        // Accumulate impulse forces along normal
+                        float J_total = J_vel + J_pen * 0.5f;
+                        Vec3 impulse = -normal * J_total;
+
+                        // 5. Continuous weight force (gravity) applied straight down at the contact point
+                        if (normal.GetY() >= 0.65f) {
+                            Vec3 weightImpulse(0.0f, -ctx.entityMass * 9.81f * dtImpulse, 0.0f);
+                            impulse += weightImpulse;
+                        }
+
+                        // 6. Clamp total impulse to avoid game physics glitches
+                        float maxVelChange = 15.0f;
+                        if (bodyMass < 10.0f) {
+                            maxVelChange = 15.0f + (10.0f - bodyMass) * 20.0f;
+                        }
+                        float maxImpulse = bodyMass * maxVelChange;
+                        float impulseMag = impulse.Length();
+                        if (impulseMag > maxImpulse && impulseMag > 0.0f) {
+                            impulse = impulse * (maxImpulse / impulseMag);
+                        }
+
+                        // Apply impulse at the exact contact point to generate translation and rotation
+                        ctx.ps->GetBodyInterface().AddImpulse(id, impulse, contactPoint);
+
+                        if (!bodyIsActive) {
+                            ctx.ps->GetBodyInterface().ActivateBody(id);
+                        }
+                    }
+
+                    if (normal.GetY() > outMaxNormal.GetY()) {
+                        outMaxNormal = normal;
+                    }
+                    resolved = true;
+                }
+            }
+        }
+
         if (!resolved) break;
         hitAny = true;
     }
