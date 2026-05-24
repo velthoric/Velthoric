@@ -6,7 +6,7 @@ package net.xmx.velthoric.mixin.impl.entity.dragging;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.MoverType;
+
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 import net.xmx.velthoric.core.entity.interaction.VxEntityCollisionManager;
@@ -26,7 +26,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Entity.class)
 public abstract class MixinEntityBodyDragging {
 
-    @Shadow public abstract void move(MoverType type, Vec3 pos);
     @Shadow public abstract float getYRot();
     @Shadow public abstract void setYRot(float yRot);
 
@@ -36,6 +35,14 @@ public abstract class MixinEntityBodyDragging {
      */
     @Unique
     private int velthoric_lastGroundSlot = -1;
+
+    /**
+     * Counts consecutive ticks where the entity has lost ground contact with a body.
+     * Acts as a grace period to prevent false-positive momentum transfers from
+     * brief collision detection gaps during fast body movement.
+     */
+    @Unique
+    private int velthoric_groundLostTicks = 0;
 
     /**
      * Injects at the end of the base tick to apply the body displacement dragging logic.
@@ -53,7 +60,7 @@ public abstract class MixinEntityBodyDragging {
         }
 
         boolean isClientSide = self.level().isClientSide();
-        
+
         // On the server side, do not apply dragging to players.
         // Server-side players manage their own movements and send packets.
         if (!isClientSide && self instanceof Player) {
@@ -65,13 +72,14 @@ public abstract class MixinEntityBodyDragging {
             Vec3 displacement = VxEntityCollisionManager.getBodyDisplacement(self, groundIdx);
             float yawDelta = VxEntityCollisionManager.getBodyYawDelta(self, groundIdx);
 
-            // Strip vertical component to let the native collision resolver handle vertical positioning authoritatively.
-            // This prevents double-application of vertical body movement, eliminating vertical jitter and entity fall-through.
-            Vec3 horizontalDisplacement = new Vec3(displacement.x, 0.0, displacement.z);
-
-            if (horizontalDisplacement.lengthSqr() > 1.0E-10) {
-                // Moving the entity triggers Velthoric's collide mixin, verifying valid physical paths
-                this.move(MoverType.SELF, horizontalDisplacement);
+            // Directly synchronize the entity's position with the body's displacement.
+            // Block collisions are handled independently by the entity's own movement tick.
+            if (displacement.lengthSqr() > 1.0E-10) {
+                self.setPos(
+                        self.getX() + displacement.x,
+                        self.getY() + displacement.y,
+                        self.getZ() + displacement.z
+                );
             }
 
             // On the client, the local player's rotation is updated smoothly per frame inside MixinGameRenderer.
@@ -80,9 +88,9 @@ public abstract class MixinEntityBodyDragging {
 
             if (!isLocalPlayer && Math.abs(yawDelta) > 1.0E-5) {
                 this.setYRot(this.getYRot() + yawDelta);
-                
+
                 // Add to the previous rotation delta to prevent jittering when linearly interpolated
-                self.yRotO += yawDelta; 
+                self.yRotO += yawDelta;
 
                 // Sync the body and head rotations to prevent visual twisting and snappy realignments
                 if (self instanceof LivingEntity living) {
@@ -93,15 +101,22 @@ public abstract class MixinEntityBodyDragging {
                 }
             }
             this.velthoric_lastGroundSlot = groundIdx;
+            this.velthoric_groundLostTicks = 0;
         } else {
             if (this.velthoric_lastGroundSlot >= 0) {
-                // Retrieve the body velocity from the previous ground slot and add to the entity's delta movement to conserve momentum
-                Vec3 pVel = VxEntityCollisionManager.getBodyVelocity(self, this.velthoric_lastGroundSlot);
-                if (pVel.lengthSqr() > 1.0E-10) {
-                    Vec3 currentDelta = self.getDeltaMovement();
-                    self.setDeltaMovement(currentDelta.x + pVel.x, currentDelta.y + pVel.y, currentDelta.z + pVel.z);
+                this.velthoric_groundLostTicks++;
+
+                // Only transfer momentum after 3 ticks of sustained air-time.
+                // Brief collision detection gaps during fast body movement are ignored.
+                if (this.velthoric_groundLostTicks > 3) {
+                    Vec3 bodyVel = VxEntityCollisionManager.getBodyVelocity(self, this.velthoric_lastGroundSlot);
+                    if (bodyVel.lengthSqr() > 1.0E-10) {
+                        Vec3 currentDelta = self.getDeltaMovement();
+                        self.setDeltaMovement(currentDelta.x + bodyVel.x, currentDelta.y + bodyVel.y, currentDelta.z + bodyVel.z);
+                    }
+                    this.velthoric_lastGroundSlot = -1;
+                    this.velthoric_groundLostTicks = 0;
                 }
-                this.velthoric_lastGroundSlot = -1;
             }
         }
     }
