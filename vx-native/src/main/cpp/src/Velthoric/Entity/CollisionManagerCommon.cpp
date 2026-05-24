@@ -653,40 +653,52 @@ void HandleSneakCore(const CollisionContext& ctx, float boxX, float boxY, float 
 }
 
 bool IsCollidingCore(const CollisionContext& ctx, float boxX, float boxY, float boxZ) {
-    float bHy = ctx.boxHy + 0.05f;
-    float bY = boxY - 0.05f;
+    return GetCollidingBodyIdCore(ctx, boxX, boxY, boxZ) != -1;
+}
 
-    for (int i = 0; i < ctx.capacity; i++) {
+int Velthoric::GetCollidingBodyIdCore(const CollisionContext& ctx, float boxX, float boxY, float boxZ) {
+    const float bHy = ctx.boxHy + 0.05f;
+
+    BoxShape boxShape(Vec3(ctx.boxHx, bHy, ctx.boxHz));
+    Mat44 boxMat = Mat44::sTranslation(Vec3(boxX, boxY - 0.05f, boxZ));
+
+    CollideShapeSettings settings;
+    settings.mMaxSeparationDistance = 0.0f;
+
+    for (int i = 0; i < ctx.capacity; ++i) {
         const Shape* shape = reinterpret_cast<const Shape*>(ctx.shapes[i]);
         if (!shape) continue;
 
-        float sx = static_cast<float>(ctx.pX[i]);
-        float sy = static_cast<float>(ctx.pY[i]);
-        float sz = static_cast<float>(ctx.pZ[i]);
-        Quat sq(ctx.rX[i], ctx.rY[i], ctx.rZ[i], ctx.rW[i]);
-
-        BoxShape boxShape(Vec3(ctx.boxHx, bHy, ctx.boxHz));
-        Mat44 shapeMat = Mat44::sRotationTranslation(sq, Vec3(sx, sy, sz));
-        Mat44 boxMat = Mat44::sTranslation(Vec3(boxX, bY, boxZ));
-
-        CollideShapeSettings settings;
-        settings.mMaxSeparationDistance = 0.0f;
-
         struct Collector : public CollideShapeCollector {
             bool hit = false;
-            virtual void AddHit(const CollideShapeResult& inResult) override {
-                if (inResult.mPenetrationDepth > 0.0001f) hit = true;
+
+            void AddHit(const CollideShapeResult& result) override {
+                hit |= result.mPenetrationDepth > 0.0001f;
             }
         } collector;
 
-        CollisionDispatch::sCollideShapeVsShape(&boxShape, shape, Vec3::sReplicate(1.0f), Vec3::sReplicate(1.0f), boxMat, shapeMat, SubShapeIDCreator(), SubShapeIDCreator(), settings, collector);
+        CollisionDispatch::sCollideShapeVsShape(
+            &boxShape,
+            shape,
+            Vec3::sReplicate(1.0f),
+            Vec3::sReplicate(1.0f),
+            boxMat,
+            Mat44::sRotationTranslation(
+                Quat(ctx.rX[i], ctx.rY[i], ctx.rZ[i], ctx.rW[i]),
+                Vec3(ctx.pX[i], ctx.pY[i], ctx.pZ[i])
+            ),
+            SubShapeIDCreator(),
+            SubShapeIDCreator(),
+            settings,
+            collector
+        );
 
         if (collector.hit) {
-            return true;
+            return i;
         }
     }
 
-    return false;
+    return -1;
 }
 
 } // namespace Velthoric

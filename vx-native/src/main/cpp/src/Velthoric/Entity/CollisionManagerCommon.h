@@ -147,4 +147,15 @@ void HandleSneakCore(const CollisionContext& ctx, float boxX, float boxY, float 
  */
 bool IsCollidingCore(const CollisionContext& ctx, float boxX, float boxY, float boxZ);
 
+/**
+ * Performs a fast bounding box intersection check and returns the specific colliding body ID.
+ *
+ * @param ctx The shared collision context.
+ * @param boxX Entity Center X.
+ * @param boxY Entity Center Y.
+ * @param boxZ Entity Center Z.
+ * @return The 0-based index of the colliding body, or -1 if no collision.
+ */
+int GetCollidingBodyIdCore(const CollisionContext& ctx, float boxX, float boxY, float boxZ);
+
 } // namespace Velthoric

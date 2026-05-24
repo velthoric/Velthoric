@@ -132,4 +132,38 @@ JNIEXPORT jboolean JNICALL Java_net_xmx_velthoric_jni_ClientEntityCollision_nIsC
     jfloat boxX, jfloat boxY, jfloat boxZ
 );
 
+/**
+ * Static client-side intersection check. Verifies if an entity's custom axis-aligned
+ * bounding box intersects with any Velthoric physics platforms and returns the exact body ID.
+ *
+ * @param env JNI interface pointer.
+ * @param clazz Associated JNI class context.
+ * @param shapePtrs Contiguous direct buffer of shape pointers.
+ * @param isActive Direct buffer indicating dynamic platform statuses.
+ * @param posX Platform positions on X coordinates.
+ * @param posY Platform positions on Y coordinates.
+ * @param posZ Platform positions on Z coordinates.
+ * @param rotX Platform quaternions on X axis.
+ * @param rotY Platform quaternions on Y axis.
+ * @param rotZ Platform quaternions on Z axis.
+ * @param rotW Platform quaternions on W axis.
+ * @param capacity Maximum allocated container capacity.
+ * @param boxHx Half-extents of checking bounding volume on X.
+ * @param boxHy Half-extents of checking bounding volume on Y.
+ * @param boxHz Half-extents of checking bounding volume on Z.
+ * @param boxX Central bounding volume translation coordinates on X.
+ * @param boxY Central bounding volume translation coordinates on Y.
+ * @param boxZ Central bounding volume translation coordinates on Z.
+ * @return The 0-based index of the colliding body, or -1 if no intersection is detected.
+ */
+JNIEXPORT jint JNICALL Java_net_xmx_velthoric_jni_ClientEntityCollision_nGetCollidingBodyId(
+    JNIEnv* env, jclass clazz,
+    jobject shapePtrs, jobject isActive,
+    jobject posX, jobject posY, jobject posZ,
+    jobject rotX, jobject rotY, jobject rotZ, jobject rotW,
+    jint capacity,
+    jfloat boxHx, jfloat boxHy, jfloat boxHz,
+    jfloat boxX, jfloat boxY, jfloat boxZ
+);
+
 }

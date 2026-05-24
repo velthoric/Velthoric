@@ -284,4 +284,32 @@ public final class VxClientEntityCollisionManager {
                 (float) entityBox.getCenter().x, (float) entityBox.getCenter().y, (float) entityBox.getCenter().z
         );
     }
+
+    /**
+     * Statically retrieves the exact ID of the body the bounding box intersects with.
+     *
+     * @param entity The entity querying intersection.
+     * @param entityBox Bounding volume representing the spatial constraints of the entity.
+     * @return The 0-based index of the colliding body, or -1 if no intersection occurs.
+     */
+    public static int getCollidingBodyId(Entity entity, AABB entityBox) {
+        if (entity == null) {
+            return -1;
+        }
+
+        VxClientBodyManager manager = VxClientBodyManager.getInstance();
+        if (manager.getStore() == null) return -1;
+        VxClientBodyDataContainer c = manager.getStore().clientCurrent();
+
+        int capacity = c.getCapacity();
+        ByteBuffer shapePtrsBuf = VxEntityCollisionBufferUtil.prepareShapePtrsBuffer(capacity, c.bodies);
+        if (capacity == 0) return -1;
+
+        return ClientEntityCollision.nGetCollidingBodyId(
+                shapePtrsBuf, c.state1_isActive,
+                c.prev_posX, c.prev_posY, c.prev_posZ, c.prev_rotX, c.prev_rotY, c.prev_rotZ, c.prev_rotW, capacity,
+                (float) (entityBox.getXsize() / 2.0), (float) (entityBox.getYsize() / 2.0), (float) (entityBox.getZsize() / 2.0),
+                (float) entityBox.getCenter().x, (float) entityBox.getCenter().y, (float) entityBox.getCenter().z
+        );
+    }
 }

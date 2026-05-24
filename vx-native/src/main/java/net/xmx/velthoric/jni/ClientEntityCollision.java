@@ -129,4 +129,34 @@ public class ClientEntityCollision {
             float boxHx, float boxHy, float boxHz,
             float boxX, float boxY, float boxZ
     );
+
+    /**
+     * Statically retrieves the exact ID of the body the bounding box intersects with.
+     *
+     * @param shapePtrs Contiguous direct buffer of shape pointers.
+     * @param isActive Direct buffer indicating dynamic platform statuses.
+     * @param posX Platform positions on X coordinates.
+     * @param posY Platform positions on Y coordinates.
+     * @param posZ Platform positions on Z coordinates.
+     * @param rotX Platform quaternions on X axis.
+     * @param rotY Platform quaternions on Y axis.
+     * @param rotZ Platform quaternions on Z axis.
+     * @param rotW Platform quaternions on W axis.
+     * @param capacity Maximum allocated container capacity.
+     * @param boxHx Half-extents of checking bounding volume on X.
+     * @param boxHy Half-extents of checking bounding volume on Y.
+     * @param boxHz Half-extents of checking bounding volume on Z.
+     * @param boxX Central bounding volume translation coordinates on X.
+     * @param boxY Central bounding volume translation coordinates on Y.
+     * @param boxZ Central bounding volume translation coordinates on Z.
+     * @return The 0-based index of the colliding body, or -1 if no intersection is detected.
+     */
+    public static native int nGetCollidingBodyId(
+            ByteBuffer shapePtrs, ByteBuffer isActive,
+            DoubleBuffer posX, DoubleBuffer posY, DoubleBuffer posZ,
+            FloatBuffer rotX, FloatBuffer rotY, FloatBuffer rotZ, FloatBuffer rotW,
+            int capacity,
+            float boxHx, float boxHy, float boxHz,
+            float boxX, float boxY, float boxZ
+    );
 }

@@ -134,4 +134,32 @@ JNIEXPORT jboolean JNICALL Java_net_xmx_velthoric_jni_ClientEntityCollision_nIsC
     return Velthoric::IsCollidingCore(ctx, boxX, boxY, boxZ) ? JNI_TRUE : JNI_FALSE;
 }
 
+JNIEXPORT jint JNICALL Java_net_xmx_velthoric_jni_ClientEntityCollision_nGetCollidingBodyId(
+    JNIEnv* env, jclass clazz,
+    jobject shapePtrs, jobject isActive,
+    jobject posX, jobject posY, jobject posZ,
+    jobject rotX, jobject rotY, jobject rotZ, jobject rotW,
+    jint capacity,
+    jfloat boxHx, jfloat boxHy, jfloat boxHz,
+    jfloat boxX, jfloat boxY, jfloat boxZ
+) {
+    (void)clazz; (void)isActive;
+    if (capacity == 0) return -1;
+
+    Velthoric::CollisionContext ctx;
+    ctx.ps = nullptr;
+    ctx.shapes = (jlong*)env->GetDirectBufferAddress(shapePtrs);
+    ctx.pX = (jdouble*)env->GetDirectBufferAddress(posX);
+    ctx.pY = (jdouble*)env->GetDirectBufferAddress(posY);
+    ctx.pZ = (jdouble*)env->GetDirectBufferAddress(posZ);
+    ctx.rX = (jfloat*)env->GetDirectBufferAddress(rotX);
+    ctx.rY = (jfloat*)env->GetDirectBufferAddress(rotY);
+    ctx.rZ = (jfloat*)env->GetDirectBufferAddress(rotZ);
+    ctx.rW = (jfloat*)env->GetDirectBufferAddress(rotW);
+    ctx.capacity = capacity;
+    ctx.boxHx = boxHx; ctx.boxHy = boxHy; ctx.boxHz = boxHz;
+
+    return Velthoric::GetCollidingBodyIdCore(ctx, boxX, boxY, boxZ);
+}
+
 }

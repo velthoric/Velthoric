@@ -247,4 +247,20 @@ public final class VxEntityCollisionManager {
             return VxClientEntityCollisionManager.isColliding(entity, entityBox);
         }
     }
+
+    /**
+     * Statically retrieves the exact ID of the body the bounding box intersects with.
+     * Delegates to the appropriate client or server collision manager.
+     *
+     * @param entity The entity querying intersection.
+     * @param entityBox Bounding volume representing the spatial constraints of the entity.
+     * @return The 0-based index of the colliding body, or -1 if no intersection occurs.
+     */
+    public static int getCollidingBodyId(Entity entity, AABB entityBox) {
+        if (entity.level() instanceof ServerLevel) {
+            return VxServerEntityCollisionManager.getCollidingBodyId(entity, entityBox);
+        } else {
+            return VxClientEntityCollisionManager.getCollidingBodyId(entity, entityBox);
+        }
+    }
 }
