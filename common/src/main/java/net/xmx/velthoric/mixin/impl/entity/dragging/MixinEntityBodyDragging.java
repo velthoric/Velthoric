@@ -4,10 +4,9 @@
  */
 package net.xmx.velthoric.mixin.impl.entity.dragging;
 
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 import net.xmx.velthoric.core.entity.interaction.VxEntityCollisionManager;
 import org.spongepowered.asm.mixin.Mixin;
@@ -61,12 +60,6 @@ public abstract class MixinEntityBodyDragging {
 
         boolean isClientSide = self.level().isClientSide();
 
-        // On the server side, do not apply dragging to players.
-        // Server-side players manage their own movements and send packets.
-        if (!isClientSide && self instanceof Player) {
-            return;
-        }
-
         int groundIdx = VxEntityCollisionManager.getGroundSlotIdx(self);
         if (groundIdx >= 0) {
             Vec3 displacement = VxEntityCollisionManager.getBodyDisplacement(self, groundIdx);
@@ -80,6 +73,20 @@ public abstract class MixinEntityBodyDragging {
                         self.getY() + displacement.y,
                         self.getZ() + displacement.z
                 );
+
+                // On the server side, update the player's connection validation trackers by the displacement
+                // vector. This ensures the server accepts the programmatic dragging without triggering anti-cheat.
+                if (!isClientSide && self instanceof ServerPlayer serverPlayer) {
+                    if (serverPlayer.connection != null) {
+                        ServerGamePacketListenerImplAccessor accessor = (ServerGamePacketListenerImplAccessor) serverPlayer.connection;
+                        accessor.velthoric_setFirstGoodX(accessor.velthoric_getFirstGoodX() + displacement.x);
+                        accessor.velthoric_setFirstGoodY(accessor.velthoric_getFirstGoodY() + displacement.y);
+                        accessor.velthoric_setFirstGoodZ(accessor.velthoric_getFirstGoodZ() + displacement.z);
+                        accessor.velthoric_setLastGoodX(accessor.velthoric_getLastGoodX() + displacement.x);
+                        accessor.velthoric_setLastGoodY(accessor.velthoric_getLastGoodY() + displacement.y);
+                        accessor.velthoric_setLastGoodZ(accessor.velthoric_getLastGoodZ() + displacement.z);
+                    }
+                }
             }
 
             // On the client, the local player's rotation is updated smoothly per frame inside MixinGameRenderer.
