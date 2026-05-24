@@ -5,6 +5,8 @@
 package net.xmx.velthoric.mixin.impl.entity.dragging;
 
 import com.github.stephengold.joltjni.Quat;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -88,9 +90,11 @@ public class MixinGameRenderer {
         Quat bodyRot = new Quat();
         manager.getInterpolator().interpolateRotation(manager.getStore(), groundIdx, partialTicks, bodyRot);
 
-        // Direct yaw angle (rotation around vertical Y-axis) extraction from the quaternion components
-        // Formula: yaw = 2 * atan2(y, w)
-        double currentYaw = Math.toDegrees(2.0 * Math.atan2(bodyRot.getY(), bodyRot.getW()));
+        // Rotate the forward vector by the body's full 3D quaternion, then extract the horizontal yaw.
+        Quaternionf rotation = new Quaternionf(bodyRot.getX(), bodyRot.getY(), bodyRot.getZ(), bodyRot.getW());
+        Vector3f forward = new Vector3f(0.0f, 0.0f, 1.0f);
+        forward.rotate(rotation);
+        double currentYaw = Math.toDegrees(Math.atan2(forward.x, forward.z));
 
         // Initialize or reset tracking states if the player has transitioned to a different body
         if (this.velthoric$activeBodyIndex == null || this.velthoric$activeBodyIndex != groundIdx || Double.isNaN(this.velthoric$previousBodyYaw)) {
