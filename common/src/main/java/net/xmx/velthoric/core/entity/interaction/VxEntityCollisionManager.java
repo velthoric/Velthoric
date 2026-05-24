@@ -25,81 +25,103 @@ import org.joml.Vector3f;
  */
 public final class VxEntityCollisionManager {
 
+    private static final ThreadLocal<Vector3f> TEMP_AXIS = ThreadLocal.withInitial(Vector3f::new);
+    private static final ThreadLocal<Quaternionf> TEMP_ROT = ThreadLocal.withInitial(Quaternionf::new);
+    private static final ThreadLocal<Vector3f> TEMP_REL_POS = ThreadLocal.withInitial(Vector3f::new);
+    private static final ThreadLocal<Vector3f> TEMP_FWD = ThreadLocal.withInitial(Vector3f::new);
+
     /**
      * Replicates Jolt's CharacterVirtual::CalculateCharacterGroundVelocity exactly.
      * Computes the linear displacement while accounting for the angular velocity
      * acting tangentially on the entity relative to the body's center of mass.
+     * Uses primitive double arguments for zero-allocation performance on the hot path.
      *
-     * @param entityPos       The current world position of the entity.
-     * @param centerOfMass    The center of mass of the physics body.
-     * @param linearVelocity  The linear velocity vector of the physics body.
-     * @param angularVelocity The angular velocity vector of the physics body.
-     * @param dt              The delta time (typically 0.05 for Minecraft's fixed tick).
+     * @param entityX  The current X coordinate of the entity.
+     * @param entityY  The current Y coordinate of the entity.
+     * @param entityZ  The current Z coordinate of the entity.
+     * @param comX     The center of mass X coordinate of the physics body.
+     * @param comY     The center of mass Y coordinate of the physics body.
+     * @param comZ     The center of mass Z coordinate of the physics body.
+     * @param linVelX  The linear velocity component on the X-axis of the physics body.
+     * @param linVelY  The linear velocity component on the Y-axis of the physics body.
+     * @param linVelZ  The linear velocity component on the Z-axis of the physics body.
+     * @param angVelX  The angular velocity component on the X-axis of the physics body.
+     * @param angVelY  The angular velocity component on the Y-axis of the physics body.
+     * @param angVelZ  The angular velocity component on the Z-axis of the physics body.
+     * @param dt       The delta time of the simulation tick (typically 0.05 seconds).
      * @return A Vec3 representing the total displacement vector for the entity.
      */
-    public static Vec3 calculateGroundDisplacement(Vec3 entityPos, Vec3 centerOfMass, Vec3 linearVelocity, Vec3 angularVelocity, float dt) {
-        double angVelSq = angularVelocity.lengthSqr();
+    public static Vec3 calculateGroundDisplacement(
+            double entityX, double entityY, double entityZ,
+            double comX, double comY, double comZ,
+            double linVelX, double linVelY, double linVelZ,
+            double angVelX, double angVelY, double angVelZ,
+            float dt
+    ) {
+        double angVelSq = angVelX * angVelX + angVelY * angVelY + angVelZ * angVelZ;
 
         // If the body has negligible rotation, return simple linear displacement
         if (angVelSq < 1.0E-12) {
-            return linearVelocity.scale(dt);
+            return new Vec3(linVelX * dt, linVelY * dt, linVelZ * dt);
         }
 
         double angVelLen = Math.sqrt(angVelSq);
-        Vector3f axis = new Vector3f(
-                (float) (angularVelocity.x / angVelLen),
-                (float) (angularVelocity.y / angVelLen),
-                (float) (angularVelocity.z / angVelLen)
+        Vector3f axis = TEMP_AXIS.get().set(
+                (float) (angVelX / angVelLen),
+                (float) (angVelY / angVelLen),
+                (float) (angVelZ / angVelLen)
         );
-        Quaternionf rotation = new Quaternionf().fromAxisAngleRad(axis, (float) (angVelLen * dt));
+        Quaternionf rotation = TEMP_ROT.get().fromAxisAngleRad(axis, (float) (angVelLen * dt));
 
         // Calculate entity position relative to the body's center of mass
-        Vector3f relativePos = new Vector3f(
-                (float) (entityPos.x - centerOfMass.x),
-                (float) (entityPos.y - centerOfMass.y),
-                (float) (entityPos.z - centerOfMass.z)
+        Vector3f relativePos = TEMP_REL_POS.get().set(
+                (float) (entityX - comX),
+                (float) (entityY - comY),
+                (float) (entityZ - comZ)
         );
 
         // Apply the body's rotation delta to the relative position
         relativePos.rotate(rotation);
 
         // Convert back to world space
-        double newPosX = centerOfMass.x + relativePos.x;
-        double newPosY = centerOfMass.y + relativePos.y;
-        double newPosZ = centerOfMass.z + relativePos.z;
+        double newPosX = comX + relativePos.x;
+        double newPosY = comY + relativePos.y;
+        double newPosZ = comZ + relativePos.z;
 
         // Calculate the difference and add the linear displacement component
-        double dx = (newPosX - entityPos.x) + (linearVelocity.x * dt);
-        double dy = (newPosY - entityPos.y) + (linearVelocity.y * dt);
-        double dz = (newPosZ - entityPos.z) + (linearVelocity.z * dt);
+        double dx = (newPosX - entityX) + (linVelX * dt);
+        double dy = (newPosY - entityY) + (linVelY * dt);
+        double dz = (newPosZ - entityZ) + (linVelZ * dt);
 
         return new Vec3(dx, dy, dz);
     }
 
     /**
-     * Extracts the yaw rotation delta created by the body's angular velocity 
+     * Extracts the yaw rotation delta created by the body's angular velocity
      * to rotate the entity identically to the body's Y-axis twist.
      *
-     * @param angularVelocity The angular velocity vector of the physics body.
-     * @param dt              The delta time (typically 0.05 for Minecraft's fixed tick).
+     * @param angVelX The angular velocity component on the X-axis.
+     * @param angVelY The angular velocity component on the Y-axis.
+     * @param angVelZ The angular velocity component on the Z-axis.
+     * @param dt      The delta time of the simulation tick (typically 0.05 seconds).
      * @return The yaw delta in degrees.
      */
-    public static float calculateYawDelta(Vec3 angularVelocity, float dt) {
-        double angVelSq = angularVelocity.lengthSqr();
+    public static float calculateYawDelta(double angVelX, double angVelY, double angVelZ, float dt) {
+        double angVelSq = angVelX * angVelX + angVelY * angVelY + angVelZ * angVelZ;
         if (angVelSq < 1.0E-12) {
             return 0.0f;
         }
 
         double angVelLen = Math.sqrt(angVelSq);
-        Vector3f axis = new Vector3f(
-                (float) (angularVelocity.x / angVelLen),
-                (float) (angularVelocity.y / angVelLen),
-                (float) (angularVelocity.z / angVelLen)
+        Vector3f axis = TEMP_AXIS.get().set(
+                (float) (angVelX / angVelLen),
+                (float) (angVelY / angVelLen),
+                (float) (angVelZ / angVelLen)
         );
-        Quaternionf rotation = new Quaternionf().fromAxisAngleRad(axis, (float) (angVelLen * dt));
+        Quaternionf rotation = TEMP_ROT.get().fromAxisAngleRad(axis, (float) (angVelLen * dt));
 
         // Rotate the forward vector to extract purely the Y-axis yaw component
-        Vector3f forward = new Vector3f(0.0f, 0.0f, 1.0f);
+        Vector3f forward = TEMP_FWD.get().set(0.0f, 0.0f, 1.0f);
         forward.rotate(rotation);
 
         return (float) Math.toDegrees(Math.atan2(-forward.x, forward.z));
@@ -199,23 +221,24 @@ public final class VxEntityCollisionManager {
      * Routes sneak ledge-bounds calculations to the appropriate environment manager.
      *
      * @param entity The sneaking entity.
-     * @param movement The proposed movement vector including falling.
-     * @return Adjusted movement bounded to valid surfaces.
+     * @param totalMovement Proposed movement vector.
+     * @return Bounded movement vector.
      */
-    public static Vec3 handleSneakBackOff(Entity entity, Vec3 movement) {
+    public static Vec3 handleSneakBackOff(Entity entity, Vec3 totalMovement) {
         if (entity.level() instanceof ServerLevel) {
-            return VxServerEntityCollisionManager.handleSneakBackOff(entity, movement);
+            return VxServerEntityCollisionManager.handleSneakBackOff(entity, totalMovement);
         } else {
-            return VxClientEntityCollisionManager.handleSneakBackOff(entity, movement);
+            return VxClientEntityCollisionManager.handleSneakBackOff(entity, totalMovement);
         }
     }
 
     /**
-     * Routes a static intersection check to the appropriate environment manager.
+     * Statically checks if the given bounding box intersects with any populated shapes.
+     * Delegates to the appropriate client or server collision manager.
      *
      * @param entity The entity.
-     * @param entityBox Bounding box to query.
-     * @return True if colliding.
+     * @param entityBox Bounding volume.
+     * @return True if colliding, false otherwise.
      */
     public static boolean isColliding(Entity entity, AABB entityBox) {
         if (entity.level() instanceof ServerLevel) {

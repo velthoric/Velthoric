@@ -30,6 +30,20 @@ import java.nio.ByteBuffer;
  */
 public final class VxClientEntityCollisionManager {
 
+    private static final ThreadLocal<Vector3d> TEMP_PREV_POS = ThreadLocal.withInitial(Vector3d::new);
+    private static final ThreadLocal<Quaterniond> TEMP_PREV_ROT = ThreadLocal.withInitial(Quaterniond::new);
+    private static final ThreadLocal<Vector3d> TEMP_CURR_POS = ThreadLocal.withInitial(Vector3d::new);
+    private static final ThreadLocal<Quaterniond> TEMP_CURR_ROT = ThreadLocal.withInitial(Quaterniond::new);
+    private static final ThreadLocal<RVec3> TEMP_TEMP_POS = ThreadLocal.withInitial(RVec3::new);
+    private static final ThreadLocal<Quat> TEMP_TEMP_ROT = ThreadLocal.withInitial(Quat::new);
+    private static final ThreadLocal<Vector3d> TEMP_RENDER_POS = ThreadLocal.withInitial(Vector3d::new);
+    private static final ThreadLocal<Quaterniond> TEMP_RENDER_ROT = ThreadLocal.withInitial(Quaterniond::new);
+    private static final ThreadLocal<Vector3d> TEMP_START_LOCAL = ThreadLocal.withInitial(Vector3d::new);
+    private static final ThreadLocal<Vector3d> TEMP_END_LOCAL = ThreadLocal.withInitial(Vector3d::new);
+    private static final ThreadLocal<Quaterniond> TEMP_QUAT_INV = ThreadLocal.withInitial(Quaterniond::new);
+    private static final ThreadLocal<Vector3d> TEMP_ENTITY_POS = ThreadLocal.withInitial(Vector3d::new);
+    private static final ThreadLocal<Vector3d> TEMP_LOCAL_OFFSET = ThreadLocal.withInitial(Vector3d::new);
+
     /**
      * Map storing the 1-based slot index of the physics body each client entity was last standing on.
      * Uses FastUtil's Reference2IntMap to avoid unboxing/boxing performance overhead.
@@ -62,14 +76,15 @@ public final class VxClientEntityCollisionManager {
         VxClientBodyDataContainer c = manager.getStore().clientCurrent();
         if (slotIdx < 0 || slotIdx >= c.getCapacity()) return Vec3.ZERO;
 
-        Vector3d prevPos = new Vector3d(c.prev_posX.get(slotIdx), c.prev_posY.get(slotIdx), c.prev_posZ.get(slotIdx));
-        Vector3d currPos = new Vector3d(c.posX.get(slotIdx), c.posY.get(slotIdx), c.posZ.get(slotIdx));
-        Quaterniond prevRot = new Quaterniond(c.prev_rotX.get(slotIdx), c.prev_rotY.get(slotIdx), c.prev_rotZ.get(slotIdx), c.prev_rotW.get(slotIdx));
-        Quaterniond currRot = new Quaterniond(c.rotX.get(slotIdx), c.rotY.get(slotIdx), c.rotZ.get(slotIdx), c.rotW.get(slotIdx));
+        Vector3d prevPos = TEMP_PREV_POS.get().set(c.prev_posX.get(slotIdx), c.prev_posY.get(slotIdx), c.prev_posZ.get(slotIdx));
+        Vector3d currPos = TEMP_CURR_POS.get().set(c.posX.get(slotIdx), c.posY.get(slotIdx), c.posZ.get(slotIdx));
+        Quaterniond prevRot = TEMP_PREV_ROT.get().set(c.prev_rotX.get(slotIdx), c.prev_rotY.get(slotIdx), c.prev_rotZ.get(slotIdx), c.prev_rotW.get(slotIdx));
+        Quaterniond currRot = TEMP_CURR_ROT.get().set(c.rotX.get(slotIdx), c.rotY.get(slotIdx), c.rotZ.get(slotIdx), c.rotW.get(slotIdx));
 
         // Un-project the entity's world position into the body's previous local coordinate space
-        Vector3d entityPos = new Vector3d(entity.getX(), entity.getY(), entity.getZ());
-        Vector3d localOffset = new Vector3d(entityPos).sub(prevPos).rotate(new Quaterniond(prevRot).invert());
+        Vector3d entityPos = TEMP_ENTITY_POS.get().set(entity.getX(), entity.getY(), entity.getZ());
+        Quaterniond prevRotInv = TEMP_QUAT_INV.get().set(prevRot).invert();
+        Vector3d localOffset = TEMP_LOCAL_OFFSET.get().set(entityPos).sub(prevPos).rotate(prevRotInv);
 
         // Re-project the offset onto the body's updated logical pose
         localOffset.rotate(currRot).add(currPos);
@@ -96,8 +111,12 @@ public final class VxClientEntityCollisionManager {
         VxClientBodyDataContainer c = manager.getStore().clientCurrent();
         if (slotIdx < 0 || slotIdx >= c.getCapacity()) return 0.0f;
 
-        Vec3 angVel = new Vec3(c.state1_angVelX.get(slotIdx), c.state1_angVelY.get(slotIdx), c.state1_angVelZ.get(slotIdx));
-        return VxEntityCollisionManager.calculateYawDelta(angVel, 0.05f);
+        return VxEntityCollisionManager.calculateYawDelta(
+                c.state1_angVelX.get(slotIdx),
+                c.state1_angVelY.get(slotIdx),
+                c.state1_angVelZ.get(slotIdx),
+                0.05f
+        );
     }
 
     /**
@@ -118,26 +137,28 @@ public final class VxClientEntityCollisionManager {
         if (slotIdx < 0 || slotIdx >= c.getCapacity()) return null;
 
         // Body Prev Pose (Logic Tick State 0)
-        Vector3d prevPos = new Vector3d(c.prev_posX.get(slotIdx), c.prev_posY.get(slotIdx), c.prev_posZ.get(slotIdx));
-        Quaterniond prevRot = new Quaterniond(c.prev_rotX.get(slotIdx), c.prev_rotY.get(slotIdx), c.prev_rotZ.get(slotIdx), c.prev_rotW.get(slotIdx));
+        Vector3d prevPos = TEMP_PREV_POS.get().set(c.prev_posX.get(slotIdx), c.prev_posY.get(slotIdx), c.prev_posZ.get(slotIdx));
+        Quaterniond prevRot = TEMP_PREV_ROT.get().set(c.prev_rotX.get(slotIdx), c.prev_rotY.get(slotIdx), c.prev_rotZ.get(slotIdx), c.prev_rotW.get(slotIdx));
 
         // Body Current Pose (Logic Tick State 1)
-        Vector3d currPos = new Vector3d(c.posX.get(slotIdx), c.posY.get(slotIdx), c.posZ.get(slotIdx));
-        Quaterniond currRot = new Quaterniond(c.rotX.get(slotIdx), c.rotY.get(slotIdx), c.rotZ.get(slotIdx), c.rotW.get(slotIdx));
+        Vector3d currPos = TEMP_CURR_POS.get().set(c.posX.get(slotIdx), c.posY.get(slotIdx), c.posZ.get(slotIdx));
+        Quaterniond currRot = TEMP_CURR_ROT.get().set(c.rotX.get(slotIdx), c.rotY.get(slotIdx), c.rotZ.get(slotIdx), c.rotW.get(slotIdx));
 
         // Body High-Resolution Interpolated Render Pose for the current frame
-        RVec3 tempPos = new RVec3();
-        Quat tempRot = new Quat();
+        RVec3 tempPos = TEMP_TEMP_POS.get();
+        Quat tempRot = TEMP_TEMP_ROT.get();
         manager.getInterpolator().interpolatePosition(manager.getStore(), slotIdx, partialTicks, tempPos);
         manager.getInterpolator().interpolateRotation(manager.getStore(), slotIdx, partialTicks, tempRot);
-        Vector3d renderPos = new Vector3d(tempPos.xx(), tempPos.yy(), tempPos.zz());
-        Quaterniond renderRot = new Quaterniond(tempRot.getX(), tempRot.getY(), tempRot.getZ(), tempRot.getW());
+        Vector3d renderPos = TEMP_RENDER_POS.get().set(tempPos.xx(), tempPos.yy(), tempPos.zz());
+        Quaterniond renderRot = TEMP_RENDER_ROT.get().set(tempRot.getX(), tempRot.getY(), tempRot.getZ(), tempRot.getW());
 
         // Transform the entity's previous tick world position (xo) into the body's previous local space (including height)
-        Vector3d startLocal = new Vector3d(entity.xo, entity.yo + eyeHeight, entity.zo).sub(prevPos).rotate(new Quaterniond(prevRot).invert());
+        Quaterniond prevRotInv = TEMP_QUAT_INV.get().set(prevRot).invert();
+        Vector3d startLocal = TEMP_START_LOCAL.get().set(entity.xo, entity.yo + eyeHeight, entity.zo).sub(prevPos).rotate(prevRotInv);
 
         // Transform the entity's current tick world position (x) into the body's current local space (including height)
-        Vector3d endLocal = new Vector3d(entity.getX(), entity.getY() + eyeHeight, entity.getZ()).sub(currPos).rotate(new Quaterniond(currRot).invert());
+        Quaterniond currRotInv = TEMP_QUAT_INV.get().set(currRot).invert();
+        Vector3d endLocal = TEMP_END_LOCAL.get().set(entity.getX(), entity.getY() + eyeHeight, entity.getZ()).sub(currPos).rotate(currRotInv);
 
         // Linearly interpolate the local walking movement of the player between ticks
         startLocal.lerp(endLocal, partialTicks);

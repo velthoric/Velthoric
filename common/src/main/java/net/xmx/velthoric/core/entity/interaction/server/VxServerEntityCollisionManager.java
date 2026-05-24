@@ -61,11 +61,14 @@ public final class VxServerEntityCollisionManager {
         VxServerBodyDataContainer c = world.getBodyManager().getDataStore().serverCurrent();
         if (slotIdx < 0 || slotIdx >= c.getCapacity()) return Vec3.ZERO;
 
-        Vec3 centerOfMass = new Vec3(c.posX.get(slotIdx), c.posY.get(slotIdx), c.posZ.get(slotIdx));
-        Vec3 linVel = new Vec3(c.velX.get(slotIdx), c.velY.get(slotIdx), c.velZ.get(slotIdx));
-        Vec3 angVel = new Vec3(c.angVelX.get(slotIdx), c.angVelY.get(slotIdx), c.angVelZ.get(slotIdx));
-
-        return VxEntityCollisionManager.calculateGroundDisplacement(entity.position(), centerOfMass, linVel, angVel, 0.05f);
+        Vec3 pos = entity.position();
+        return VxEntityCollisionManager.calculateGroundDisplacement(
+                pos.x, pos.y, pos.z,
+                c.posX.get(slotIdx), c.posY.get(slotIdx), c.posZ.get(slotIdx),
+                c.velX.get(slotIdx), c.velY.get(slotIdx), c.velZ.get(slotIdx),
+                c.angVelX.get(slotIdx), c.angVelY.get(slotIdx), c.angVelZ.get(slotIdx),
+                0.05f
+        );
     }
 
     /**
@@ -84,8 +87,12 @@ public final class VxServerEntityCollisionManager {
         VxServerBodyDataContainer c = world.getBodyManager().getDataStore().serverCurrent();
         if (slotIdx < 0 || slotIdx >= c.getCapacity()) return 0.0f;
 
-        Vec3 angVel = new Vec3(c.angVelX.get(slotIdx), c.angVelY.get(slotIdx), c.angVelZ.get(slotIdx));
-        return VxEntityCollisionManager.calculateYawDelta(angVel, 0.05f);
+        return VxEntityCollisionManager.calculateYawDelta(
+                c.angVelX.get(slotIdx),
+                c.angVelY.get(slotIdx),
+                c.angVelZ.get(slotIdx),
+                0.05f
+        );
     }
 
     /**

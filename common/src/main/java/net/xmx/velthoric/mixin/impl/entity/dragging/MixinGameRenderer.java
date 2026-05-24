@@ -31,6 +31,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(GameRenderer.class)
 public class MixinGameRenderer {
 
+    @Unique
+    private static final ThreadLocal<Quat> TEMP_JOLT_ROT = ThreadLocal.withInitial(Quat::new);
+    @Unique
+    private static final ThreadLocal<Quaternionf> TEMP_JOML_ROT = ThreadLocal.withInitial(Quaternionf::new);
+    @Unique
+    private static final ThreadLocal<Vector3f> TEMP_JOML_FWD = ThreadLocal.withInitial(Vector3f::new);
+
     /**
      * Remembers the specific collision-body index occupied by the player in the preceding frame.
      * Forces a reset of the accumulated yaw tracking whenever the active body changes.
@@ -87,12 +94,12 @@ public class MixinGameRenderer {
 
         // Retrieve the interpolated body orientation for the current rendering frame
         float partialTicks = deltaTracker.getGameTimeDeltaPartialTick(true);
-        Quat bodyRot = new Quat();
+        Quat bodyRot = TEMP_JOLT_ROT.get();
         manager.getInterpolator().interpolateRotation(manager.getStore(), groundIdx, partialTicks, bodyRot);
 
         // Rotate the forward vector by the body's full 3D quaternion, then extract the horizontal yaw.
-        Quaternionf rotation = new Quaternionf(bodyRot.getX(), bodyRot.getY(), bodyRot.getZ(), bodyRot.getW());
-        Vector3f forward = new Vector3f(0.0f, 0.0f, 1.0f);
+        Quaternionf rotation = TEMP_JOML_ROT.get().set(bodyRot.getX(), bodyRot.getY(), bodyRot.getZ(), bodyRot.getW());
+        Vector3f forward = TEMP_JOML_FWD.get().set(0.0f, 0.0f, 1.0f);
         forward.rotate(rotation);
         double currentYaw = Math.toDegrees(Math.atan2(forward.x, forward.z));
 
