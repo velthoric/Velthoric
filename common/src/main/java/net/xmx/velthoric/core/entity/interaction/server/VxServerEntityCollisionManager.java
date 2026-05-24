@@ -10,6 +10,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.xmx.velthoric.core.body.server.VxServerBodyDataContainer;
 import net.xmx.velthoric.core.entity.interaction.VxEntityCollisionBufferUtil;
+import net.xmx.velthoric.core.entity.interaction.VxEntityCollisionManager;
 import net.xmx.velthoric.core.physics.world.VxPhysicsWorld;
 import net.xmx.velthoric.jni.ServerEntityCollision;
 import it.unimi.dsi.fastutil.objects.Reference2IntMap;
@@ -27,6 +28,12 @@ import java.nio.ByteBuffer;
 public final class VxServerEntityCollisionManager {
 
     /**
+     * Map storing the 1-based slot index of the physics body each server entity was last standing on.
+     * Uses FastUtil's Reference2IntMap to avoid unboxing/boxing performance overhead.
+     */
+    public static final Reference2IntMap<Entity> SERVER_ENTITY_GROUND_BODY = createGroundBodyMap();
+
+    /**
      * Instantiates a thread-safe primitive Reference2IntMap with a default fallback value of 0.
      *
      * @return A synchronized FastUtil Map for thread-safe state tracking.
@@ -38,10 +45,48 @@ public final class VxServerEntityCollisionManager {
     }
 
     /**
-     * Map storing the 1-based slot index of the physics platform each server entity was last standing on.
-     * Uses FastUtil's Reference2IntMap to avoid unboxing/boxing performance overhead.
+     * Retrieves the body properties and calculates the exact server-side displacement
+     * representing the conveyor effect of the moving body on the entity.
+     *
+     * @param entity The entity.
+     * @param slotIdx The index of the physics body slot.
+     * @return The displacement vector for this logic tick.
      */
-    public static final Reference2IntMap<Entity> SERVER_ENTITY_GROUND_BODY = createGroundBodyMap();
+    public static Vec3 getBodyDisplacement(Entity entity, int slotIdx) {
+        if (!(entity.level() instanceof ServerLevel)) return Vec3.ZERO;
+
+        VxPhysicsWorld world = VxPhysicsWorld.get(entity.level().dimension());
+        if (world == null || world.getBodyManager() == null) return Vec3.ZERO;
+
+        VxServerBodyDataContainer c = world.getBodyManager().getDataStore().serverCurrent();
+        if (slotIdx < 0 || slotIdx >= c.getCapacity()) return Vec3.ZERO;
+
+        Vec3 centerOfMass = new Vec3(c.posX.get(slotIdx), c.posY.get(slotIdx), c.posZ.get(slotIdx));
+        Vec3 linVel = new Vec3(c.velX.get(slotIdx), c.velY.get(slotIdx), c.velZ.get(slotIdx));
+        Vec3 angVel = new Vec3(c.angVelX.get(slotIdx), c.angVelY.get(slotIdx), c.angVelZ.get(slotIdx));
+
+        return VxEntityCollisionManager.calculateGroundDisplacement(entity.position(), centerOfMass, linVel, angVel, 0.05f);
+    }
+
+    /**
+     * Retrieves the body properties and calculates the exact server-side yaw rotation delta.
+     *
+     * @param entity The entity.
+     * @param slotIdx The index of the physics body slot.
+     * @return The yaw delta in degrees for this logic tick.
+     */
+    public static float getBodyYawDelta(Entity entity, int slotIdx) {
+        if (!(entity.level() instanceof ServerLevel)) return 0.0f;
+
+        VxPhysicsWorld world = VxPhysicsWorld.get(entity.level().dimension());
+        if (world == null || world.getBodyManager() == null) return 0.0f;
+
+        VxServerBodyDataContainer c = world.getBodyManager().getDataStore().serverCurrent();
+        if (slotIdx < 0 || slotIdx >= c.getCapacity()) return 0.0f;
+
+        Vec3 angVel = new Vec3(c.angVelX.get(slotIdx), c.angVelY.get(slotIdx), c.angVelZ.get(slotIdx));
+        return VxEntityCollisionManager.calculateYawDelta(angVel, 0.05f);
+    }
 
     /**
      * Handles collision intersection and resolution strictly for Server entities.
@@ -89,13 +134,13 @@ public final class VxServerEntityCollisionManager {
         double finalDy = Math.abs(outResult[1] - movement.y) < epsilon ? movement.y : outResult[1];
         double finalDz = Math.abs(outResult[2] - movement.z) < epsilon ? movement.z : outResult[2];
 
-        // Store the ground body index 
         if (outResult[3] >= 0) {
             int bodyIdx = (int) outResult[3];
             SERVER_ENTITY_GROUND_BODY.put(entity, bodyIdx < capacity ? (bodyIdx + 1) : 0);
         } else {
             SERVER_ENTITY_GROUND_BODY.put(entity, 0);
         }
+
         if (outResult[4] < 1.0f) {
             Vec3 currentDelta = entity.getDeltaMovement();
             entity.setDeltaMovement(currentDelta.x * outResult[4], currentDelta.y * outResult[4], currentDelta.z * outResult[4]);
@@ -106,7 +151,7 @@ public final class VxServerEntityCollisionManager {
 
     /**
      * Enforces sneaky constraints for the Server.
-     * Extrapolates relative platform offsets and enforces bounding constraints.
+     * Extrapolates relative body offsets and enforces bounding constraints.
      *
      * @param entity The sneaking entity.
      * @param totalMovement The proposed move vector including falling.
@@ -125,7 +170,6 @@ public final class VxServerEntityCollisionManager {
         int capacity = c.getCapacity();
         ByteBuffer shapePtrsBuf = VxEntityCollisionBufferUtil.prepareShapePtrsBuffer(capacity, c.bodies);
 
-        Vec3 playerDelta = totalMovement;
         AABB entityBox = entity.getBoundingBox();
         float[] outResult = VxEntityCollisionBufferUtil.OUT_RESULT.get();
 
@@ -135,7 +179,7 @@ public final class VxServerEntityCollisionManager {
                 capacity,
                 (float) (entityBox.getXsize() / 2.0), (float) (entityBox.getYsize() / 2.0), (float) (entityBox.getZsize() / 2.0),
                 (float) entityBox.getCenter().x, (float) entityBox.getCenter().y, (float) entityBox.getCenter().z,
-                (float) playerDelta.x, (float) playerDelta.z, entity.maxUpStep(),
+                (float) totalMovement.x, (float) totalMovement.z, entity.maxUpStep(),
                 outResult
         );
 

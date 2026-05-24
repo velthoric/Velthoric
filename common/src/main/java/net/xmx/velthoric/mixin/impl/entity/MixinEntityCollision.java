@@ -94,26 +94,26 @@ public abstract class MixinEntityCollision {
         if (this.velthoric_lastSlideVector != null) {
             Vec3 slide = this.velthoric_lastSlideVector;
 
-            double platformVx = 0.0;
-            double platformVz = 0.0;
+            double bodyVx = 0.0;
+            double bodyVz = 0.0;
             int groundSlotIdx = VxEntityCollisionManager.getGroundSlotIdx(instance);
 
-            // Fetch exact frame movement of the supporting platform
+            // Fetch exact frame movement of the supporting body
             if (groundSlotIdx >= 0) {
-                Vec3 pVel = VxEntityCollisionManager.getPlatformVelocity(instance, groundSlotIdx);
-                platformVx = pVel.x;
-                platformVz = pVel.z;
+                Vec3 pVel = VxEntityCollisionManager.getBodyVelocity(instance, groundSlotIdx);
+                bodyVx = pVel.x;
+                bodyVz = pVel.z;
             }
 
-            // Adjust delta deceleration around platform movement to retain local velocity.
+            // Adjust delta deceleration around body movement to retain local velocity.
             if (x == 0.0D) {
-                double relativeSlideX = slide.x - platformVx;
+                double relativeSlideX = slide.x - bodyVx;
                 if (Math.abs(relativeSlideX) > 1.0E-5) {
                     x = relativeSlideX;
                 }
             }
             if (z == 0.0D) {
-                double relativeSlideZ = slide.z - platformVz;
+                double relativeSlideZ = slide.z - bodyVz;
                 if (Math.abs(relativeSlideZ) > 1.0E-5) {
                     z = relativeSlideZ;
                 }
@@ -145,8 +145,8 @@ public abstract class MixinEntityCollision {
     @Inject(method = "maybeBackOffFromEdge", at = @At("HEAD"), cancellable = true)
     private void velthoric_customBackOff(Vec3 movement, MoverType moverType, CallbackInfoReturnable<Vec3> cir) {
         Entity self = (Entity) (Object) this;
-        // Check if the entity is sneaking and standing on a physics platform
-        if (self.isShiftKeyDown() && movement.y <= 0.0D && VxEntityCollisionManager.isStandingOnPlatform(self)) {
+        // Check if the entity is sneaking and standing on a physics body
+        if (self.isShiftKeyDown() && movement.y <= 0.0D && VxEntityCollisionManager.isStandingOnBody(self)) {
             Vec3 adjusted = VxEntityCollisionManager.handleSneakBackOff(self, movement);
             cir.setReturnValue(adjusted);
         }

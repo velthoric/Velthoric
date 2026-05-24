@@ -35,8 +35,8 @@ public abstract class MixinPlayerCollision {
     private void velthoric_customBackOff(Vec3 movement, MoverType moverType, CallbackInfoReturnable<Vec3> cir) {
         Entity self = (Entity) (Object) this;
 
-        // Checks if the player is actively sneaking, moving downwards, and resting on a custom physics platform.
-        if (self.isShiftKeyDown() && movement.y <= 0.0D && VxEntityCollisionManager.isStandingOnPlatform(self)) {
+        // Checks if the player is actively sneaking, moving downwards, and resting on a custom physics body.
+        if (self.isShiftKeyDown() && movement.y <= 0.0D && VxEntityCollisionManager.isStandingOnBody(self)) {
             Vec3 adjusted = VxEntityCollisionManager.handleSneakBackOff(self, movement);
             cir.setReturnValue(adjusted);
         }

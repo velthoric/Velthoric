@@ -4,16 +4,21 @@
  */
 package net.xmx.velthoric.core.entity.interaction.client;
 
+import com.github.stephengold.joltjni.Quat;
+import com.github.stephengold.joltjni.RVec3;
+import it.unimi.dsi.fastutil.objects.Reference2IntMap;
+import it.unimi.dsi.fastutil.objects.Reference2IntMaps;
+import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.xmx.velthoric.core.body.client.VxClientBodyDataContainer;
 import net.xmx.velthoric.core.body.client.VxClientBodyManager;
 import net.xmx.velthoric.core.entity.interaction.VxEntityCollisionBufferUtil;
+import net.xmx.velthoric.core.entity.interaction.VxEntityCollisionManager;
 import net.xmx.velthoric.jni.ClientEntityCollision;
-import it.unimi.dsi.fastutil.objects.Reference2IntMap;
-import it.unimi.dsi.fastutil.objects.Reference2IntMaps;
-import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
+import org.joml.Quaterniond;
+import org.joml.Vector3d;
 
 import java.nio.ByteBuffer;
 
@@ -24,6 +29,12 @@ import java.nio.ByteBuffer;
  * @author xI-Mx-Ix
  */
 public final class VxClientEntityCollisionManager {
+
+    /**
+     * Map storing the 1-based slot index of the physics body each client entity was last standing on.
+     * Uses FastUtil's Reference2IntMap to avoid unboxing/boxing performance overhead.
+     */
+    public static final Reference2IntMap<Entity> CLIENT_ENTITY_GROUND_BODY = createGroundBodyMap();
 
     /**
      * Instantiates a thread-safe primitive Reference2IntMap with a default fallback value of 0.
@@ -37,10 +48,105 @@ public final class VxClientEntityCollisionManager {
     }
 
     /**
-     * Map storing the 1-based slot index of the physics platform each client entity was last standing on.
-     * Uses FastUtil's Reference2IntMap to avoid unboxing/boxing performance overhead.
+     * Retrieves the body properties and calculates the exact client-side displacement.
+     * Uses Pose Differentials (T-1 to T) to prevent velocity-to-interpolation sliding drift.
+     *
+     * @param entity The entity.
+     * @param slotIdx The index of the physics body slot.
+     * @return The displacement vector for this logic tick.
      */
-    public static final Reference2IntMap<Entity> CLIENT_ENTITY_GROUND_BODY = createGroundBodyMap();
+    public static Vec3 getBodyDisplacement(Entity entity, int slotIdx) {
+        VxClientBodyManager manager = VxClientBodyManager.getInstance();
+        if (manager.getStore() == null) return Vec3.ZERO;
+
+        VxClientBodyDataContainer c = manager.getStore().clientCurrent();
+        if (slotIdx < 0 || slotIdx >= c.getCapacity()) return Vec3.ZERO;
+
+        Vector3d prevPos = new Vector3d(c.prev_posX.get(slotIdx), c.prev_posY.get(slotIdx), c.prev_posZ.get(slotIdx));
+        Vector3d currPos = new Vector3d(c.posX.get(slotIdx), c.posY.get(slotIdx), c.posZ.get(slotIdx));
+        Quaterniond prevRot = new Quaterniond(c.prev_rotX.get(slotIdx), c.prev_rotY.get(slotIdx), c.prev_rotZ.get(slotIdx), c.prev_rotW.get(slotIdx));
+        Quaterniond currRot = new Quaterniond(c.rotX.get(slotIdx), c.rotY.get(slotIdx), c.rotZ.get(slotIdx), c.rotW.get(slotIdx));
+
+        // Un-project the entity's world position into the body's previous local coordinate space
+        Vector3d entityPos = new Vector3d(entity.getX(), entity.getY(), entity.getZ());
+        Vector3d localOffset = new Vector3d(entityPos).sub(prevPos).rotate(new Quaterniond(prevRot).invert());
+
+        // Re-project the offset onto the body's updated logical pose
+        localOffset.rotate(currRot).add(currPos);
+
+        // Extract the resulting displacement vector
+        double dx = localOffset.x - entityPos.x;
+        double dy = localOffset.y - entityPos.y;
+        double dz = localOffset.z - entityPos.z;
+
+        return new Vec3(dx, dy, dz);
+    }
+
+    /**
+     * Retrieves the body properties and calculates the exact client-side yaw rotation delta.
+     *
+     * @param entity The entity.
+     * @param slotIdx The index of the physics body slot.
+     * @return The yaw delta in degrees for this logic tick.
+     */
+    public static float getBodyYawDelta(Entity entity, int slotIdx) {
+        VxClientBodyManager manager = VxClientBodyManager.getInstance();
+        if (manager.getStore() == null) return 0.0f;
+
+        VxClientBodyDataContainer c = manager.getStore().clientCurrent();
+        if (slotIdx < 0 || slotIdx >= c.getCapacity()) return 0.0f;
+
+        Vec3 angVel = new Vec3(c.state1_angVelX.get(slotIdx), c.state1_angVelY.get(slotIdx), c.state1_angVelZ.get(slotIdx));
+        return VxEntityCollisionManager.calculateYawDelta(angVel, 0.05f);
+    }
+
+    /**
+     * Calculates the 100% accurate visual interpolated render position using local-space arc-interpolation.
+     * Incorporates eye height during local transformations to rotate the height offset correctly along pitch/roll.
+     *
+     * @param entity The entity to calculate for.
+     * @param slotIdx The index of the body slot.
+     * @param partialTicks The current frame's delta tracker alpha value.
+     * @param eyeHeight The camera/rendering offset height to translate.
+     * @return A Vec3 containing the mathematically perfect render coordinates, or null if invalid.
+     */
+    public static Vec3 getExactInterpolatedRenderPos(Entity entity, int slotIdx, float partialTicks, double eyeHeight) {
+        VxClientBodyManager manager = VxClientBodyManager.getInstance();
+        if (manager.getStore() == null) return null;
+
+        VxClientBodyDataContainer c = manager.getStore().clientCurrent();
+        if (slotIdx < 0 || slotIdx >= c.getCapacity()) return null;
+
+        // Body Prev Pose (Logic Tick State 0)
+        Vector3d prevPos = new Vector3d(c.prev_posX.get(slotIdx), c.prev_posY.get(slotIdx), c.prev_posZ.get(slotIdx));
+        Quaterniond prevRot = new Quaterniond(c.prev_rotX.get(slotIdx), c.prev_rotY.get(slotIdx), c.prev_rotZ.get(slotIdx), c.prev_rotW.get(slotIdx));
+
+        // Body Current Pose (Logic Tick State 1)
+        Vector3d currPos = new Vector3d(c.posX.get(slotIdx), c.posY.get(slotIdx), c.posZ.get(slotIdx));
+        Quaterniond currRot = new Quaterniond(c.rotX.get(slotIdx), c.rotY.get(slotIdx), c.rotZ.get(slotIdx), c.rotW.get(slotIdx));
+
+        // Body High-Resolution Interpolated Render Pose for the current frame
+        RVec3 tempPos = new RVec3();
+        Quat tempRot = new Quat();
+        manager.getInterpolator().interpolatePosition(manager.getStore(), slotIdx, partialTicks, tempPos);
+        manager.getInterpolator().interpolateRotation(manager.getStore(), slotIdx, partialTicks, tempRot);
+        Vector3d renderPos = new Vector3d(tempPos.xx(), tempPos.yy(), tempPos.zz());
+        Quaterniond renderRot = new Quaterniond(tempRot.getX(), tempRot.getY(), tempRot.getZ(), tempRot.getW());
+
+        // Transform the entity's previous tick world position (xo) into the body's previous local space (including height)
+        Vector3d startLocal = new Vector3d(entity.xo, entity.yo + eyeHeight, entity.zo).sub(prevPos).rotate(new Quaterniond(prevRot).invert());
+
+        // Transform the entity's current tick world position (x) into the body's current local space (including height)
+        Vector3d endLocal = new Vector3d(entity.getX(), entity.getY() + eyeHeight, entity.getZ()).sub(currPos).rotate(new Quaterniond(currRot).invert());
+
+        // Linearly interpolate the local walking movement of the player between ticks
+        startLocal.lerp(endLocal, partialTicks);
+
+        // Transform the interpolated local position back into world-space using the perfectly smooth body render rotation
+        startLocal.rotate(renderRot).add(renderPos);
+
+        return new Vec3(startLocal.x, startLocal.y, startLocal.z);
+    }
 
     /**
      * Handles collision intersection and resolution strictly for Client entities.
@@ -58,7 +164,6 @@ public final class VxClientEntityCollisionManager {
         int capacity = c.getCapacity();
         ByteBuffer shapePtrsBuf = VxEntityCollisionBufferUtil.prepareShapePtrsBuffer(capacity, c.bodies);
 
-        // We only use the first shape pointer to check if the world is completely empty
         if (capacity == 0) return movement;
 
         AABB entityBox = entity.getBoundingBox();
@@ -82,7 +187,6 @@ public final class VxClientEntityCollisionManager {
         double finalDy = Math.abs(outResult[1] - movement.y) < epsilon ? movement.y : outResult[1];
         double finalDz = Math.abs(outResult[2] - movement.z) < epsilon ? movement.z : outResult[2];
 
-        // Store the ground body index 
         if (outResult[3] >= 0) {
             int bodyIdx = (int) outResult[3];
             int trackedIdx = bodyIdx < capacity ? (bodyIdx + 1) : 0;
@@ -90,6 +194,7 @@ public final class VxClientEntityCollisionManager {
         } else {
             CLIENT_ENTITY_GROUND_BODY.put(entity, 0);
         }
+
         if (outResult[4] < 1.0f) {
             Vec3 currentDelta = entity.getDeltaMovement();
             entity.setDeltaMovement(currentDelta.x * outResult[4], currentDelta.y * outResult[4], currentDelta.z * outResult[4]);
@@ -100,7 +205,7 @@ public final class VxClientEntityCollisionManager {
 
     /**
      * Enforces sneaky constraints for the Client.
-     * Extrapolates relative platform offsets and enforces bounding constraints.
+     * Extrapolates relative body offsets and enforces bounding constraints.
      *
      * @param entity The sneaking entity.
      * @param totalMovement The proposed move vector including falling.
@@ -115,7 +220,6 @@ public final class VxClientEntityCollisionManager {
         ByteBuffer shapePtrsBuf = VxEntityCollisionBufferUtil.prepareShapePtrsBuffer(capacity, c.bodies);
         if (capacity == 0) return totalMovement;
 
-        Vec3 playerDelta = totalMovement;
         AABB entityBox = entity.getBoundingBox();
         float[] outResult = VxEntityCollisionBufferUtil.OUT_RESULT.get();
 
@@ -125,7 +229,7 @@ public final class VxClientEntityCollisionManager {
                 capacity,
                 (float) (entityBox.getXsize() / 2.0), (float) (entityBox.getYsize() / 2.0), (float) (entityBox.getZsize() / 2.0),
                 (float) entityBox.getCenter().x, (float) entityBox.getCenter().y, (float) entityBox.getCenter().z,
-                (float) playerDelta.x, (float) playerDelta.z, entity.maxUpStep(),
+                (float) totalMovement.x, (float) totalMovement.z, entity.maxUpStep(),
                 outResult
         );
 

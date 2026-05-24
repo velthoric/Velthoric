@@ -10,28 +10,109 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.xmx.velthoric.core.entity.interaction.client.VxClientEntityCollisionManager;
 import net.xmx.velthoric.core.entity.interaction.server.VxServerEntityCollisionManager;
-import net.xmx.velthoric.core.physics.world.VxPhysicsWorld;
-import net.xmx.velthoric.core.body.server.VxServerBodyDataContainer;
-import net.xmx.velthoric.core.body.client.VxClientBodyManager;
-import net.xmx.velthoric.core.body.client.VxClientBodyDataContainer;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
 /**
  * Universal dispatcher for entity-to-body collisions.
  * Acts as a frontend router for Minecraft Mixins, redirecting physics requests
  * to the appropriate Client or Server collision managers.
  *
+ * Also contains the core mathematical functions to replicate Jolt's CharacterVirtual
+ * momentum and rotation transfer logic.
+ *
  * @author xI-Mx-Ix
  */
 public final class VxEntityCollisionManager {
 
     /**
-     * Checks if the entity is currently standing on a Velthoric physics platform.
+     * Replicates Jolt's CharacterVirtual::CalculateCharacterGroundVelocity exactly.
+     * Computes the linear displacement while accounting for the angular velocity
+     * acting tangentially on the entity relative to the body's center of mass.
+     *
+     * @param entityPos       The current world position of the entity.
+     * @param centerOfMass    The center of mass of the physics body.
+     * @param linearVelocity  The linear velocity vector of the physics body.
+     * @param angularVelocity The angular velocity vector of the physics body.
+     * @param dt              The delta time (typically 0.05 for Minecraft's fixed tick).
+     * @return A Vec3 representing the total displacement vector for the entity.
+     */
+    public static Vec3 calculateGroundDisplacement(Vec3 entityPos, Vec3 centerOfMass, Vec3 linearVelocity, Vec3 angularVelocity, float dt) {
+        double angVelSq = angularVelocity.lengthSqr();
+
+        // If the body has negligible rotation, return simple linear displacement
+        if (angVelSq < 1.0E-12) {
+            return linearVelocity.scale(dt);
+        }
+
+        double angVelLen = Math.sqrt(angVelSq);
+        Vector3f axis = new Vector3f(
+                (float) (angularVelocity.x / angVelLen),
+                (float) (angularVelocity.y / angVelLen),
+                (float) (angularVelocity.z / angVelLen)
+        );
+        Quaternionf rotation = new Quaternionf().fromAxisAngleRad(axis, (float) (angVelLen * dt));
+
+        // Calculate entity position relative to the body's center of mass
+        Vector3f relativePos = new Vector3f(
+                (float) (entityPos.x - centerOfMass.x),
+                (float) (entityPos.y - centerOfMass.y),
+                (float) (entityPos.z - centerOfMass.z)
+        );
+
+        // Apply the body's rotation delta to the relative position
+        relativePos.rotate(rotation);
+
+        // Convert back to world space
+        double newPosX = centerOfMass.x + relativePos.x;
+        double newPosY = centerOfMass.y + relativePos.y;
+        double newPosZ = centerOfMass.z + relativePos.z;
+
+        // Calculate the difference and add the linear displacement component
+        double dx = (newPosX - entityPos.x) + (linearVelocity.x * dt);
+        double dy = (newPosY - entityPos.y) + (linearVelocity.y * dt);
+        double dz = (newPosZ - entityPos.z) + (linearVelocity.z * dt);
+
+        return new Vec3(dx, dy, dz);
+    }
+
+    /**
+     * Extracts the yaw rotation delta created by the body's angular velocity 
+     * to rotate the entity identically to the body's Y-axis twist.
+     *
+     * @param angularVelocity The angular velocity vector of the physics body.
+     * @param dt              The delta time (typically 0.05 for Minecraft's fixed tick).
+     * @return The yaw delta in degrees.
+     */
+    public static float calculateYawDelta(Vec3 angularVelocity, float dt) {
+        double angVelSq = angularVelocity.lengthSqr();
+        if (angVelSq < 1.0E-12) {
+            return 0.0f;
+        }
+
+        double angVelLen = Math.sqrt(angVelSq);
+        Vector3f axis = new Vector3f(
+                (float) (angularVelocity.x / angVelLen),
+                (float) (angularVelocity.y / angVelLen),
+                (float) (angularVelocity.z / angVelLen)
+        );
+        Quaternionf rotation = new Quaternionf().fromAxisAngleRad(axis, (float) (angVelLen * dt));
+
+        // Rotate the forward vector to extract purely the Y-axis yaw component
+        Vector3f forward = new Vector3f(0.0f, 0.0f, 1.0f);
+        forward.rotate(rotation);
+
+        return (float) Math.toDegrees(Math.atan2(-forward.x, forward.z));
+    }
+
+    /**
+     * Checks if the entity is currently standing on a Velthoric physics body.
      * Delegates to the respective client or server ground map.
      *
      * @param entity The entity to check.
-     * @return True if standing on a platform, false otherwise.
+     * @return True if standing on a body, false otherwise.
      */
-    public static boolean isStandingOnPlatform(Entity entity) {
+    public static boolean isStandingOnBody(Entity entity) {
         if (entity.level() instanceof ServerLevel) {
             Integer groundIdx = VxServerEntityCollisionManager.SERVER_ENTITY_GROUND_BODY.get(entity);
             return groundIdx != null && groundIdx != 0;
@@ -42,7 +123,7 @@ public final class VxEntityCollisionManager {
     }
 
     /**
-     * Retrieves the 0-based index of the platform the entity is standing on, or -1 if none.
+     * Retrieves the 0-based index of the body the entity is standing on, or -1 if none.
      *
      * @param entity The entity.
      * @return 0-based slot index or -1.
@@ -56,32 +137,46 @@ public final class VxEntityCollisionManager {
     }
 
     /**
-     * Retrieves the platform's tick velocity displacement vector (vel * dt).
-     * Used to prevent acceleration loops during movement redirection.
+     * Backwards compatibility for horizontal minor-collision mixins.
+     * Delegates to the new exact displacement method.
      *
-     * @param entity The entity querying platform velocity.
-     * @param slotIdx The index of the platform body.
-     * @return The platform's tick velocity vector.
+     * @param entity The entity querying body velocity.
+     * @param slotIdx The index of the body.
+     * @return The body's tick velocity vector.
      */
-    public static Vec3 getPlatformVelocity(Entity entity, int slotIdx) {
+    public static Vec3 getBodyVelocity(Entity entity, int slotIdx) {
+        return getBodyDisplacement(entity, slotIdx);
+    }
+
+    /**
+     * Calculates the exact local displacement an entity undergoes by standing on the body.
+     * Uses the physical velocity state of the specific environment.
+     *
+     * @param entity The entity.
+     * @param slotIdx The physics slot index of the body.
+     * @return The displacement vector.
+     */
+    public static Vec3 getBodyDisplacement(Entity entity, int slotIdx) {
         if (entity.level() instanceof ServerLevel) {
-            VxPhysicsWorld world = VxPhysicsWorld.get(entity.level().dimension());
-            if (world != null && world.getBodyManager() != null) {
-                VxServerBodyDataContainer c = world.getBodyManager().getDataStore().serverCurrent();
-                if (slotIdx >= 0 && slotIdx < c.getCapacity()) {
-                    return new Vec3(c.velX.get(slotIdx) * 0.05, c.velY.get(slotIdx) * 0.05, c.velZ.get(slotIdx) * 0.05);
-                }
-            }
+            return VxServerEntityCollisionManager.getBodyDisplacement(entity, slotIdx);
         } else {
-            VxClientBodyManager manager = VxClientBodyManager.getInstance();
-            if (manager.getStore() != null) {
-                VxClientBodyDataContainer c = manager.getStore().clientCurrent();
-                if (slotIdx >= 0 && slotIdx < c.getCapacity()) {
-                    return new Vec3(c.state1_velX.get(slotIdx) * 0.05, c.state1_velY.get(slotIdx) * 0.05, c.state1_velZ.get(slotIdx) * 0.05);
-                }
-            }
+            return VxClientEntityCollisionManager.getBodyDisplacement(entity, slotIdx);
         }
-        return Vec3.ZERO;
+    }
+
+    /**
+     * Calculates the local yaw rotation transfer from standing on the body.
+     *
+     * @param entity The entity.
+     * @param slotIdx The physics slot index of the body.
+     * @return The yaw delta in degrees.
+     */
+    public static float getBodyYawDelta(Entity entity, int slotIdx) {
+        if (entity.level() instanceof ServerLevel) {
+            return VxServerEntityCollisionManager.getBodyYawDelta(entity, slotIdx);
+        } else {
+            return VxClientEntityCollisionManager.getBodyYawDelta(entity, slotIdx);
+        }
     }
 
     /**
