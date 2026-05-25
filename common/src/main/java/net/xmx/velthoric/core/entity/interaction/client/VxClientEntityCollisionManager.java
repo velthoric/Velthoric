@@ -10,6 +10,7 @@ import it.unimi.dsi.fastutil.objects.Reference2IntMap;
 import it.unimi.dsi.fastutil.objects.Reference2IntMaps;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.xmx.velthoric.core.body.client.VxClientBodyDataContainer;
@@ -258,24 +259,25 @@ public final class VxClientEntityCollisionManager {
     }
 
     /**
-     * Statically checks if the given bounding box intersects with any populated shapes.
+     * Statically checks if the given bounding box intersects with any client-side physical shapes.
+     * Bypasses Entity context completely to optimize for direct world spatial checks.
      *
-     * @param entity The entity querying intersection.
-     * @param entityBox Bounding volume.
-     * @return True if colliding.
+     * @param level     The active client world level.
+     * @param entityBox Bounding volume representing the spatial constraints.
+     * @return True if static intersections are detected, false otherwise.
      */
-    public static boolean isColliding(Entity entity, AABB entityBox) {
-        if (entity == null) {
+    public static boolean isColliding(Level level, AABB entityBox) {
+        VxClientBodyManager manager = VxClientBodyManager.getInstance();
+        if (manager.getStore() == null) {
             return false;
         }
-
-        VxClientBodyManager manager = VxClientBodyManager.getInstance();
-        if (manager.getStore() == null) return false;
         VxClientBodyDataContainer c = manager.getStore().clientCurrent();
 
         int capacity = c.getCapacity();
         ByteBuffer shapePtrsBuf = VxEntityCollisionBufferUtil.prepareShapePtrsBuffer(capacity, c.bodies);
-        if (capacity == 0) return false;
+        if (capacity == 0) {
+            return false;
+        }
 
         return ClientEntityCollision.nIsColliding(
                 shapePtrsBuf, c.state1_isActive,
@@ -286,24 +288,25 @@ public final class VxClientEntityCollisionManager {
     }
 
     /**
-     * Statically retrieves the exact ID of the body the bounding box intersects with.
+     * Statically retrieves the exact ID of the body the bounding box intersects with on the client.
+     * Bypasses Entity context completely to optimize for direct world spatial checks.
      *
-     * @param entity The entity querying intersection.
-     * @param entityBox Bounding volume representing the spatial constraints of the entity.
-     * @return The 0-based index of the colliding body, or -1 if no intersection occurs.
+     * @param level     The active client world level.
+     * @param entityBox Bounding volume representing the spatial constraints.
+     * @return The 0-based index of the colliding body, or -1 if no intersection is detected.
      */
-    public static int getCollidingBodyId(Entity entity, AABB entityBox) {
-        if (entity == null) {
+    public static int getCollidingBodyId(Level level, AABB entityBox) {
+        VxClientBodyManager manager = VxClientBodyManager.getInstance();
+        if (manager.getStore() == null) {
             return -1;
         }
-
-        VxClientBodyManager manager = VxClientBodyManager.getInstance();
-        if (manager.getStore() == null) return -1;
         VxClientBodyDataContainer c = manager.getStore().clientCurrent();
 
         int capacity = c.getCapacity();
         ByteBuffer shapePtrsBuf = VxEntityCollisionBufferUtil.prepareShapePtrsBuffer(capacity, c.bodies);
-        if (capacity == 0) return -1;
+        if (capacity == 0) {
+            return -1;
+        }
 
         return ClientEntityCollision.nGetCollidingBodyId(
                 shapePtrsBuf, c.state1_isActive,

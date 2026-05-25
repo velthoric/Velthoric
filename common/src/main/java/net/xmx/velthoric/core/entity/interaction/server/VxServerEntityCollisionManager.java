@@ -6,6 +6,7 @@ package net.xmx.velthoric.core.entity.interaction.server;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.xmx.velthoric.core.body.server.VxServerBodyDataContainer;
@@ -194,21 +195,28 @@ public final class VxServerEntityCollisionManager {
     }
 
     /**
-     * Statically checks if the given bounding box intersects with any populated shapes.
+     * Statically checks if the given bounding box intersects with any server-side physics bodies.
+     * Bypasses Entity context completely to optimize for direct world spatial checks.
      *
-     * @param entity The entity querying intersection.
-     * @param entityBox Bounding volume.
-     * @return True if colliding.
+     * @param level     The active server world level.
+     * @param entityBox Bounding volume representing the spatial constraints.
+     * @return True if static intersections are detected, false otherwise.
      */
-    public static boolean isColliding(Entity entity, AABB entityBox) {
-        if (!(entity.level() instanceof ServerLevel)) return false;
+    public static boolean isColliding(Level level, AABB entityBox) {
+        if (!(level instanceof ServerLevel)) {
+            return false;
+        }
 
-        VxPhysicsWorld world = VxPhysicsWorld.get(entity.level().dimension());
-        if (world == null || world.getBodyManager() == null) return false;
+        VxPhysicsWorld world = VxPhysicsWorld.get(level.dimension());
+        if (world == null || world.getBodyManager() == null) {
+            return false;
+        }
 
         VxServerBodyDataContainer c = world.getBodyManager().getDataStore().serverCurrent();
         long physicsSystemVa = world.getPhysicsSystem().targetVa();
-        if (physicsSystemVa == 0L) return false;
+        if (physicsSystemVa == 0L) {
+            return false;
+        }
 
         int capacity = c.getCapacity();
         ByteBuffer shapePtrsBuf = VxEntityCollisionBufferUtil.prepareShapePtrsBuffer(capacity, c.bodies);
@@ -222,21 +230,28 @@ public final class VxServerEntityCollisionManager {
     }
 
     /**
-     * Statically retrieves the exact ID of the body the bounding box intersects with.
+     * Statically retrieves the exact ID of the body the bounding box intersects with on the server.
+     * Bypasses Entity context completely to optimize for direct world spatial checks.
      *
-     * @param entity The entity querying intersection.
-     * @param entityBox Bounding volume representing the spatial constraints of the entity.
-     * @return The 0-based index of the colliding body, or -1 if no intersection occurs.
+     * @param level     The active server world level.
+     * @param entityBox Bounding volume representing the spatial constraints.
+     * @return The 0-based index of the colliding body, or -1 if no intersection is detected.
      */
-    public static int getCollidingBodyId(Entity entity, AABB entityBox) {
-        if (!(entity.level() instanceof ServerLevel)) return -1;
+    public static int getCollidingBodyId(Level level, AABB entityBox) {
+        if (!(level instanceof ServerLevel)) {
+            return -1;
+        }
 
-        VxPhysicsWorld world = VxPhysicsWorld.get(entity.level().dimension());
-        if (world == null || world.getBodyManager() == null) return -1;
+        VxPhysicsWorld world = VxPhysicsWorld.get(level.dimension());
+        if (world == null || world.getBodyManager() == null) {
+            return -1;
+        }
 
         VxServerBodyDataContainer c = world.getBodyManager().getDataStore().serverCurrent();
         long physicsSystemVa = world.getPhysicsSystem().targetVa();
-        if (physicsSystemVa == 0L) return -1;
+        if (physicsSystemVa == 0L) {
+            return -1;
+        }
 
         int capacity = c.getCapacity();
         ByteBuffer shapePtrsBuf = VxEntityCollisionBufferUtil.prepareShapePtrsBuffer(capacity, c.bodies);

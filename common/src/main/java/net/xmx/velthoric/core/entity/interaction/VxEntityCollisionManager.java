@@ -6,6 +6,7 @@ package net.xmx.velthoric.core.entity.interaction;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.xmx.velthoric.core.entity.interaction.client.VxClientEntityCollisionManager;
@@ -236,15 +237,15 @@ public final class VxEntityCollisionManager {
      * Statically checks if the given bounding box intersects with any populated shapes.
      * Delegates to the appropriate client or server collision manager.
      *
-     * @param entity The entity.
-     * @param entityBox Bounding volume.
+     * @param level     The active world level.
+     * @param entityBox Bounding volume representing the spatial constraints.
      * @return True if colliding, false otherwise.
      */
-    public static boolean isColliding(Entity entity, AABB entityBox) {
-        if (entity.level() instanceof ServerLevel) {
-            return VxServerEntityCollisionManager.isColliding(entity, entityBox);
+    public static boolean isColliding(Level level, AABB entityBox) {
+        if (level instanceof ServerLevel) {
+            return VxServerEntityCollisionManager.isColliding(level, entityBox);
         } else {
-            return VxClientEntityCollisionManager.isColliding(entity, entityBox);
+            return VxClientEntityCollisionManager.isColliding(level, entityBox);
         }
     }
 
@@ -252,15 +253,15 @@ public final class VxEntityCollisionManager {
      * Statically retrieves the exact ID of the body the bounding box intersects with.
      * Delegates to the appropriate client or server collision manager.
      *
-     * @param entity The entity querying intersection.
-     * @param entityBox Bounding volume representing the spatial constraints of the entity.
+     * @param level     The active world level.
+     * @param entityBox Bounding volume representing the spatial constraints.
      * @return The 0-based index of the colliding body, or -1 if no intersection occurs.
      */
-    public static int getCollidingBodyId(Entity entity, AABB entityBox) {
-        if (entity.level() instanceof ServerLevel) {
-            return VxServerEntityCollisionManager.getCollidingBodyId(entity, entityBox);
+    public static int getCollidingBodyId(Level level, AABB entityBox) {
+        if (level instanceof ServerLevel) {
+            return VxServerEntityCollisionManager.getCollidingBodyId(level, entityBox);
         } else {
-            return VxClientEntityCollisionManager.getCollidingBodyId(entity, entityBox);
+            return VxClientEntityCollisionManager.getCollidingBodyId(level, entityBox);
         }
     }
 }
