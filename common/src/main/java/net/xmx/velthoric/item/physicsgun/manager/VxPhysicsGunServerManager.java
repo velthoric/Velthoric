@@ -13,6 +13,7 @@ import net.minecraft.world.entity.player.Player;
 import net.xmx.velthoric.core.body.VxBody;
 import net.xmx.velthoric.core.intersection.raycast.VxHitResult;
 import net.xmx.velthoric.core.intersection.raycast.VxRaycaster;
+import net.xmx.velthoric.core.physics.VxPhysicsLayers;
 import net.xmx.velthoric.core.physics.world.VxPhysicsWorld;
 import net.xmx.velthoric.item.physicsgun.VxGrabbedBodyInfo;
 import net.xmx.velthoric.item.physicsgun.packet.VxPhysicsGunSyncPacket;
@@ -235,6 +236,27 @@ public class VxPhysicsGunServerManager {
                 var bodyLockInterface = physicsWorld.getPhysicsSystem().getBodyLockInterface();
 
                 if (bodyInterface == null || bodyLockInterface == null) return;
+
+                EMotionType currentMotionType = bodyInterface.getMotionType(hit.bodyId());
+
+                // Ignore Kinematic objects
+                if (currentMotionType == EMotionType.Kinematic) {
+                    playersTryingToGrab.remove(player.getUUID());
+                    syncStateWithClients();
+                    return;
+                }
+
+                // Filter Static objects
+                if (currentMotionType == EMotionType.Static) {
+                    int objectLayer = bodyInterface.getObjectLayer(hit.bodyId());
+
+                    // If the static object belongs to the non-moving layer, it cannot be grabbed
+                    if (objectLayer == VxPhysicsLayers.NON_MOVING) {
+                        playersTryingToGrab.remove(player.getUUID());
+                        syncStateWithClients();
+                        return;
+                    }
+                }
 
                 // Ensure the body is dynamic and active
                 bodyInterface.setMotionType(hit.bodyId(), EMotionType.Dynamic, EActivation.Activate);
