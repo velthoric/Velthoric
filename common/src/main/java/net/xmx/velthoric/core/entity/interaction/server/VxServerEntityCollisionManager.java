@@ -10,13 +10,11 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.xmx.velthoric.core.body.server.VxServerBodyDataContainer;
+import net.xmx.velthoric.core.entity.interaction.VxEntityAttachment;
 import net.xmx.velthoric.core.entity.interaction.VxEntityCollisionBufferUtil;
 import net.xmx.velthoric.core.entity.interaction.VxEntityCollisionManager;
 import net.xmx.velthoric.core.physics.world.VxPhysicsWorld;
 import net.xmx.velthoric.jni.ServerEntityCollision;
-import it.unimi.dsi.fastutil.objects.Reference2IntMap;
-import it.unimi.dsi.fastutil.objects.Reference2IntMaps;
-import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
 
 import java.nio.ByteBuffer;
 
@@ -27,23 +25,6 @@ import java.nio.ByteBuffer;
  * @author xI-Mx-Ix
  */
 public final class VxServerEntityCollisionManager {
-
-    /**
-     * Map storing the 1-based slot index of the physics body each server entity was last standing on.
-     * Uses FastUtil's Reference2IntMap to avoid unboxing/boxing performance overhead.
-     */
-    public static final Reference2IntMap<Entity> SERVER_ENTITY_GROUND_BODY = createGroundBodyMap();
-
-    /**
-     * Instantiates a thread-safe primitive Reference2IntMap with a default fallback value of 0.
-     *
-     * @return A synchronized FastUtil Map for thread-safe state tracking.
-     */
-    private static Reference2IntMap<Entity> createGroundBodyMap() {
-        Reference2IntOpenHashMap<Entity> map = new Reference2IntOpenHashMap<>();
-        map.defaultReturnValue(0);
-        return Reference2IntMaps.synchronize(map);
-    }
 
     /**
      * Retrieves the body properties and calculates the exact server-side displacement
@@ -134,7 +115,7 @@ public final class VxServerEntityCollisionManager {
                 (float) entityBox.getCenter().x, (float) entityBox.getCenter().y, (float) entityBox.getCenter().z,
                 (float) movement.x, (float) movement.y, (float) movement.z, entity.maxUpStep(),
                 80.0f, (float) velocity.x, (float) velocity.y, (float) velocity.z,
-                outResult, SERVER_ENTITY_GROUND_BODY.getInt(entity), 0.05f
+                outResult, ((VxEntityAttachment) entity).velthoric$getServerGroundBody(), 0.05f
         );
 
         double epsilon = 1.0E-5;
@@ -144,9 +125,9 @@ public final class VxServerEntityCollisionManager {
 
         if (outResult[3] >= 0) {
             int bodyIdx = (int) outResult[3];
-            SERVER_ENTITY_GROUND_BODY.put(entity, bodyIdx < capacity ? (bodyIdx + 1) : 0);
+            ((VxEntityAttachment) entity).velthoric$setServerGroundBody(bodyIdx < capacity ? (bodyIdx + 1) : 0);
         } else {
-            SERVER_ENTITY_GROUND_BODY.put(entity, 0);
+            ((VxEntityAttachment) entity).velthoric$setServerGroundBody(0);
         }
 
         if (outResult[4] < 1.0f) {

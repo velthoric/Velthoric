@@ -6,15 +6,13 @@ package net.xmx.velthoric.core.entity.interaction.client;
 
 import com.github.stephengold.joltjni.Quat;
 import com.github.stephengold.joltjni.RVec3;
-import it.unimi.dsi.fastutil.objects.Reference2IntMap;
-import it.unimi.dsi.fastutil.objects.Reference2IntMaps;
-import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.xmx.velthoric.core.body.client.VxClientBodyDataContainer;
 import net.xmx.velthoric.core.body.client.VxClientBodyManager;
+import net.xmx.velthoric.core.entity.interaction.VxEntityAttachment;
 import net.xmx.velthoric.core.entity.interaction.VxEntityCollisionBufferUtil;
 import net.xmx.velthoric.core.entity.interaction.VxEntityCollisionManager;
 import net.xmx.velthoric.jni.ClientEntityCollision;
@@ -44,23 +42,6 @@ public final class VxClientEntityCollisionManager {
     private static final ThreadLocal<Quaterniond> TEMP_QUAT_INV = ThreadLocal.withInitial(Quaterniond::new);
     private static final ThreadLocal<Vector3d> TEMP_ENTITY_POS = ThreadLocal.withInitial(Vector3d::new);
     private static final ThreadLocal<Vector3d> TEMP_LOCAL_OFFSET = ThreadLocal.withInitial(Vector3d::new);
-
-    /**
-     * Map storing the 1-based slot index of the physics body each client entity was last standing on.
-     * Uses FastUtil's Reference2IntMap to avoid unboxing/boxing performance overhead.
-     */
-    public static final Reference2IntMap<Entity> CLIENT_ENTITY_GROUND_BODY = createGroundBodyMap();
-
-    /**
-     * Instantiates a thread-safe primitive Reference2IntMap with a default fallback value of 0.
-     *
-     * @return A synchronized FastUtil Map for thread-safe state tracking.
-     */
-    private static Reference2IntMap<Entity> createGroundBodyMap() {
-        Reference2IntOpenHashMap<Entity> map = new Reference2IntOpenHashMap<>();
-        map.defaultReturnValue(0);
-        return Reference2IntMaps.synchronize(map);
-    }
 
     /**
      * Retrieves the body properties and calculates the exact client-side displacement.
@@ -201,7 +182,7 @@ public final class VxClientEntityCollisionManager {
                 (float) (entityBox.getXsize() / 2.0), (float) (entityBox.getYsize() / 2.0), (float) (entityBox.getZsize() / 2.0),
                 (float) entityBox.getCenter().x, (float) entityBox.getCenter().y, (float) entityBox.getCenter().z,
                 (float) movement.x, (float) movement.y, (float) movement.z, entity.maxUpStep(),
-                outResult, CLIENT_ENTITY_GROUND_BODY.getInt(entity), 0.05f
+                outResult, ((VxEntityAttachment) entity).velthoric$getClientGroundBody(), 0.05f
         );
 
         double epsilon = 1.0E-5;
@@ -212,9 +193,9 @@ public final class VxClientEntityCollisionManager {
         if (outResult[3] >= 0) {
             int bodyIdx = (int) outResult[3];
             int trackedIdx = bodyIdx < capacity ? (bodyIdx + 1) : 0;
-            CLIENT_ENTITY_GROUND_BODY.put(entity, trackedIdx);
+            ((VxEntityAttachment) entity).velthoric$setClientGroundBody(trackedIdx);
         } else {
-            CLIENT_ENTITY_GROUND_BODY.put(entity, 0);
+            ((VxEntityAttachment) entity).velthoric$setClientGroundBody(0);
         }
 
         if (outResult[4] < 1.0f) {

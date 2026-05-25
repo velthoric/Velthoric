@@ -137,11 +137,11 @@ public final class VxEntityCollisionManager {
      */
     public static boolean isStandingOnBody(Entity entity) {
         if (entity.level() instanceof ServerLevel) {
-            Integer groundIdx = VxServerEntityCollisionManager.SERVER_ENTITY_GROUND_BODY.get(entity);
-            return groundIdx != null && groundIdx != 0;
+            int groundIdx = ((VxEntityAttachment) entity).velthoric$getServerGroundBody();
+            return groundIdx != 0;
         } else {
-            Integer groundIdx = VxClientEntityCollisionManager.CLIENT_ENTITY_GROUND_BODY.get(entity);
-            return groundIdx != null && groundIdx != 0;
+            int groundIdx = ((VxEntityAttachment) entity).velthoric$getClientGroundBody();
+            return groundIdx != 0;
         }
     }
 
@@ -153,9 +153,9 @@ public final class VxEntityCollisionManager {
      */
     public static int getGroundSlotIdx(Entity entity) {
         if (entity.level() instanceof ServerLevel) {
-            return VxServerEntityCollisionManager.SERVER_ENTITY_GROUND_BODY.getInt(entity) - 1;
+            return ((VxEntityAttachment) entity).velthoric$getServerGroundBody() - 1;
         } else {
-            return VxClientEntityCollisionManager.CLIENT_ENTITY_GROUND_BODY.getInt(entity) - 1;
+            return ((VxEntityAttachment) entity).velthoric$getClientGroundBody() - 1;
         }
     }
 

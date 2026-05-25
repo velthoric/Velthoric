@@ -8,6 +8,7 @@
     "command.MixinArgumentTypeInfos",
     "entity.MixinCollisionGetter",
     "entity.MixinEntityCollision",
+    "entity.MixinEntityAttachment",
     "entity.MixinPlayerCollision",
     "entity.dragging.MixinEntityBodyDragging",
     "entity.dragging.MixinLivingEntityDragging",
