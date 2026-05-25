@@ -10,6 +10,7 @@
     "entity.MixinEntityCollision",
     "entity.MixinPlayerCollision",
     "entity.dragging.MixinEntityBodyDragging",
+    "entity.dragging.MixinLivingEntityDragging",
     "entity.dragging.ServerGamePacketListenerImplAccessor",
     "misc.ExplosionMixin_TriggerExplosion",
     "mounting.entity.MixinEntity",
