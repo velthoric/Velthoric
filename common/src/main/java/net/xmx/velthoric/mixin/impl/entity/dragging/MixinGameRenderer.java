@@ -36,6 +36,10 @@ public class MixinGameRenderer {
     @Unique
     private static final ThreadLocal<Quaternionf> TEMP_JOML_ROT = ThreadLocal.withInitial(Quaternionf::new);
     @Unique
+    private static final ThreadLocal<Quaternionf> TEMP_JOML_ROT_2 = ThreadLocal.withInitial(Quaternionf::new);
+    @Unique
+    private static final ThreadLocal<Quaternionf> TEMP_JOML_ROT_3 = ThreadLocal.withInitial(Quaternionf::new);
+    @Unique
     private static final ThreadLocal<Vector3f> TEMP_JOML_FWD = ThreadLocal.withInitial(Vector3f::new);
 
     /**
@@ -46,10 +50,16 @@ public class MixinGameRenderer {
     private Integer velthoric$activeBodyIndex = null;
 
     /**
-     * Holds the absolute yaw angle of the tracked body recorded during the last rendering frame.
+     * Holds the absolute rotation of the tracked body recorded during the last rendering frame.
      */
     @Unique
-    private double velthoric$previousBodyYaw = Double.NaN;
+    private final Quaternionf velthoric$previousBodyRot = new Quaternionf();
+
+    /**
+     * Flag indicating if the previous body rotation has been initialized.
+     */
+    @Unique
+    private boolean velthoric$hasPreviousBodyRot = false;
 
     /**
      * Intercepts render ticks to evaluate angular changes of the underlying physics structure.
@@ -64,21 +74,21 @@ public class MixinGameRenderer {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null || mc.isPaused()) {
             this.velthoric$activeBodyIndex = null;
-            this.velthoric$previousBodyYaw = Double.NaN;
+            this.velthoric$hasPreviousBodyRot = false;
             return;
         }
 
         LocalPlayer player = mc.player;
         if (player.getVehicle() != null) {
             this.velthoric$activeBodyIndex = null;
-            this.velthoric$previousBodyYaw = Double.NaN;
+            this.velthoric$hasPreviousBodyRot = false;
             return;
         }
 
         int groundIdx = VxEntityCollisionManager.getGroundSlotIdx(player);
         if (groundIdx < 0) {
             this.velthoric$activeBodyIndex = null;
-            this.velthoric$previousBodyYaw = Double.NaN;
+            this.velthoric$hasPreviousBodyRot = false;
             return;
         }
 
@@ -97,28 +107,32 @@ public class MixinGameRenderer {
         Quat bodyRot = TEMP_JOLT_ROT.get();
         manager.getInterpolator().interpolateRotation(manager.getStore(), groundIdx, partialTicks, bodyRot);
 
-        // Rotate the forward vector by the body's full 3D quaternion, then extract the horizontal yaw.
         Quaternionf rotation = TEMP_JOML_ROT.get().set(bodyRot.getX(), bodyRot.getY(), bodyRot.getZ(), bodyRot.getW());
-        Vector3f forward = TEMP_JOML_FWD.get().set(0.0f, 0.0f, 1.0f);
-        forward.rotate(rotation);
-        double currentYaw = Math.toDegrees(Math.atan2(forward.x, forward.z));
 
         // Initialize or reset tracking states if the player has transitioned to a different body
-        if (this.velthoric$activeBodyIndex == null || this.velthoric$activeBodyIndex != groundIdx || Double.isNaN(this.velthoric$previousBodyYaw)) {
+        if (this.velthoric$activeBodyIndex == null || this.velthoric$activeBodyIndex != groundIdx || !this.velthoric$hasPreviousBodyRot) {
             this.velthoric$activeBodyIndex = groundIdx;
-            this.velthoric$previousBodyYaw = currentYaw;
+            this.velthoric$previousBodyRot.set(rotation);
+            this.velthoric$hasPreviousBodyRot = true;
             return;
         }
 
-        // Calculate the angular delta, safely wrapping it within the -180 to 180 degrees boundary
-        double yawDelta = Mth.wrapDegrees(currentYaw - this.velthoric$previousBodyYaw);
+        // Calculate the relative rotation from the previous frame to the current frame:
+        // dq = rotation * previousBodyRot^-1
+        Quaternionf qPrevInv = this.velthoric$previousBodyRot.conjugate(TEMP_JOML_ROT_2.get());
+        Quaternionf dq = rotation.mul(qPrevInv, TEMP_JOML_ROT_3.get());
+
+        // Rotate the forward vector by the relative rotation, then extract the yaw delta.
+        Vector3f forward = TEMP_JOML_FWD.get().set(0.0f, 0.0f, 1.0f);
+        forward.rotate(dq);
+        double yawDelta = Math.toDegrees(Math.atan2(forward.x, forward.z));
 
         // Apply deadzone filtering to avoid unnecessary updates from floating-point micro-jitter
         if (Math.abs(yawDelta) > 1.0E-4) {
             this.applyYawShift(player, (float) yawDelta);
         }
 
-        this.velthoric$previousBodyYaw = currentYaw;
+        this.velthoric$previousBodyRot.set(rotation);
     }
 
     /**
