@@ -76,6 +76,19 @@ struct CollisionContext {
 };
 
 /**
+ * Computes the volume ratio between a body's collision shape and the entity's bounding box.
+ * Uses the shape's local AABB (available on both client and server) as a universal,
+ * mass-independent measure of relative physical significance.
+ *
+ * @param shape The collision shape of the body.
+ * @param entityHx Half-extent of the entity's bounding box along X.
+ * @param entityHy Half-extent of the entity's bounding box along Y.
+ * @param entityHz Half-extent of the entity's bounding box along Z.
+ * @return A clamped [0, 1] ratio representing the body's relative volume influence.
+ */
+float ComputeBodyVolumeRatio(const Shape* shape, float entityHx, float entityHy, float entityHz);
+
+/**
  * Casts a shape downwards to find the floor.
  *
  * @param ctx The shared collision context.

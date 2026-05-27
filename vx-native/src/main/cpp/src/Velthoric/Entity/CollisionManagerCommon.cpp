@@ -9,7 +9,47 @@
 namespace Velthoric {
 
 /**
+ * Computes the volume ratio between a body's collision shape and the entity's bounding box.
+ * Uses the shape's local AABB (available on both client and server) as a universal,
+ * mass-independent measure of relative physical significance.
+ *
+ * The resulting ratio determines how much influence the body exerts on the entity:
+ * - Ratio ~0: Tiny body (e.g. marble) → negligible push, cannot be ground
+ * - Ratio ~1: Body at least as large as the entity → full push, valid ground
+ *
+ * A smooth cubic interpolation curve prevents jarring threshold transitions.
+ *
+ * @param shape The collision shape of the body.
+ * @param entityHx Half-extent of the entity's bounding box along X.
+ * @param entityHy Half-extent of the entity's bounding box along Y.
+ * @param entityHz Half-extent of the entity's bounding box along Z.
+ * @return A clamped [0, 1] ratio representing the body's relative volume influence.
+ */
+float ComputeBodyVolumeRatio(const Shape* shape, float entityHx, float entityHy, float entityHz) {
+    // Entity volume from its bounding box half-extents (full extents = 2*h)
+    float entityVolume = 8.0f * entityHx * entityHy * entityHz;
+    if (entityVolume < 1e-8f) return 1.0f; // Degenerate entity → no filtering
+
+    // Retrieve the shape's local-space AABB (works for ANY shape type on both client and server)
+    AABox bounds = shape->GetLocalBounds();
+    Vec3 extent = bounds.GetSize();
+    float bodyVolume = extent.GetX() * extent.GetY() * extent.GetZ();
+
+    // Raw ratio of body volume relative to entity volume
+    float rawRatio = bodyVolume / entityVolume;
+
+    // Smooth mapping: bodies smaller than 30% of entity volume are scaled down proportionally.
+    // Bodies at 100%+ of entity volume receive full influence.
+    // Using smoothstep (cubic hermite) for a natural, non-jarring transition.
+    float t = std::min(1.0f, rawRatio / 1.0f); // Normalize to [0, 1] range
+    float smoothed = t * t * (3.0f - 2.0f * t);  // smoothstep
+
+    return smoothed;
+}
+
+/**
  * Casts the entity bounding box downward to locate the nearest supporting surface.
+ * Filters out bodies whose shape volume is too small relative to the entity to serve as valid ground.
  *
  * @param ctx The active collision context holding shapes, transformations, and physical properties.
  * @param startX Starting world coordinate of the cast along the X-axis.
@@ -44,16 +84,22 @@ bool CastShapeDown(const CollisionContext& ctx, float startX, float startY, floa
         ShapeCastResult result;
         int currentBody = -1;
         int hitBody = -1;
+        float currentVolumeRatio = 0.0f;
         const CollisionContext* ctxPtr = nullptr;
 
         virtual void AddHit(const ShapeCastResult& inResult) override {
+            // Filter: bodies with insufficient volume ratio cannot serve as floor
+            if (currentVolumeRatio < 0.15f) {
+                return;
+            }
+
+            // Server-side additional mass check for dynamic bodies
             uint32_t bodyIdVal = (ctxPtr->bIds && currentBody >= 0 && currentBody < ctxPtr->capacity) ? static_cast<uint32_t>(ctxPtr->bIds[currentBody]) : 0;
             if (ctxPtr->ps && bodyIdVal != 0) {
                 BodyID id(bodyIdVal);
                 BodyLockRead lock(ctxPtr->ps->GetBodyLockInterface(), id);
                 if (lock.Succeeded()) {
                     const Body& body = lock.GetBody();
-                    // Ignore collision feedback if body is dynamic with very low mass (kicking objects)
                     if (body.GetMotionType() == EMotionType::Dynamic) {
                         float invMass = 0.0f;
                         float bodyMass = 0.0f;
@@ -86,6 +132,8 @@ bool CastShapeDown(const CollisionContext& ctx, float startX, float startY, floa
         if (!shape) continue;
 
         collector.currentBody = i;
+        collector.currentVolumeRatio = ComputeBodyVolumeRatio(shape, ctx.boxHx, ctx.boxHy, ctx.boxHz);
+
         float tsx = static_cast<float>(ctx.pX[i]);
         float tsy = static_cast<float>(ctx.pY[i]);
         float tsz = static_cast<float>(ctx.pZ[i]);
@@ -126,6 +174,9 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
     bodyIndexOut = -1;
     outSlideFriction = 1.0f;
 
+    // Track the largest body that qualifies as ground to prevent flickering between many small bodies
+    float bestGroundVolumeRatio = 0.0f;
+
     // Accumulators to collect physics interactions and apply them once after the loop
     bool isDynamicBodyFound = false;
     uint32_t finalBodyIdVal = 0;
@@ -140,6 +191,9 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
         for (int i = 0; i < ctx.capacity; i++) {
             const Shape* shape = reinterpret_cast<const Shape*>(ctx.shapes[i]);
             if (!shape) continue;
+
+            // Compute shape volume ratio for size-proportional entity interaction
+            float volumeRatio = ComputeBodyVolumeRatio(shape, ctx.boxHx, ctx.boxHy, ctx.boxHz);
 
             float sx = static_cast<float>(ctx.pX[i]);
             float sy = static_cast<float>(ctx.pY[i]);
@@ -210,18 +264,14 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                         }
                     }
 
-                    float totalMass = ctx.entityMass + bodyMass;
-                    float entityPushRatio = 1.0f;
-                    if (isDynamicBody && totalMass > 0.0f) {
-                        entityPushRatio = bodyMass / totalMass;
-
-                        float support = 0.0f;
-                        if (bodyMass >= 40.0f) {
-                            support = 1.0f;
-                        } else if (bodyMass > 10.0f) {
-                            support = (bodyMass - 10.0f) / 30.0f;
-                        }
-                        entityPushRatio *= support;
+                    // Volume-based push scaling: small bodies exert proportionally less push on the entity.
+                    // On the server, also incorporate mass-based ratio for dynamic bodies.
+                    float entityPushRatio = volumeRatio;
+                    if (isDynamicBody && ctx.entityMass > 0.0f) {
+                        float totalMass = ctx.entityMass + bodyMass;
+                        float massPushRatio = (totalMass > 0.0f) ? (bodyMass / totalMass) : 0.0f;
+                        // Use the minimum of volume and mass ratio so both constraints are honored
+                        entityPushRatio = std::min(volumeRatio, massPushRatio);
                     }
 
                     px += push.GetX() * entityPushRatio;
@@ -290,21 +340,13 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                     if (normal.GetY() > outMaxNormal.GetY()) {
                         outMaxNormal = normal;
                         if (normal.GetY() > 0.1f) {
-                            if (!isDynamicBody) {
+                            // Ground body selection: prioritize the LARGEST body by volume ratio.
+                            // Bodies too small relative to the entity cannot become ground,
+                            // preventing ground-flickering when walking over piles of small objects.
+                            if (volumeRatio >= 0.15f && volumeRatio >= bestGroundVolumeRatio) {
+                                bestGroundVolumeRatio = volumeRatio;
                                 bodyIndexOut = i;
-                                outSlideFriction = 1.0f;
-                            } else {
-                                float support = 0.0f;
-                                if (bodyMass >= 40.0f) {
-                                    support = 1.0f;
-                                } else if (bodyMass > 10.0f) {
-                                    support = (bodyMass - 10.0f) / 30.0f;
-                                }
-
-                                if (support > 0.01f) {
-                                    bodyIndexOut = i;
-                                    outSlideFriction = support;
-                                }
+                                outSlideFriction = isDynamicBody ? volumeRatio : 1.0f;
                             }
                         }
                     }
@@ -317,6 +359,9 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
         for (int i = 0; i < ctx.capacity; i++) {
             const Shape* shape = reinterpret_cast<const Shape*>(ctx.shapes[i]);
             if (!shape) continue;
+
+            // Compute shape volume ratio for size-proportional entity interaction
+            float volumeRatio = ComputeBodyVolumeRatio(shape, ctx.boxHx, ctx.boxHy, ctx.boxHz);
 
             float sx = static_cast<float>(ctx.pX[i]);
             float sy = static_cast<float>(ctx.pY[i]);
@@ -390,18 +435,12 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                         }
                     }
 
-                    float totalMass = ctx.entityMass + bodyMass;
-                    float entityPushRatio = 1.0f;
-                    if (isDynamicBody && totalMass > 0.0f) {
-                        entityPushRatio = bodyMass / totalMass;
-
-                        float support = 0.0f;
-                        if (bodyMass >= 40.0f) {
-                            support = 1.0f;
-                        } else if (bodyMass > 10.0f) {
-                            support = (bodyMass - 10.0f) / 30.0f;
-                        }
-                        entityPushRatio *= support;
+                    // Volume-based push scaling for horizontal collisions
+                    float entityPushRatio = volumeRatio;
+                    if (isDynamicBody && ctx.entityMass > 0.0f) {
+                        float totalMass = ctx.entityMass + bodyMass;
+                        float massPushRatio = (totalMass > 0.0f) ? (bodyMass / totalMass) : 0.0f;
+                        entityPushRatio = std::min(volumeRatio, massPushRatio);
                     }
 
                     px += push.GetX() * entityPushRatio;
@@ -477,6 +516,23 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
 
         if (!resolved) break;
         hitAny = true;
+    }
+
+    // Clamp the total accumulated horizontal push magnitude.
+    // When many small bodies overlap, their individual pushes compound into large displacements.
+    // This cap ensures the entity remains stable even in extreme pile scenarios.
+    float horizPushSq = outPushX * outPushX + outPushZ * outPushZ;
+    float maxHorizPush = 0.5f; // Maximum horizontal push per tick (blocks)
+    if (horizPushSq > maxHorizPush * maxHorizPush) {
+        float horizPushLen = std::sqrt(horizPushSq);
+        float scale = maxHorizPush / horizPushLen;
+        float clampedPushX = outPushX * scale;
+        float clampedPushZ = outPushZ * scale;
+        // Adjust the position to match the clamped push
+        px -= (outPushX - clampedPushX);
+        pz -= (outPushZ - clampedPushZ);
+        outPushX = clampedPushX;
+        outPushZ = clampedPushZ;
     }
 
     // Deliver accumulated structural reactions to the physics simulator at the end of the calculation
