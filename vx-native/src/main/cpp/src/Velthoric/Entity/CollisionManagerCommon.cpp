@@ -38,13 +38,9 @@ float ComputeBodyVolumeRatio(const Shape* shape, float entityHx, float entityHy,
     // Raw ratio of body volume relative to entity volume
     float rawRatio = bodyVolume / entityVolume;
 
-    // Smooth mapping: bodies smaller than 30% of entity volume are scaled down proportionally.
-    // Bodies at 100%+ of entity volume receive full influence.
-    // Using smoothstep (cubic hermite) for a natural, non-jarring transition.
-    float t = std::min(1.0f, rawRatio / 1.0f); // Normalize to [0, 1] range
-    float smoothed = t * t * (3.0f - 2.0f * t);  // smoothstep
-
-    return smoothed;
+    // Return the pure, uninflated physical volume ratio.
+    // Solidity boosting and drag thresholds are handled locally by the consumers.
+    return std::min(1.0f, rawRatio);
 }
 
 /**
@@ -88,11 +84,6 @@ bool CastShapeDown(const CollisionContext& ctx, float startX, float startY, floa
         const CollisionContext* ctxPtr = nullptr;
 
         virtual void AddHit(const ShapeCastResult& inResult) override {
-            // Filter: bodies with insufficient volume ratio cannot serve as floor
-            if (currentVolumeRatio < 0.15f) {
-                return;
-            }
-
             // Server-side additional mass check for dynamic bodies
             uint32_t bodyIdVal = (ctxPtr->bIds && currentBody >= 0 && currentBody < ctxPtr->capacity) ? static_cast<uint32_t>(ctxPtr->bIds[currentBody]) : 0;
             if (ctxPtr->ps && bodyIdVal != 0) {
@@ -264,15 +255,10 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                         }
                     }
 
-                    // Volume-based push scaling: small bodies exert proportionally less push on the entity.
-                    // On the server, also incorporate mass-based ratio for dynamic bodies.
-                    float entityPushRatio = volumeRatio;
-                    if (isDynamicBody && ctx.entityMass > 0.0f) {
-                        float totalMass = ctx.entityMass + bodyMass;
-                        float massPushRatio = (totalMass > 0.0f) ? (bodyMass / totalMass) : 0.0f;
-                        // Use the minimum of volume and mass ratio so both constraints are honored
-                        entityPushRatio = std::min(volumeRatio, massPushRatio);
-                    }
+                    // Vertical collisions are always 100% solid to prevent falling through
+                    // or getting stuck inside objects when landing/jumping.
+                    float entityPushRatio = 1.0f;
+
 
                     px += push.GetX() * entityPushRatio;
                     py += push.GetY() * entityPushRatio;
@@ -312,18 +298,21 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                             // Impact impulse using localized effective mass K
                             J_vel = (approachSpeed * (1.0f + e)) / K;
 
-                            if (bodyMass < 10.0f) {
-                                float kickMultiplier = 1.0f + (10.0f - bodyMass) * 1.8f;
-                                J_vel *= kickMultiplier;
-                            }
+                            // Cap velocity impulse to prevent breakdancing
+                            float maxVelImpulse = bodyMass * 20.0f;
+                            J_vel = std::min(J_vel, maxVelImpulse);
                         }
 
                         // 4. Penetration impulse
                         float dtImpulse = 0.05f;
                         float J_pen = depth / (dtImpulse * K);
 
+                        // Cap penetration impulse to prevent explosive breakdancing
+                        float maxPenImpulse = bodyMass * 15.0f;
+                        float appliedJ_pen = std::min(J_pen * 0.4f, maxPenImpulse);
+
                         // Accumulate impulse forces along normal
-                        float J_total = J_vel + J_pen * 0.4f;
+                        float J_total = J_vel + appliedJ_pen;
                         Vec3 impulse = -normal * J_total;
 
                         // 5. Continuous weight force (gravity) applied straight down at the contact point
@@ -340,13 +329,11 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                     if (normal.GetY() > outMaxNormal.GetY()) {
                         outMaxNormal = normal;
                         if (normal.GetY() > 0.1f) {
-                            // Ground body selection: prioritize the LARGEST body by volume ratio.
-                            // Bodies too small relative to the entity cannot become ground,
-                            // preventing ground-flickering when walking over piles of small objects.
-                            if (volumeRatio >= 0.15f && volumeRatio >= bestGroundVolumeRatio) {
+                            // Ground body selection: only bodies >= 30% true volume can drag the player
+                            if (volumeRatio >= 0.30f && volumeRatio >= bestGroundVolumeRatio) {
                                 bestGroundVolumeRatio = volumeRatio;
                                 bodyIndexOut = i;
-                                outSlideFriction = isDynamicBody ? volumeRatio : 1.0f;
+                                outSlideFriction = isDynamicBody ? std::min(1.0f, volumeRatio * 2.0f) : 1.0f;
                             }
                         }
                     }
@@ -436,11 +423,17 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                     }
 
                     // Volume-based push scaling for horizontal collisions
-                    float entityPushRatio = volumeRatio;
+                    // Boost volume ratio for horizontal solidity so player doesn't clip through small props
+                    float solidityRatio = std::min(1.0f, volumeRatio * 5.0f);
+                    
+                    float entityPushRatio = solidityRatio;
                     if (isDynamicBody && ctx.entityMass > 0.0f) {
                         float totalMass = ctx.entityMass + bodyMass;
                         float massPushRatio = (totalMass > 0.0f) ? (bodyMass / totalMass) : 0.0f;
-                        entityPushRatio = std::min(volumeRatio, massPushRatio);
+                        entityPushRatio = std::min(solidityRatio, massPushRatio);
+                        
+                        // Deep penetration increases resistance to block the entity instead of walking through
+                        entityPushRatio = std::min(1.0f, entityPushRatio + depth * 2.5f);
                     }
 
                     px += push.GetX() * entityPushRatio;
@@ -481,10 +474,9 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                             // Impact impulse using localized effective mass K
                             J_vel = (approachSpeed * (1.0f + e)) / K;
 
-                            if (bodyMass < 10.0f) {
-                                float kickMultiplier = 1.0f + (10.0f - bodyMass) * 1.8f;
-                                J_vel *= kickMultiplier;
-                            }
+                            // Cap velocity impulse to prevent breakdancing
+                            float maxVelImpulse = bodyMass * 20.0f;
+                            J_vel = std::min(J_vel, maxVelImpulse);
                         }
 
                         float J_push = 0.0f;
@@ -497,8 +489,12 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                         float dtImpulse = 0.05f;
                         float J_pen = depth / (dtImpulse * K);
 
+                        // Cap penetration impulse to prevent breakdancing
+                        float maxPenImpulse = bodyMass * 15.0f;
+                        float appliedJ_pen = std::min(J_pen * 0.4f, maxPenImpulse);
+
                         // Accumulate impulse forces along normal
-                        float J_total = J_vel + J_push + J_pen * 0.4f;
+                        float J_total = J_vel + J_push + appliedJ_pen;
                         Vec3 impulse = -normal * J_total;
 
                         accumulatedImpulse += impulse;

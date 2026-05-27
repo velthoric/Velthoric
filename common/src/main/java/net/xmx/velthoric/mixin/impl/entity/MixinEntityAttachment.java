@@ -23,6 +23,9 @@ public abstract class MixinEntityAttachment implements VxEntityAttachment {
     @Unique
     private int velthoric_clientGroundBody = 0;
 
+    @Unique
+    private float velthoric_groundDragScale = 1.0f;
+
     @Override
     public int velthoric$getServerGroundBody() {
         return this.velthoric_serverGroundBody;
@@ -41,5 +44,15 @@ public abstract class MixinEntityAttachment implements VxEntityAttachment {
     @Override
     public void velthoric$setClientGroundBody(int value) {
         this.velthoric_clientGroundBody = value;
+    }
+
+    @Override
+    public float velthoric$getGroundDragScale() {
+        return this.velthoric_groundDragScale;
+    }
+
+    @Override
+    public void velthoric$setGroundDragScale(float value) {
+        this.velthoric_groundDragScale = value;
     }
 }

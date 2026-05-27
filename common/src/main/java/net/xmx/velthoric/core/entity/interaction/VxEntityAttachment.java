@@ -30,4 +30,14 @@ public interface VxEntityAttachment {
      * @param value the client ground body index
      */
     void velthoric$setClientGroundBody(int value);
+
+    /**
+     * @return the scaling factor for body displacement dragging
+     */
+    float velthoric$getGroundDragScale();
+
+    /**
+     * @param value the scaling factor for body displacement dragging
+     */
+    void velthoric$setGroundDragScale(float value);
 }

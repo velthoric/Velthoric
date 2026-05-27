@@ -9,6 +9,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.xmx.velthoric.core.entity.interaction.VxEntityAttachment;
 import net.xmx.velthoric.core.entity.interaction.VxEntityCollisionManager;
 import net.xmx.velthoric.mixin.impl.entity.ServerGamePacketListenerImplAccessor;
 import org.spongepowered.asm.mixin.Mixin;
@@ -94,6 +95,13 @@ public abstract class MixinEntityBodyDragging {
                 activeGroundIdx = -1;
                 this.velthoric_groundLostTicks = 4;
             } else if (displacement.lengthSqr() > 1.0E-10) {
+                float dragScale = ((VxEntityAttachment) self).velthoric$getGroundDragScale();
+                
+                // Scale displacement by drag ratio, allowing small bodies to slip under the player
+                if (dragScale < 1.0f) {
+                    displacement = displacement.scale(dragScale);
+                }
+
                 self.setPos(
                         self.getX() + displacement.x,
                         self.getY() + displacement.y,

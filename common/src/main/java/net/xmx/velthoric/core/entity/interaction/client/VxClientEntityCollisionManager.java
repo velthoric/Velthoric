@@ -198,10 +198,7 @@ public final class VxClientEntityCollisionManager {
             ((VxEntityAttachment) entity).velthoric$setClientGroundBody(0);
         }
 
-        if (outResult[4] < 1.0f) {
-            Vec3 currentDelta = entity.getDeltaMovement();
-            entity.setDeltaMovement(currentDelta.x * outResult[4], currentDelta.y * outResult[4], currentDelta.z * outResult[4]);
-        }
+        ((VxEntityAttachment) entity).velthoric$setGroundDragScale(outResult[4]);
 
         return new Vec3(finalDx, finalDy, finalDz);
     }
