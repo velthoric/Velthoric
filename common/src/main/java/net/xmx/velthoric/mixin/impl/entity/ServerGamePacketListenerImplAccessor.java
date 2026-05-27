@@ -2,7 +2,7 @@
  * This file is part of Velthoric.
  * Licensed under LGPL 3.0.
  */
-package net.xmx.velthoric.mixin.impl.entity.dragging;
+package net.xmx.velthoric.mixin.impl.entity;
 
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import org.spongepowered.asm.mixin.Mixin;
