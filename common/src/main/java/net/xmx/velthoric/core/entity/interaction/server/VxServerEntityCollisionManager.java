@@ -106,6 +106,13 @@ public final class VxServerEntityCollisionManager {
 
         Vec3 velocity = entity.getDeltaMovement();
 
+        // Calculate dynamic entity mass based on the volume of its AABB.
+        // A player with dimensions 0.6 x 1.8 x 0.6 has a volume of 0.648 m³ and a mass of 80 kg.
+        // We scale other entities relative to this density (80.0 / 0.648 ≈ 123.45679 kg/m³).
+        // A lower bound of 0.1 kg is enforced to avoid degenerate or division-by-zero scenarios.
+        double volume = entityBox.getXsize() * entityBox.getYsize() * entityBox.getZsize();
+        float entityMass = (float) Math.max(0.1, volume * (80.0 / 0.648));
+
         ServerEntityCollision.nHandleCollision(
                 physicsSystemVa, shapePtrsBuf, c.isActive,
                 c.posX, c.posY, c.posZ, c.rotX, c.rotY, c.rotZ, c.rotW,
@@ -114,7 +121,7 @@ public final class VxServerEntityCollisionManager {
                 (float) (entityBox.getXsize() / 2.0), (float) (entityBox.getYsize() / 2.0), (float) (entityBox.getZsize() / 2.0),
                 (float) entityBox.getCenter().x, (float) entityBox.getCenter().y, (float) entityBox.getCenter().z,
                 (float) movement.x, (float) movement.y, (float) movement.z, entity.maxUpStep(),
-                80.0f, (float) velocity.x, (float) velocity.y, (float) velocity.z,
+                entityMass, (float) velocity.x, (float) velocity.y, (float) velocity.z,
                 outResult, ((VxEntityAttachment) entity).velthoric$getServerGroundBody(), 0.05f
         );
 
