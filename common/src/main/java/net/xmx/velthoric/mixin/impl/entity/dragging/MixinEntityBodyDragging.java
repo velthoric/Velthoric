@@ -7,6 +7,7 @@ package net.xmx.velthoric.mixin.impl.entity.dragging;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.xmx.velthoric.core.entity.interaction.VxEntityCollisionManager;
 import org.spongepowered.asm.mixin.Mixin;
@@ -61,13 +62,37 @@ public abstract class MixinEntityBodyDragging {
         boolean isClientSide = self.level().isClientSide();
 
         int groundIdx = VxEntityCollisionManager.getGroundSlotIdx(self);
-        if (groundIdx >= 0) {
-            Vec3 displacement = VxEntityCollisionManager.getBodyDisplacement(self, groundIdx);
-            float yawDelta = VxEntityCollisionManager.getBodyYawDelta(self, groundIdx);
+        int activeGroundIdx = -1;
 
-            // Directly synchronize the entity's position with the body's displacement.
-            // Block collisions are handled independently by the entity's own movement tick.
-            if (displacement.lengthSqr() > 1.0E-10) {
+        if (groundIdx >= 0) {
+            activeGroundIdx = groundIdx;
+            this.velthoric_lastGroundSlot = groundIdx;
+            this.velthoric_groundLostTicks = 0;
+        } else if (this.velthoric_lastGroundSlot >= 0) {
+            boolean onMinecraftGround = self.onGround();
+
+            // Expand the bounding volume downward to evaluate if the physics platform is still nearby
+            AABB expandedBox = self.getBoundingBox().inflate(0.2, 0.0, 0.2).expandTowards(0.0, -2.0, 0.0);
+            boolean nearBody = VxEntityCollisionManager.isColliding(self.level(), expandedBox);
+
+            if (!onMinecraftGround && nearBody) {
+                // Sustain dragging using the previous body slot to prevent platform fall desynchronization
+                activeGroundIdx = this.velthoric_lastGroundSlot;
+                this.velthoric_groundLostTicks = 0;
+            } else {
+                // Immediately interrupt dragging and initiate momentum transfer if the terrain is touched or the body is too far
+                this.velthoric_groundLostTicks = 4;
+            }
+        }
+
+        if (activeGroundIdx >= 0) {
+            Vec3 displacement = VxEntityCollisionManager.getBodyDisplacement(self, activeGroundIdx);
+
+            // Ignore massive displacements to prevent physics glitches during slot reassignment
+            if (displacement.lengthSqr() > 9.0) {
+                activeGroundIdx = -1;
+                this.velthoric_groundLostTicks = 4;
+            } else if (displacement.lengthSqr() > 1.0E-10) {
                 self.setPos(
                         self.getX() + displacement.x,
                         self.getY() + displacement.y,
@@ -89,27 +114,31 @@ public abstract class MixinEntityBodyDragging {
                 }
             }
 
-            // On the client, the local player's rotation is updated smoothly per frame inside MixinGameRenderer.
-            // All other entities (mobs on client, and all entities on server) receive tick-based rotation updates.
-            boolean isLocalPlayer = isClientSide && (self instanceof net.minecraft.client.player.LocalPlayer);
+            if (activeGroundIdx >= 0) {
+                float yawDelta = VxEntityCollisionManager.getBodyYawDelta(self, activeGroundIdx);
 
-            if (!isLocalPlayer && Math.abs(yawDelta) > 1.0E-5) {
-                this.setYRot(this.getYRot() + yawDelta);
+                // On the client, the local player's rotation is updated smoothly per frame inside MixinGameRenderer.
+                // All other entities (mobs on client, and all entities on server) receive tick-based rotation updates.
+                boolean isLocalPlayer = isClientSide && (self instanceof net.minecraft.client.player.LocalPlayer);
 
-                // Add to the previous rotation delta to prevent jittering when linearly interpolated
-                self.yRotO += yawDelta;
+                if (!isLocalPlayer && Math.abs(yawDelta) > 1.0E-5) {
+                    this.setYRot(this.getYRot() + yawDelta);
 
-                // Sync the body and head rotations to prevent visual twisting and snappy realignments
-                if (self instanceof LivingEntity living) {
-                    living.yBodyRot += yawDelta;
-                    living.yBodyRotO += yawDelta;
-                    living.yHeadRot += yawDelta;
-                    living.yHeadRotO += yawDelta;
+                    // Add to the previous rotation delta to prevent jittering when linearly interpolated
+                    self.yRotO += yawDelta;
+
+                    // Sync the body and head rotations to prevent visual twisting and snappy realignments
+                    if (self instanceof LivingEntity living) {
+                        living.yBodyRot += yawDelta;
+                        living.yBodyRotO += yawDelta;
+                        living.yHeadRot += yawDelta;
+                        living.yHeadRotO += yawDelta;
+                    }
                 }
             }
-            this.velthoric_lastGroundSlot = groundIdx;
-            this.velthoric_groundLostTicks = 0;
-        } else {
+        }
+
+        if (activeGroundIdx < 0) {
             if (this.velthoric_lastGroundSlot >= 0) {
                 this.velthoric_groundLostTicks++;
 
