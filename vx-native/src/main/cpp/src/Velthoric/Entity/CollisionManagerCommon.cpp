@@ -5,6 +5,7 @@
  * Author: xI-Mx-Ix
  */
 #include "CollisionManagerCommon.h"
+#include <vector>
 
 namespace Velthoric {
 
@@ -168,12 +169,14 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
     // Track the largest body that qualifies as ground to prevent flickering between many small bodies
     float bestGroundVolumeRatio = 0.0f;
 
-    // Accumulators to collect physics interactions and apply them once after the loop
-    bool isDynamicBodyFound = false;
-    uint32_t finalBodyIdVal = 0;
-    Vec3 accumulatedImpulse = Vec3::sZero();
-    RVec3 accumulatedContactPoint = RVec3::sZero();
-    int accumulatedHitsCount = 0;
+    // Accumulators structure to collect physics interactions for each body separately
+    struct BodyImpulseAccumulator {
+        Vec3 impulse = Vec3::sZero();
+        RVec3 contactPoint = RVec3::sZero();
+        int hitsCount = 0;
+        uint32_t bodyId = 0;
+    };
+    std::vector<BodyImpulseAccumulator> bodyImpulses(ctx.capacity);
 
     for (int iter = 0; iter < iterations; iter++) {
         bool resolved = false;
@@ -259,7 +262,6 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                     // or getting stuck inside objects when landing/jumping.
                     float entityPushRatio = 1.0f;
 
-
                     px += push.GetX() * entityPushRatio;
                     py += push.GetY() * entityPushRatio;
                     pz += push.GetZ() * entityPushRatio;
@@ -269,9 +271,6 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
 
                     // Dynamically apply impulses back to physics simulations
                     if (isDynamicBody && ctx.ps && bodyIdVal != 0) {
-                        isDynamicBodyFound = true;
-                        finalBodyIdVal = bodyIdVal;
-
                         // 1. Determine contact points
                         RVec3 contactPoint(collector.result.mContactPointOn2);
 
@@ -309,7 +308,7 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
 
                         // Cap penetration impulse to prevent explosive breakdancing
                         float maxPenImpulse = bodyMass * 15.0f;
-                        float appliedJ_pen = std::min(J_pen * 0.4f, maxPenImpulse);
+                        float appliedJ_pen = std::min(J_pen * 0.2f, maxPenImpulse);
 
                         // Accumulate impulse forces along normal
                         float J_total = J_vel + appliedJ_pen;
@@ -321,9 +320,10 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                             impulse += weightImpulse;
                         }
 
-                        accumulatedImpulse += impulse;
-                        accumulatedContactPoint += contactPoint;
-                        accumulatedHitsCount++;
+                        bodyImpulses[i].impulse += impulse;
+                        bodyImpulses[i].contactPoint += contactPoint;
+                        bodyImpulses[i].hitsCount++;
+                        bodyImpulses[i].bodyId = bodyIdVal;
                     }
 
                     if (normal.GetY() > outMaxNormal.GetY()) {
@@ -422,18 +422,12 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                         }
                     }
 
-                    // Volume-based push scaling for horizontal collisions
-                    // Boost volume ratio for horizontal solidity so player doesn't clip through small props
-                    float solidityRatio = std::min(1.0f, volumeRatio * 5.0f);
-                    
-                    float entityPushRatio = solidityRatio;
+                    // Solid geometric blocking to prevent clipping through small dynamic props
+                    float entityPushRatio = 1.0f;
                     if (isDynamicBody && ctx.entityMass > 0.0f) {
                         float totalMass = ctx.entityMass + bodyMass;
-                        float massPushRatio = (totalMass > 0.0f) ? (bodyMass / totalMass) : 0.0f;
-                        entityPushRatio = std::min(solidityRatio, massPushRatio);
-                        
-                        // Deep penetration increases resistance to block the entity instead of walking through
-                        entityPushRatio = std::min(1.0f, entityPushRatio + depth * 2.5f);
+                        float massPushRatio = (totalMass > 0.0f) ? (bodyMass / totalMass) : 0.5f;
+                        entityPushRatio = std::max(0.15f, massPushRatio);
                     }
 
                     px += push.GetX() * entityPushRatio;
@@ -445,9 +439,6 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
 
                     // Dynamically apply impulses back to physics simulations
                     if (isDynamicBody && ctx.ps && bodyIdVal != 0) {
-                        isDynamicBodyFound = true;
-                        finalBodyIdVal = bodyIdVal;
-
                         // 1. Determine contact points
                         RVec3 contactPoint(collector.result.mContactPointOn2);
 
@@ -491,15 +482,16 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
 
                         // Cap penetration impulse to prevent breakdancing
                         float maxPenImpulse = bodyMass * 15.0f;
-                        float appliedJ_pen = std::min(J_pen * 0.4f, maxPenImpulse);
+                        float appliedJ_pen = std::min(J_pen * 0.2f, maxPenImpulse);
 
                         // Accumulate impulse forces along normal
                         float J_total = J_vel + J_push + appliedJ_pen;
                         Vec3 impulse = -normal * J_total;
 
-                        accumulatedImpulse += impulse;
-                        accumulatedContactPoint += contactPoint;
-                        accumulatedHitsCount++;
+                        bodyImpulses[i].impulse += impulse;
+                        bodyImpulses[i].contactPoint += contactPoint;
+                        bodyImpulses[i].hitsCount++;
+                        bodyImpulses[i].bodyId = bodyIdVal;
                     }
 
                     if (normal.GetY() > outMaxNormal.GetY()) {
@@ -531,21 +523,25 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
         outPushZ = clampedPushZ;
     }
 
-    // Deliver accumulated structural reactions to the physics simulator at the end of the calculation
-    if (isDynamicBodyFound && ctx.ps && finalBodyIdVal != 0 && accumulatedHitsCount > 0) {
-        BodyID id(finalBodyIdVal);
-        RVec3 averageContactPoint = accumulatedContactPoint / static_cast<float>(accumulatedHitsCount);
+    // Deliver accumulated structural reactions to the physics simulator for each body individually
+    for (int i = 0; i < ctx.capacity; i++) {
+        const auto& bImp = bodyImpulses[i];
+        if (bImp.hitsCount > 0 && bImp.bodyId != 0 && ctx.ps) {
+            BodyID id(bImp.bodyId);
+            RVec3 averageContactPoint = bImp.contactPoint / static_cast<float>(bImp.hitsCount);
 
-        // 6. Clamp total impulse to avoid game physics glitches
-        float maxImpulse = 400.0f;
-        float impulseMagnitude = accumulatedImpulse.Length();
-        if (impulseMagnitude > maxImpulse && impulseMagnitude > 0.0f) {
-            accumulatedImpulse = accumulatedImpulse * (maxImpulse / impulseMagnitude);
+            // Clamp total impulse to avoid game physics glitches
+            float maxImpulse = 400.0f;
+            Vec3 finalImpulse = bImp.impulse;
+            float impulseMagnitude = finalImpulse.Length();
+            if (impulseMagnitude > maxImpulse && impulseMagnitude > 0.0f) {
+                finalImpulse = finalImpulse * (maxImpulse / impulseMagnitude);
+            }
+
+            // Apply impulse at the exact contact point to generate translation and rotation
+            ctx.ps->GetBodyInterface().AddImpulse(id, finalImpulse, averageContactPoint);
+            ctx.ps->GetBodyInterface().ActivateBody(id);
         }
-
-        // Apply impulse at the exact contact point to generate translation and rotation
-        ctx.ps->GetBodyInterface().AddImpulse(id, accumulatedImpulse, averageContactPoint);
-        ctx.ps->GetBodyInterface().ActivateBody(id);
     }
 
     return hitAny;
