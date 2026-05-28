@@ -2,7 +2,7 @@
  * This file is part of Velthoric.
  * Licensed under LGPL 3.0.
  */
-package net.xmx.velthoric.mixin.impl.entity;
+package net.xmx.velthoric.mixin.impl.entity.anticheat;
 
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import org.spongepowered.asm.mixin.Mixin;
@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 
 /**
  * Accessor interface for ServerGamePacketListenerImpl to update tracking positions
- * during server-side programmatic player dragging.
+ * during server-side programmatic player movement, dragging, or pushing.
  *
  * @author xI-Mx-Ix
  */
