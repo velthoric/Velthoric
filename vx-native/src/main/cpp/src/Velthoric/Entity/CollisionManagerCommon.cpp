@@ -14,12 +14,6 @@ namespace Velthoric {
  * Uses the shape's local AABB (available on both client and server) as a universal,
  * mass-independent measure of relative physical significance.
  *
- * The resulting ratio determines how much influence the body exerts on the entity:
- * - Ratio ~0: Tiny body (e.g. marble) → negligible push, cannot be ground
- * - Ratio ~1: Body at least as large as the entity → full push, valid ground
- *
- * A smooth cubic interpolation curve prevents jarring threshold transitions.
- *
  * @param shape The collision shape of the body.
  * @param entityHx Half-extent of the entity's bounding box along X.
  * @param entityHy Half-extent of the entity's bounding box along Y.
@@ -39,8 +33,6 @@ float ComputeBodyVolumeRatio(const Shape* shape, float entityHx, float entityHy,
     // Raw ratio of body volume relative to entity volume
     float rawRatio = bodyVolume / entityVolume;
 
-    // Return the pure, uninflated physical volume ratio.
-    // Solidity boosting and drag thresholds are handled locally by the consumers.
     return std::min(1.0f, rawRatio);
 }
 
@@ -169,6 +161,12 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
     // Track the largest body that qualifies as ground to prevent flickering between many small bodies
     float bestGroundVolumeRatio = 0.0f;
 
+    // Constant Settings
+    const float characterMass = ctx.entityMass > 0.0f ? ctx.entityMass : 80.0f;
+    const float maxStrength = 500.0f; // Limit force capability (Newton)
+    const float dt = 0.05f;           // Logical step tick rate
+    const float maxImpulse = maxStrength * dt;
+
     // Accumulators structure to collect physics interactions for each body separately
     struct BodyImpulseAccumulator {
         Vec3 impulse = Vec3::sZero();
@@ -283,7 +281,7 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                         float angularFactor = invInertia_rCrossN.Cross(r).Dot(normal);
 
                         // Combined effective inverse mass at the specific contact point
-                        float K = (1.0f / ctx.entityMass) + invMass + angularFactor;
+                        float K = (1.0f / characterMass) + invMass + angularFactor;
                         if (K < 1e-6f) K = 1e-6f;
 
                         // 3. Approach speed calculation for impact/landing
@@ -297,18 +295,15 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                             // Impact impulse using localized effective mass K
                             J_vel = (approachSpeed * (1.0f + e)) / K;
 
-                            // Cap velocity impulse to prevent breakdancing
-                            float maxVelImpulse = bodyMass * 20.0f;
-                            J_vel = std::min(J_vel, maxVelImpulse);
+                            // Cap velocity impulse based on maximum character strength
+                            J_vel = std::min(J_vel, maxImpulse);
                         }
 
                         // 4. Penetration impulse
-                        float dtImpulse = 0.05f;
-                        float J_pen = depth / (dtImpulse * K);
+                        float J_pen = depth / (dt * K);
 
-                        // Cap penetration impulse to prevent explosive breakdancing
-                        float maxPenImpulse = bodyMass * 15.0f;
-                        float appliedJ_pen = std::min(J_pen * 0.2f, maxPenImpulse);
+                        // Cap penetration impulse based on maximum character strength
+                        float appliedJ_pen = std::min(J_pen * 0.2f, maxImpulse);
 
                         // Accumulate impulse forces along normal
                         float J_total = J_vel + appliedJ_pen;
@@ -316,7 +311,7 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
 
                         // 5. Continuous weight force (gravity) applied straight down at the contact point
                         if (normal.GetY() >= 0.65f) {
-                            Vec3 weightImpulse(0.0f, -ctx.entityMass * 9.81f * dtImpulse, 0.0f);
+                            Vec3 weightImpulse(0.0f, -characterMass * 9.81f * dt, 0.0f);
                             impulse += weightImpulse;
                         }
 
@@ -328,12 +323,14 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
 
                     if (normal.GetY() > outMaxNormal.GetY()) {
                         outMaxNormal = normal;
-                        if (normal.GetY() > 0.1f) {
+                        if (normal.GetY() >= 0.1f) {
+                            // Replicates geometric friction independently of volume ratio
+                            outSlideFriction = 1.0f;
+
                             // Ground body selection: only bodies >= 30% true volume can drag the player
                             if (volumeRatio >= 0.30f && volumeRatio >= bestGroundVolumeRatio) {
                                 bestGroundVolumeRatio = volumeRatio;
                                 bodyIndexOut = i;
-                                outSlideFriction = isDynamicBody ? std::min(1.0f, volumeRatio * 2.0f) : 1.0f;
                             }
                         }
                     }
@@ -422,12 +419,11 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                         }
                     }
 
-                    // Solid geometric blocking to prevent clipping through small dynamic props
+                    // Replicates Jolt's true mass ratio pushback without artificial limits
                     float entityPushRatio = 1.0f;
-                    if (isDynamicBody && ctx.entityMass > 0.0f) {
-                        float totalMass = ctx.entityMass + bodyMass;
-                        float massPushRatio = (totalMass > 0.0f) ? (bodyMass / totalMass) : 0.5f;
-                        entityPushRatio = std::max(0.15f, massPushRatio);
+                    if (isDynamicBody) {
+                        float totalMass = characterMass + bodyMass;
+                        entityPushRatio = (totalMass > 0.0f) ? (bodyMass / totalMass) : 0.5f;
                     }
 
                     px += push.GetX() * entityPushRatio;
@@ -451,7 +447,7 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                         float angularFactor = invInertia_rCrossN.Cross(r).Dot(normal);
 
                         // Combined effective inverse mass at the specific contact point
-                        float K = (1.0f / ctx.entityMass) + invMass + angularFactor;
+                        float K = (1.0f / characterMass) + invMass + angularFactor;
                         if (K < 1e-6f) K = 1e-6f;
 
                         // 3. Approach speed calculation for impact/landing
@@ -465,24 +461,21 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                             // Impact impulse using localized effective mass K
                             J_vel = (approachSpeed * (1.0f + e)) / K;
 
-                            // Cap velocity impulse to prevent breakdancing
-                            float maxVelImpulse = bodyMass * 20.0f;
-                            J_vel = std::min(J_vel, maxVelImpulse);
+                            // Cap velocity impulse based on maximum character strength
+                            J_vel = std::min(J_vel, maxImpulse);
                         }
 
                         float J_push = 0.0f;
                         if (std::abs(ny) < 0.1f && approachSpeed <= 0.05f) {
                             float activeAcceleration = 8.0f;
-                            J_push = (activeAcceleration * 0.05f) / K;
+                            J_push = (activeAcceleration * dt) / K;
                         }
 
                         // 4. Penetration impulse
-                        float dtImpulse = 0.05f;
-                        float J_pen = depth / (dtImpulse * K);
+                        float J_pen = depth / (dt * K);
 
-                        // Cap penetration impulse to prevent breakdancing
-                        float maxPenImpulse = bodyMass * 15.0f;
-                        float appliedJ_pen = std::min(J_pen * 0.2f, maxPenImpulse);
+                        // Cap penetration impulse based on maximum character strength
+                        float appliedJ_pen = std::min(J_pen * 0.2f, maxImpulse);
 
                         // Accumulate impulse forces along normal
                         float J_total = J_vel + J_push + appliedJ_pen;
@@ -531,11 +524,11 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
             RVec3 averageContactPoint = bImp.contactPoint / static_cast<float>(bImp.hitsCount);
 
             // Clamp total impulse to avoid game physics glitches
-            float maxImpulse = 400.0f;
+            float maxImpulseClamp = 400.0f;
             Vec3 finalImpulse = bImp.impulse;
             float impulseMagnitude = finalImpulse.Length();
-            if (impulseMagnitude > maxImpulse && impulseMagnitude > 0.0f) {
-                finalImpulse = finalImpulse * (maxImpulse / impulseMagnitude);
+            if (impulseMagnitude > maxImpulseClamp && impulseMagnitude > 0.0f) {
+                finalImpulse = finalImpulse * (maxImpulseClamp / impulseMagnitude);
             }
 
             // Apply impulse at the exact contact point to generate translation and rotation
@@ -796,16 +789,18 @@ int GetCollidingBodyIdCore(const CollisionContext& ctx, float boxX, float boxY, 
             }
         } collector;
 
+        float tsx = static_cast<float>(ctx.pX[i]);
+        float tsy = static_cast<float>(ctx.pY[i]);
+        float tsz = static_cast<float>(ctx.pZ[i]);
+        Quat sq(ctx.rX[i], ctx.rY[i], ctx.rZ[i], ctx.rW[i]);
+
         CollisionDispatch::sCollideShapeVsShape(
             &boxShape,
             shape,
             Vec3::sReplicate(1.0f),
             Vec3::sReplicate(1.0f),
             boxMat,
-            Mat44::sRotationTranslation(
-                Quat(ctx.rX[i], ctx.rY[i], ctx.rZ[i], ctx.rW[i]),
-                Vec3(ctx.pX[i], ctx.pY[i], ctx.pZ[i])
-            ),
+            Mat44::sRotationTranslation(sq, Vec3(tsx, tsy, tsz)),
             SubShapeIDCreator(),
             SubShapeIDCreator(),
             settings,
