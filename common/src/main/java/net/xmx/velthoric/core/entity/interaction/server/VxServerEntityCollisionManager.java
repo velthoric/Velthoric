@@ -43,6 +43,10 @@ public final class VxServerEntityCollisionManager {
         VxServerBodyDataContainer c = world.getBodyManager().getDataStore().serverCurrent();
         if (slotIdx < 0 || slotIdx >= c.getCapacity()) return Vec3.ZERO;
 
+        if (c.isActive.get(slotIdx) == 0) {
+            return Vec3.ZERO;
+        }
+
         Vec3 pos = entity.position();
         return VxEntityCollisionManager.calculateGroundDisplacement(
                 pos.x, pos.y, pos.z,
@@ -68,6 +72,10 @@ public final class VxServerEntityCollisionManager {
 
         VxServerBodyDataContainer c = world.getBodyManager().getDataStore().serverCurrent();
         if (slotIdx < 0 || slotIdx >= c.getCapacity()) return 0.0f;
+
+        if (c.isActive.get(slotIdx) == 0) {
+            return 0.0f;
+        }
 
         return VxEntityCollisionManager.calculateYawDelta(
                 c.angVelX.get(slotIdx),
