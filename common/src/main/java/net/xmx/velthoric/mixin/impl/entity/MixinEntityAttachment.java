@@ -5,7 +5,7 @@
 package net.xmx.velthoric.mixin.impl.entity;
 
 import net.minecraft.world.entity.Entity;
-import net.xmx.velthoric.core.entity.interaction.VxEntityAttachment;
+import net.xmx.velthoric.core.entity.VxEntityAttachment;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 

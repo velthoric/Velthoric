@@ -7,7 +7,7 @@ package net.xmx.velthoric.mixin.impl.entity;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.CollisionGetter;
 import net.minecraft.world.phys.AABB;
-import net.xmx.velthoric.core.entity.interaction.VxEntityCollisionManager;
+import net.xmx.velthoric.core.entity.VxEntityCollisionManager;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;

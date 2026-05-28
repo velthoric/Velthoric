@@ -7,7 +7,7 @@ package net.xmx.velthoric.mixin.impl.entity;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
-import net.xmx.velthoric.core.entity.interaction.VxEntityCollisionManager;
+import net.xmx.velthoric.core.entity.VxEntityCollisionManager;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;

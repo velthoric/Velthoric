@@ -2,15 +2,15 @@
  * This file is part of Velthoric.
  * Licensed under LGPL 3.0.
  */
-package net.xmx.velthoric.core.entity.interaction;
+package net.xmx.velthoric.core.entity;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.xmx.velthoric.core.entity.interaction.client.VxClientEntityCollisionManager;
-import net.xmx.velthoric.core.entity.interaction.server.VxServerEntityCollisionManager;
+import net.xmx.velthoric.core.entity.client.VxClientEntityCollisionManager;
+import net.xmx.velthoric.core.entity.server.VxServerEntityCollisionManager;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 

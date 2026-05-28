@@ -2,7 +2,7 @@
  * This file is part of Velthoric.
  * Licensed under LGPL 3.0.
  */
-package net.xmx.velthoric.core.entity.interaction;
+package net.xmx.velthoric.core.entity;
 
 /**
  * Duck interface to attach native collision state directly to entities.

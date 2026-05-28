@@ -2,7 +2,7 @@
  * This file is part of Velthoric.
  * Licensed under LGPL 3.0.
  */
-package net.xmx.velthoric.core.entity.interaction.server;
+package net.xmx.velthoric.core.entity.server;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -10,9 +10,9 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.xmx.velthoric.core.body.server.VxServerBodyDataContainer;
-import net.xmx.velthoric.core.entity.interaction.VxEntityAttachment;
-import net.xmx.velthoric.core.entity.interaction.VxEntityCollisionBufferUtil;
-import net.xmx.velthoric.core.entity.interaction.VxEntityCollisionManager;
+import net.xmx.velthoric.core.entity.VxEntityAttachment;
+import net.xmx.velthoric.core.entity.VxEntityCollisionBufferUtil;
+import net.xmx.velthoric.core.entity.VxEntityCollisionManager;
 import net.xmx.velthoric.core.physics.world.VxPhysicsWorld;
 import net.xmx.velthoric.jni.ServerEntityCollision;
 

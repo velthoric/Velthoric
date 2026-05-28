@@ -2,7 +2,7 @@
  * This file is part of Velthoric.
  * Licensed under LGPL 3.0.
  */
-package net.xmx.velthoric.core.entity.interaction.client;
+package net.xmx.velthoric.core.entity.client;
 
 import com.github.stephengold.joltjni.Quat;
 import com.github.stephengold.joltjni.RVec3;
@@ -12,9 +12,9 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.xmx.velthoric.core.body.client.VxClientBodyDataContainer;
 import net.xmx.velthoric.core.body.client.VxClientBodyManager;
-import net.xmx.velthoric.core.entity.interaction.VxEntityAttachment;
-import net.xmx.velthoric.core.entity.interaction.VxEntityCollisionBufferUtil;
-import net.xmx.velthoric.core.entity.interaction.VxEntityCollisionManager;
+import net.xmx.velthoric.core.entity.VxEntityAttachment;
+import net.xmx.velthoric.core.entity.VxEntityCollisionBufferUtil;
+import net.xmx.velthoric.core.entity.VxEntityCollisionManager;
 import net.xmx.velthoric.jni.ClientEntityCollision;
 import org.joml.Quaterniond;
 import org.joml.Vector3d;
