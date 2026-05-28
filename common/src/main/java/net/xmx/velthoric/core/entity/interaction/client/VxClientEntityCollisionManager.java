@@ -40,12 +40,11 @@ public final class VxClientEntityCollisionManager {
     private static final ThreadLocal<Vector3d> TEMP_START_LOCAL = ThreadLocal.withInitial(Vector3d::new);
     private static final ThreadLocal<Vector3d> TEMP_END_LOCAL = ThreadLocal.withInitial(Vector3d::new);
     private static final ThreadLocal<Quaterniond> TEMP_QUAT_INV = ThreadLocal.withInitial(Quaterniond::new);
-    private static final ThreadLocal<Vector3d> TEMP_ENTITY_POS = ThreadLocal.withInitial(Vector3d::new);
-    private static final ThreadLocal<Vector3d> TEMP_LOCAL_OFFSET = ThreadLocal.withInitial(Vector3d::new);
 
     /**
      * Retrieves the body properties and calculates the exact client-side displacement.
-     * Uses Pose Differentials (T-1 to T) to prevent velocity-to-interpolation sliding drift.
+     * Uses velocity-based calculation (identical to the server) to prevent drift accumulation
+     * at high body speeds that the previous pose-differential approach suffered from.
      *
      * @param entity The entity.
      * @param slotIdx The index of the physics body slot.
@@ -58,25 +57,13 @@ public final class VxClientEntityCollisionManager {
         VxClientBodyDataContainer c = manager.getStore().clientCurrent();
         if (slotIdx < 0 || slotIdx >= c.getCapacity()) return Vec3.ZERO;
 
-        Vector3d prevPos = TEMP_PREV_POS.get().set(c.prev_posX.get(slotIdx), c.prev_posY.get(slotIdx), c.prev_posZ.get(slotIdx));
-        Vector3d currPos = TEMP_CURR_POS.get().set(c.posX.get(slotIdx), c.posY.get(slotIdx), c.posZ.get(slotIdx));
-        Quaterniond prevRot = TEMP_PREV_ROT.get().set(c.prev_rotX.get(slotIdx), c.prev_rotY.get(slotIdx), c.prev_rotZ.get(slotIdx), c.prev_rotW.get(slotIdx));
-        Quaterniond currRot = TEMP_CURR_ROT.get().set(c.rotX.get(slotIdx), c.rotY.get(slotIdx), c.rotZ.get(slotIdx), c.rotW.get(slotIdx));
-
-        // Un-project the entity's world position into the body's previous local coordinate space
-        Vector3d entityPos = TEMP_ENTITY_POS.get().set(entity.getX(), entity.getY(), entity.getZ());
-        Quaterniond prevRotInv = TEMP_QUAT_INV.get().set(prevRot).invert();
-        Vector3d localOffset = TEMP_LOCAL_OFFSET.get().set(entityPos).sub(prevPos).rotate(prevRotInv);
-
-        // Re-project the offset onto the body's updated logical pose
-        localOffset.rotate(currRot).add(currPos);
-
-        // Extract the resulting displacement vector
-        double dx = localOffset.x - entityPos.x;
-        double dy = localOffset.y - entityPos.y;
-        double dz = localOffset.z - entityPos.z;
-
-        return new Vec3(dx, dy, dz);
+        return VxEntityCollisionManager.calculateGroundDisplacement(
+                entity.getX(), entity.getY(), entity.getZ(),
+                c.posX.get(slotIdx), c.posY.get(slotIdx), c.posZ.get(slotIdx),
+                c.state1_velX.get(slotIdx), c.state1_velY.get(slotIdx), c.state1_velZ.get(slotIdx),
+                c.state1_angVelX.get(slotIdx), c.state1_angVelY.get(slotIdx), c.state1_angVelZ.get(slotIdx),
+                0.05f
+        );
     }
 
     /**

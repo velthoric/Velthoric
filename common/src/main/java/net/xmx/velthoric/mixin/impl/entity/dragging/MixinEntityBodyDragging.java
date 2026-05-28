@@ -73,8 +73,11 @@ public abstract class MixinEntityBodyDragging {
         } else if (this.velthoric_lastGroundSlot >= 0) {
             boolean onMinecraftGround = self.onGround();
 
-            // Expand the bounding volume downward to evaluate if the physics platform is still nearby
-            AABB expandedBox = self.getBoundingBox().inflate(0.2, 0.0, 0.2).expandTowards(0.0, -2.0, 0.0);
+            // Expand the bounding volume proportional to the last body velocity so fast-moving bodies aren't lost
+            Vec3 lastDisp = VxEntityCollisionManager.getBodyDisplacement(self, this.velthoric_lastGroundSlot);
+            double hExpand = Math.max(0.3, Math.abs(lastDisp.x) + Math.abs(lastDisp.z) + 0.5);
+            double vExpand = Math.max(2.0, Math.abs(lastDisp.y) + 2.0);
+            AABB expandedBox = self.getBoundingBox().inflate(hExpand, 0.0, hExpand).expandTowards(0.0, -vExpand, 0.0);
             boolean nearBody = VxEntityCollisionManager.isColliding(self.level(), expandedBox);
 
             if (!onMinecraftGround && nearBody) {
@@ -91,9 +94,10 @@ public abstract class MixinEntityBodyDragging {
             Vec3 displacement = VxEntityCollisionManager.getBodyDisplacement(self, activeGroundIdx);
 
             // Ignore massive displacements to prevent physics glitches during slot reassignment
-            if (displacement.lengthSqr() > 9.0) {
+            if (displacement.lengthSqr() > 100.0) {
                 activeGroundIdx = -1;
-                this.velthoric_groundLostTicks = 4;
+                this.velthoric_lastGroundSlot = -1;
+                this.velthoric_groundLostTicks = 0;
             } else if (displacement.lengthSqr() > 1.0E-10) {
                 float dragScale = ((VxEntityAttachment) self).velthoric$getGroundDragScale();
                 
@@ -156,6 +160,11 @@ public abstract class MixinEntityBodyDragging {
                 if (this.velthoric_groundLostTicks > 3) {
                     Vec3 bodyVel = VxEntityCollisionManager.getBodyVelocity(self, this.velthoric_lastGroundSlot);
                     if (bodyVel.lengthSqr() > 1.0E-10) {
+                        // Cap momentum transfer to prevent launch-velocity at high body speeds
+                        double maxMomentum = 1.5;
+                        if (bodyVel.lengthSqr() > maxMomentum * maxMomentum) {
+                            bodyVel = bodyVel.scale(maxMomentum / bodyVel.length());
+                        }
                         Vec3 currentDelta = self.getDeltaMovement();
                         self.setDeltaMovement(currentDelta.x + bodyVel.x, currentDelta.y + bodyVel.y, currentDelta.z + bodyVel.z);
                     }
