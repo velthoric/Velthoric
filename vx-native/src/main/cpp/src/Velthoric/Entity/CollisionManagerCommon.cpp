@@ -256,9 +256,15 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                         }
                     }
 
-                    // Vertical collisions are always 100% solid to prevent falling through
-                    // or getting stuck inside objects when landing/jumping.
+                    // For floor collisions, scale by mass ratio so dynamic bodies do not act as unyielding floor.
+                    // For ceiling collisions, scale by volume/mass ratio so small ceiling objects do not crush the entity.
                     float entityPushRatio = 1.0f;
+                    if (isDynamicBody) {
+                        float totalMass = characterMass + bodyMass;
+                        entityPushRatio = (totalMass > 0.0f) ? (bodyMass / totalMass) : 0.5f;
+                    } else if (ny < -0.15f) {
+                        entityPushRatio = std::min(1.0f, volumeRatio / 0.30f);
+                    }
 
                     px += push.GetX() * entityPushRatio;
                     py += push.GetY() * entityPushRatio;
@@ -267,8 +273,8 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                     outPushY += push.GetY() * entityPushRatio;
                     outPushZ += push.GetZ() * entityPushRatio;
 
-                    // Dynamically apply impulses back to physics simulations
-                    if (isDynamicBody && ctx.ps && bodyIdVal != 0) {
+                    // Dynamically apply impulses back to physics simulations (only on the first iteration to prevent multiplying force)
+                    if (iter == 0 && isDynamicBody && ctx.ps && bodyIdVal != 0) {
                         // 1. Determine contact points
                         RVec3 contactPoint(collector.result.mContactPointOn2);
 
@@ -309,9 +315,10 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                         float J_total = J_vel + appliedJ_pen;
                         Vec3 impulse = -normal * J_total;
 
-                        // 5. Continuous weight force (gravity) applied straight down at the contact point
+                        // 5. Continuous weight force (gravity) scaled down proportionally so small bodies don't get shot down
                         if (normal.GetY() >= 0.65f) {
-                            Vec3 weightImpulse(0.0f, -characterMass * 9.81f * dt, 0.0f);
+                            float weightScale = std::min(1.0f, bodyMass / characterMass);
+                            Vec3 weightImpulse(0.0f, -characterMass * 9.81f * dt * weightScale, 0.0f);
                             impulse += weightImpulse;
                         }
 
@@ -424,6 +431,8 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                     if (isDynamicBody) {
                         float totalMass = characterMass + bodyMass;
                         entityPushRatio = (totalMass > 0.0f) ? (bodyMass / totalMass) : 0.5f;
+                    } else {
+                        entityPushRatio = std::min(1.0f, volumeRatio / 0.30f);
                     }
 
                     px += push.GetX() * entityPushRatio;
@@ -433,8 +442,8 @@ bool ResolvePenetrations(const CollisionContext& ctx, float& px, float& py, floa
                     outPushY += push.GetY() * entityPushRatio;
                     outPushZ += push.GetZ() * entityPushRatio;
 
-                    // Dynamically apply impulses back to physics simulations
-                    if (isDynamicBody && ctx.ps && bodyIdVal != 0) {
+                    // Dynamically apply impulses back to physics simulations (only on the first iteration to prevent multiplying force)
+                    if (iter == 0 && isDynamicBody && ctx.ps && bodyIdVal != 0) {
                         // 1. Determine contact points
                         RVec3 contactPoint(collector.result.mContactPointOn2);
 
@@ -599,7 +608,16 @@ void HandleCollisionCore(const CollisionContext& ctx, float boxX, float boxY, fl
                 basePushX = stepPushX;
                 basePushZ = stepPushZ;
                 basePushY = actualStepUp;
-                if (hitDown && landedBody != -1) baseWalkedOn = landedBody;
+                if (hitDown && landedBody != -1) {
+                    // Check the volume of the landed body. Only bodies >= 30% volume can act as a moving platform.
+                    const Shape* landedShape = reinterpret_cast<const Shape*>(ctx.shapes[landedBody]);
+                    float landedVolumeRatio = ComputeBodyVolumeRatio(landedShape, ctx.boxHx, ctx.boxHy, ctx.boxHz);
+                    if (landedVolumeRatio >= 0.30f) {
+                        baseWalkedOn = landedBody;
+                    } else {
+                        baseWalkedOn = -1;
+                    }
+                }
                 slideFriction = 1.0f;
                 baseMaxNormal = landedNormal;
             }
