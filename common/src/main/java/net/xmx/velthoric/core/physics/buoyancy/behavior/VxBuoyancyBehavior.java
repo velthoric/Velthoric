@@ -70,6 +70,17 @@ public class VxBuoyancyBehavior implements VxBehavior {
     }
 
     /**
+     * No-arg constructor for creating a configuration template.
+     */
+    public VxBuoyancyBehavior() {
+        this.broadPhase = null;
+        this.narrowPhase = null;
+        this.fillingBuffer = null;
+        this.publishedBuffer = null;
+        this.readingBuffer = null;
+    }
+
+    /**
      * The unique identifier for this behavior.
      * Consumed by the behavior manager for bitmask allocation and dispatch.
      */

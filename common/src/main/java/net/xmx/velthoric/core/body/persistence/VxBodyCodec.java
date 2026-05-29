@@ -19,6 +19,7 @@ import net.xmx.velthoric.core.persistence.schema.VxFieldType;
 import net.xmx.velthoric.core.persistence.schema.VxSchema;
 import net.xmx.velthoric.init.VxMainClass;
 import net.xmx.velthoric.network.VxByteBuf;
+import net.xmx.velthoric.core.body.persistence.behavior.VxPersistenceBehavior;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -226,8 +227,14 @@ public final class VxBodyCodec {
         // Field 10: Custom Type Data
         SCHEMA.register((short) 10, "type_data", VxFieldType.BYTES,
                 body -> true, // Let the specific handler decide if it actually writes anything
-                (body, buf) -> body.getType().getPersistenceHandler().write(body, buf),
-                (body, buf) -> body.getType().getPersistenceHandler().read(body, buf)
+                (body, buf) -> {
+                    VxPersistenceBehavior behavior = (VxPersistenceBehavior) body.getType().getBehavior(VxPersistenceBehavior.ID);
+                    if (behavior != null) behavior.getHandler().write(body, buf);
+                },
+                (body, buf) -> {
+                    VxPersistenceBehavior behavior = (VxPersistenceBehavior) body.getType().getBehavior(VxPersistenceBehavior.ID);
+                    if (behavior != null) behavior.getHandler().read(body, buf);
+                }
         );
     }
 

@@ -9,20 +9,18 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.resources.ResourceLocation;
-import net.xmx.velthoric.core.behavior.VxBehavior;
 import net.xmx.velthoric.core.behavior.VxBehaviorManager;
-import net.xmx.velthoric.core.network.synchronization.behavior.VxSyncBehavior;
 import net.xmx.velthoric.core.body.VxAbstractBodyManager;
+import net.xmx.velthoric.core.body.VxBody;
+import net.xmx.velthoric.core.body.VxBodyType;
 import net.xmx.velthoric.core.body.client.time.VxClientClock;
 import net.xmx.velthoric.core.body.registry.VxBodyRegistry;
-import net.xmx.velthoric.core.body.VxBodyType;
-import net.xmx.velthoric.core.body.VxBody;
+import net.xmx.velthoric.core.network.synchronization.behavior.VxSyncBehavior;
 import net.xmx.velthoric.event.api.VxClientLevelEvent;
 import net.xmx.velthoric.event.api.VxClientPlayerNetworkEvent;
 import net.xmx.velthoric.init.VxMainClass;
 import net.xmx.velthoric.math.VxTransform;
 import net.xmx.velthoric.network.VxByteBuf;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -194,11 +192,11 @@ public class VxClientBodyManager extends VxAbstractBodyManager {
     /**
      * Spawns a new physics body on the client based on data from a spawn packet.
      *
-     * @param id          The UUID of the new body.
-     * @param networkId   The session-specific network ID for the body.
-     * @param typeId      The ResourceLocation identifying the body's type.
-     * @param data        A buffer containing the initial transform and custom sync data.
-     * @param timestamp   The server-side timestamp of the spawn event.
+     * @param id        The UUID of the new body.
+     * @param networkId The session-specific network ID for the body.
+     * @param typeId    The ResourceLocation identifying the body's type.
+     * @param data      A buffer containing the initial transform and custom sync data.
+     * @param timestamp The server-side timestamp of the spawn event.
      */
     public void spawnBody(UUID id, int networkId, ResourceLocation typeId, VxByteBuf data, long timestamp) {
         // Prevent duplicate spawning logic
@@ -228,15 +226,8 @@ public class VxClientBodyManager extends VxAbstractBodyManager {
         body.setDataStoreIndex(store, index);
         managedBodies.put(id, body);
 
-        // Attach default behaviors defined in the type definition.
-        long defaultBehaviors = type.getDefaultBehaviors();
-        if (defaultBehaviors != 0) {
-            for (VxBehavior behavior : behaviorManager.getBehaviors()) {
-                if (behavior.getId().isSet(defaultBehaviors)) {
-                    behaviorManager.attachBehavior(body, behavior);
-                }
-            }
-        }
+        // Attach default behaviors from the body type
+        behaviorManager.attachBehaviors(body, type.getBehaviors());
 
         // Deserialize initial transform
         VxTransform transform = new VxTransform();
@@ -358,7 +349,7 @@ public class VxClientBodyManager extends VxAbstractBodyManager {
                         body.onBodyRemoved(level);
                     }
                 }
- 
+
                 managedBodies.remove(id);
             }
         }
@@ -399,7 +390,7 @@ public class VxClientBodyManager extends VxAbstractBodyManager {
         if (sync != null) sync.clear();
         isClockOffsetInitialized = false;
         clockOffsetNanos = 0L;
-        synchronized(clockOffsetSamples) {
+        synchronized (clockOffsetSamples) {
             clockOffsetSamples.clear();
         }
         this.clock.reset();

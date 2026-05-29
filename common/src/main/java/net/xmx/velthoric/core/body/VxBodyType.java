@@ -5,15 +5,11 @@
 package net.xmx.velthoric.core.body;
 
 import net.minecraft.resources.ResourceLocation;
+import net.xmx.velthoric.core.behavior.VxBehavior;
 import net.xmx.velthoric.core.behavior.VxBehaviorId;
-import net.xmx.velthoric.core.behavior.impl.VxPhysicsSyncBehavior;
-import net.xmx.velthoric.core.behavior.impl.VxRigidPhysicsBehavior;
-import net.xmx.velthoric.core.behavior.impl.VxSoftPhysicsBehavior;
-import net.xmx.velthoric.core.body.persistence.behavior.VxPersistenceBehavior;
+import net.xmx.velthoric.core.behavior.VxBehaviorSet;
 import net.xmx.velthoric.core.body.provider.VxJoltRigidProvider;
 import net.xmx.velthoric.core.body.provider.VxJoltSoftProvider;
-import net.xmx.velthoric.core.network.synchronization.VxSynchronizedData;
-import net.xmx.velthoric.core.body.persistence.VxPersistenceHandler;
 import net.xmx.velthoric.core.physics.world.VxPhysicsWorld;
 import org.jetbrains.annotations.Nullable;
 
@@ -23,8 +19,10 @@ import java.util.function.Consumer;
 /**
  * Represents an immutable definition of a physics body type.
  * <p>
- * This class describes how a body should be constructed, which behaviors it possesses by default,
- * and how its physical shape is provided to the Jolt engine.
+ * A body type describes how a body is constructed, which behaviors it possesses by default
+ * (via a {@link VxBehaviorSet}), and how its physical shape is provided to the Jolt engine.
+ * <p>
+ * Body types are assembled via the fluent {@link Builder}.
  *
  * @param <T> The specific class implementation of the body (e.g. BoxRigidBody).
  * @author xI-Mx-Ix
@@ -32,70 +30,53 @@ import java.util.function.Consumer;
 public final class VxBodyType<T extends VxBody> {
 
     /**
-     * Unique identifier for this body type.
+     * The unique identifier representing this specific body type in registries.
      */
     private final ResourceLocation typeId;
 
     /**
-     * Factory used to instantiate new body objects.
+     * The functional interface used to construct new instances of this body type.
      */
     private final Factory<T> factory;
 
     /**
-     * Determines if this type can be summoned via commands.
+     * The immutable collection of behavior configurations attached to this body type.
      */
-    private final boolean summonable;
+    private final VxBehaviorSet behaviors;
 
     /**
-     * Determines if this type is saved to disk by default.
-     */
-    private final boolean persistent;
-
-    /**
-     * Bitmask of behavior IDs attached to instances of this type at creation.
-     */
-    private final long defaultBehaviors;
-
-    /**
-     * Provider for rigid body shapes. Null if this is a soft body.
+     * The shape provider utilized when constructing rigid bodies, or null if this is a soft body.
      */
     @Nullable
     private final VxJoltRigidProvider rigidProvider;
 
     /**
-     * Provider for soft body meshes. Null if this is a rigid body.
+     * The shape provider utilized when constructing soft bodies, or null if this is a rigid body.
      */
     @Nullable
     private final VxJoltSoftProvider softProvider;
 
     /**
-     * Handler for custom persistence data serialization.
+     * Constructs a new immutable definition of a physics body type.
+     *
+     * @param typeId        The unique identifier representing this specific body type in registries.
+     * @param factory       The functional interface used to construct new instances of this body type.
+     * @param behaviors     The immutable collection of behavior configurations attached to this body type.
+     * @param rigidProvider The shape provider utilized when constructing rigid bodies, or null if this is a soft body.
+     * @param softProvider  The shape provider utilized when constructing soft bodies, or null if this is a rigid body.
      */
-    private final VxPersistenceHandler persistenceHandler;
-
-    /**
-     * Optional callback to define synchronized data entries.
-     */
-    @Nullable
-    private final Consumer<VxSynchronizedData.Builder> syncDataDefiner;
-
-    private VxBodyType(ResourceLocation typeId, Factory<T> factory, boolean summonable, boolean persistent,
-                       long defaultBehaviors, @Nullable VxJoltRigidProvider rigidProvider,
-                       @Nullable VxJoltSoftProvider softProvider, VxPersistenceHandler persistenceHandler,
-                       @Nullable Consumer<VxSynchronizedData.Builder> syncDataDefiner) {
+    private VxBodyType(ResourceLocation typeId, Factory<T> factory,
+                       VxBehaviorSet behaviors, @Nullable VxJoltRigidProvider rigidProvider,
+                       @Nullable VxJoltSoftProvider softProvider) {
         this.typeId = typeId;
         this.factory = factory;
-        this.summonable = summonable;
-        this.persistent = persistent;
-        this.defaultBehaviors = defaultBehaviors;
+        this.behaviors = behaviors;
         this.rigidProvider = rigidProvider;
         this.softProvider = softProvider;
-        this.persistenceHandler = persistenceHandler;
-        this.syncDataDefiner = syncDataDefiner;
     }
 
     /**
-     * Creates a new instance of a body using this type definition.
+     * Instantiates a new physical body using this type definition.
      *
      * @param world The physics world.
      * @param id    The unique identifier.
@@ -106,142 +87,213 @@ public final class VxBodyType<T extends VxBody> {
     }
 
     /**
-     * Invokes the definition logic for synchronized data fields.
+     * Retrieves the unique identifier of this body type.
      *
-     * @param builder The sync data builder.
+     * @return The unique identifier representing this specific body type in registries.
      */
-    public void defineSyncData(VxSynchronizedData.Builder builder) {
-        if (syncDataDefiner != null) {
-            syncDataDefiner.accept(builder);
-        }
-    }
-
     public ResourceLocation getTypeId() {
         return typeId;
     }
 
-    public boolean isSummonable() {
-        return summonable;
+    /**
+     * Determines whether this body type includes a specific behavior by default.
+     *
+     * @param id The behavior ID to check.
+     * @return True if this type includes the behavior, false otherwise.
+     */
+    public boolean hasBehavior(VxBehaviorId id) {
+        return behaviors.contains(id);
     }
 
-    public boolean isPersistent() {
-        return persistent;
+    /**
+     * Retrieves the configured instance of a behavior associated with this body type.
+     *
+     * @param id The behavior ID to retrieve.
+     * @param <B> The specific behavior class type.
+     * @return The behavior instance, or null if not present.
+     */
+    public <B extends VxBehavior> B getBehavior(VxBehaviorId id) {
+        return behaviors.get(id);
     }
 
-    public long getDefaultBehaviors() {
-        return defaultBehaviors;
+    /**
+     * Retrieves the entire set of behaviors configured for this body type.
+     *
+     * @return The immutable collection of behavior configurations attached to this body type.
+     */
+    public VxBehaviorSet getBehaviors() {
+        return behaviors;
     }
 
+    /**
+     * Retrieves the rigid shape provider if one is configured.
+     *
+     * @return The shape provider utilized when constructing rigid bodies, or null if this is a soft body.
+     */
     @Nullable
     public VxJoltRigidProvider getRigidProvider() {
         return rigidProvider;
     }
 
+    /**
+     * Retrieves the soft shape provider if one is configured.
+     *
+     * @return The shape provider utilized when constructing soft bodies, or null if this is a rigid body.
+     */
     @Nullable
     public VxJoltSoftProvider getSoftProvider() {
         return softProvider;
     }
 
-    public VxPersistenceHandler getPersistenceHandler() {
-        return persistenceHandler;
-    }
-
+    /**
+     * Determines whether this body type represents a rigid body.
+     *
+     * @return True if this body type represents a rigid body, false otherwise.
+     */
     public boolean isRigid() {
         return rigidProvider != null;
     }
 
+    /**
+     * Determines whether this body type represents a soft body.
+     *
+     * @return True if this body type represents a soft body, false otherwise.
+     */
     public boolean isSoft() {
         return softProvider != null;
     }
 
     /**
      * Functional interface for instantiating body handles.
+     *
+     * @param <T> The specific class implementation of the body (e.g. BoxRigidBody).
      */
     @FunctionalInterface
     public interface Factory<T extends VxBody> {
+        /**
+         * Constructs the body handle.
+         *
+         * @param type  The immutable definition of a physics body type.
+         * @param world The physics world.
+         * @param id    The unique identifier.
+         * @return A new body instance.
+         */
         T create(VxBodyType<T> type, VxPhysicsWorld world, UUID id);
     }
 
     /**
      * Fluent builder for creating type definitions.
+     *
+     * @param <T> The specific class implementation of the body (e.g. BoxRigidBody).
      */
     public static class Builder<T extends VxBody> {
+        
+        /**
+         * The factory used for instantiation.
+         */
         private final Factory<T> factory;
-        private boolean summonable = true;
-        private boolean persistent = true;
-        private long defaultBehaviors = 0;
+        
+        /**
+         * The collection of behaviors to be applied.
+         */
+        private VxBehaviorSet behaviorSet;
+        
+        /**
+         * The shape provider for rigid bodies.
+         */
         private VxJoltRigidProvider rigidProvider;
+        
+        /**
+         * The shape provider for soft bodies.
+         */
         private VxJoltSoftProvider softProvider;
-        private VxPersistenceHandler persistenceHandler = VxPersistenceHandler.EMPTY;
-        private Consumer<VxSynchronizedData.Builder> syncDataDefiner;
 
-        private Builder(Factory factory) {
+        /**
+         * Private constructor to initialize the builder with a factory.
+         * 
+         * @param factory The factory used for instantiation.
+         */
+        private Builder(Factory<T> factory) {
             this.factory = factory;
         }
 
+        /**
+         * Initializes a new builder instance with the specified factory.
+         *
+         * @param factory The factory used for instantiation.
+         * @param <T> The specific class implementation of the body (e.g. BoxRigidBody).
+         * @return A new builder instance.
+         */
         public static <T extends VxBody> Builder<T> create(Factory<T> factory) {
             return new Builder<>(factory);
         }
 
-        public Builder<T> noSummon() {
-            this.summonable = false;
-            return this;
-        }
-
-        public Builder<T> setPersistent(boolean persistent) {
-            this.persistent = persistent;
-            return this;
-        }
-
         /**
-         * Registers a rigid body shape provider and attaches physics synchronization behaviors.
+         * Configures the shape provider for a rigid body and applies default rigid behaviors if no behaviors are set.
+         *
+         * @param provider The shape provider for rigid bodies.
+         * @return The current builder instance for fluent chaining.
          */
         public Builder<T> rigidProvider(VxJoltRigidProvider provider) {
             this.rigidProvider = provider;
-            this.defaultBehaviors |= VxRigidPhysicsBehavior.ID.getMask();
-            this.defaultBehaviors |= VxPhysicsSyncBehavior.ID.getMask();
+            if (this.behaviorSet == null) {
+                this.behaviorSet = VxBehaviorSet.rigid();
+            }
             return this;
         }
 
         /**
-         * Registers a soft body mesh provider and attaches physics synchronization behaviors.
+         * Configures the shape provider for a soft body and applies default soft behaviors if no behaviors are set.
+         *
+         * @param provider The shape provider for soft bodies.
+         * @return The current builder instance for fluent chaining.
          */
         public Builder<T> softProvider(VxJoltSoftProvider provider) {
             this.softProvider = provider;
-            this.defaultBehaviors |= VxSoftPhysicsBehavior.ID.getMask();
-            this.defaultBehaviors |= VxPhysicsSyncBehavior.ID.getMask();
-            return this;
-        }
-
-        public Builder<T> persistence(VxPersistenceHandler handler) {
-            this.persistenceHandler = handler;
-            return this;
-        }
-
-        public Builder<T> persistence(VxPersistenceHandler.Writer writer, VxPersistenceHandler.Reader reader) {
-            this.persistenceHandler = VxPersistenceHandler.of(writer, reader);
-            return this;
-        }
-
-        public Builder<T> syncData(Consumer<VxSynchronizedData.Builder> definer) {
-            this.syncDataDefiner = definer;
-            return this;
-        }
-
-        public Builder<T> behavior(VxBehaviorId behaviorId) {
-            this.defaultBehaviors |= behaviorId.getMask();
+            if (this.behaviorSet == null) {
+                this.behaviorSet = VxBehaviorSet.soft();
+            }
             return this;
         }
 
         /**
-         * Builds the final immutable type.
+         * Explicitly sets the entire behavior set for this body type.
+         *
+         * @param behaviorSet The collection of behaviors to be applied.
+         * @return The current builder instance for fluent chaining.
+         */
+        public Builder<T> behaviors(VxBehaviorSet behaviorSet) {
+            this.behaviorSet = behaviorSet;
+            return this;
+        }
+
+        /**
+         * Modifies the current behavior set using a builder pattern.
+         *
+         * @param modifier The consumer that modifies the behavior set builder.
+         * @return The current builder instance for fluent chaining.
+         */
+        public Builder<T> behaviors(Consumer<VxBehaviorSet.Builder> modifier) {
+            VxBehaviorSet.Builder b = (this.behaviorSet != null)
+                    ? this.behaviorSet.toBuilder()
+                    : VxBehaviorSet.builder();
+            modifier.accept(b);
+            this.behaviorSet = b.build();
+            return this;
+        }
+
+        /**
+         * Constructs and returns the immutable body type definition.
+         *
+         * @param typeId The unique identifier representing this specific body type in registries.
+         * @return A new immutable definition of a physics body type.
          */
         public VxBodyType<T> build(ResourceLocation typeId) {
-            if (persistent) {
-                defaultBehaviors |= VxPersistenceBehavior.ID.getMask();
+            if (behaviorSet == null) {
+                behaviorSet = VxBehaviorSet.empty();
             }
-            return new VxBodyType<>(typeId, factory, summonable, persistent,
-                    defaultBehaviors, rigidProvider, softProvider, persistenceHandler, syncDataDefiner);
+
+            return new VxBodyType<>(typeId, factory, behaviorSet, rigidProvider, softProvider);
         }
     }
 }

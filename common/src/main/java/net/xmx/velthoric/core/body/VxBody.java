@@ -24,6 +24,7 @@ import net.xmx.velthoric.core.network.synchronization.VxSynchronizedData;
 import net.xmx.velthoric.core.network.synchronization.accessor.VxClientAccessor;
 import net.xmx.velthoric.core.network.synchronization.accessor.VxDataAccessor;
 import net.xmx.velthoric.core.network.synchronization.accessor.VxServerAccessor;
+import net.xmx.velthoric.core.network.synchronization.behavior.VxSyncDataBehavior;
 import net.xmx.velthoric.core.physics.world.VxPhysicsWorld;
 import net.xmx.velthoric.math.VxTransform;
 import net.xmx.velthoric.network.VxByteBuf;
@@ -187,7 +188,10 @@ public class VxBody {
      * @param builder The builder used to define data accessors.
      */
     protected void defineSyncData(VxSynchronizedData.Builder builder) {
-        type.defineSyncData(builder);
+        VxSyncDataBehavior syncBehavior = (VxSyncDataBehavior) type.getBehavior(VxSyncDataBehavior.ID);
+        if (syncBehavior != null) {
+            syncBehavior.defineSyncData(builder);
+        }
     }
 
     /**

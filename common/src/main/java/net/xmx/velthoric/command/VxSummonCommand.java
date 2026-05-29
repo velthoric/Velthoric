@@ -19,11 +19,12 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
-import net.xmx.velthoric.math.VxTransform;
+import net.xmx.velthoric.core.behavior.impl.VxSummonableBehavior;
+import net.xmx.velthoric.core.body.VxBody;
 import net.xmx.velthoric.core.body.VxBodyType;
 import net.xmx.velthoric.core.body.registry.VxBodyRegistry;
-import net.xmx.velthoric.core.body.VxBody;
 import net.xmx.velthoric.core.physics.world.VxPhysicsWorld;
+import net.xmx.velthoric.math.VxTransform;
 
 import java.util.UUID;
 
@@ -43,7 +44,7 @@ public final class VxSummonCommand {
                                     var registry = VxBodyRegistry.getInstance();
                                     return SharedSuggestionProvider.suggest(
                                             registry.getRegisteredTypes().values().stream()
-                                                    .filter(VxBodyType::isSummonable)
+                                                    .filter(type -> type.hasBehavior(VxSummonableBehavior.ID))
                                                     .map(type -> type.getTypeId().toString()),
                                             builder
                                     );
@@ -81,7 +82,7 @@ public final class VxSummonCommand {
             }
 
             // Check if this body type can be summoned
-            if (!type.isSummonable()) {
+            if (!type.hasBehavior(VxSummonableBehavior.ID)) {
                 source.sendFailure(Component.literal("Physics body type '" + typeId + "' cannot be summoned."));
                 return 0;
             }

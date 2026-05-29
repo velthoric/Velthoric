@@ -9,24 +9,23 @@ import net.xmx.velthoric.core.behavior.VxBehaviorId;
 import net.xmx.velthoric.init.VxMainClass;
 
 /**
- * A behavior that prevents a body from being removed by standard administrative commands like /vxkill.
+ * A behavior that allows a body to be removed by standard administrative commands like /vxkill.
  * <p>
- * This is intended for bodies that are part of the world infrastructure, such as moving bridges,
- * elevators, or decorative physics objects that should not be accidentally deleted by players.
+ * This is intended for bodies that can be accidentally deleted by players.
  *
  * @author xI-Mx-Ix
  */
-public class VxNoKillBehavior implements VxBehavior {
+public class VxKillBehavior implements VxBehavior {
 
     /**
      * The unique identifier for this behavior.
      */
-    public static final VxBehaviorId ID = new VxBehaviorId(VxMainClass.MODID, "NoKill");
+    public static final VxBehaviorId ID = new VxBehaviorId(VxMainClass.MODID, "Kill");
 
     /**
-     * Default constructor for no-kill behavior.
+     * Default constructor for kill behavior.
      */
-    public VxNoKillBehavior() {
+    public VxKillBehavior() {
     }
 
     /**

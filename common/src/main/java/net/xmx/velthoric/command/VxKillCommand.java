@@ -9,9 +9,9 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.xmx.velthoric.command.argument.VxBodyArgument;
+import net.xmx.velthoric.core.behavior.impl.VxKillBehavior;
 import net.xmx.velthoric.core.body.VxBody;
 import net.xmx.velthoric.core.body.VxRemovalReason;
-import net.xmx.velthoric.core.behavior.impl.VxNoKillBehavior;
 
 import java.util.List;
 
@@ -31,7 +31,7 @@ public class VxKillCommand {
                             int removedCount = 0;
 
                             for (VxBody body : bodiesToRemove) {
-                                if (body.getPhysicsWorld().getBodyManager().getBehaviorManager().hasBehavior(body, VxNoKillBehavior.ID)) {
+                                if (!body.getPhysicsWorld().getBodyManager().getBehaviorManager().hasBehavior(body, VxKillBehavior.ID)) {
                                     continue;
                                 }
                                 body.getPhysicsWorld().getBodyManager().removeBody(body.getPhysicsId(), VxRemovalReason.DISCARD);

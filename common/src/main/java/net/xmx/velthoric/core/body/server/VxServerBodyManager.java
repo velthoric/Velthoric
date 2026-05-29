@@ -14,18 +14,18 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.xmx.velthoric.core.behavior.VxBehaviorManager;
-import net.xmx.velthoric.core.body.persistence.behavior.VxPersistenceBehavior;
 import net.xmx.velthoric.core.body.VxAbstractBodyManager;
-import net.xmx.velthoric.core.body.VxRemovalReason;
-import net.xmx.velthoric.core.body.registry.VxBodyRegistry;
-import net.xmx.velthoric.core.body.VxBodyType;
-import net.xmx.velthoric.core.body.tracking.VxSpatialManager;
 import net.xmx.velthoric.core.body.VxBody;
-import net.xmx.velthoric.core.network.internal.VxNetworkDispatcher;
-import net.xmx.velthoric.core.persistence.VxChunkPersistenceHandler;
+import net.xmx.velthoric.core.body.VxBodyType;
+import net.xmx.velthoric.core.body.VxRemovalReason;
 import net.xmx.velthoric.core.body.persistence.VxBodyCodec;
 import net.xmx.velthoric.core.body.persistence.VxBodyStorage;
 import net.xmx.velthoric.core.body.persistence.VxSerializedBodyData;
+import net.xmx.velthoric.core.body.persistence.behavior.VxPersistenceBehavior;
+import net.xmx.velthoric.core.body.registry.VxBodyRegistry;
+import net.xmx.velthoric.core.body.tracking.VxSpatialManager;
+import net.xmx.velthoric.core.network.internal.VxNetworkDispatcher;
+import net.xmx.velthoric.core.persistence.VxChunkPersistenceHandler;
 import net.xmx.velthoric.core.physics.VxJoltBridge;
 import net.xmx.velthoric.core.physics.world.VxPhysicsWorld;
 import net.xmx.velthoric.init.VxMainClass;
@@ -454,14 +454,8 @@ public class VxServerBodyManager extends VxAbstractBodyManager implements VxChun
             c.activation[index] = EActivation.DontActivate;
 
             // --- Behavior Attachment ---
-            // Apply all default behaviors from the body type's bitmask
-            c.behaviorBits.put(index, body.getType().getDefaultBehaviors());
-            // Notify each behavior of attachment
-            for (var behavior : behaviorManager.getBehaviors()) {
-                if (behavior.getId().isSet(c.behaviorBits.get(index))) {
-                    behavior.onAttached(index, body);
-                }
-            }
+            // Apply all default behaviors from the body type
+            behaviorManager.attachBehaviors(body, body.getType().getBehaviors());
 
             // Sync initial dirty state from the body's synchronized data container to the SoA store
             if (body.getSynchronizedData().isDirty()) {

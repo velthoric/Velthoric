@@ -7,16 +7,16 @@ package net.xmx.velthoric.core.behavior;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.xmx.velthoric.core.behavior.impl.*;
+import net.xmx.velthoric.core.body.VxBody;
 import net.xmx.velthoric.core.body.VxBodyDataContainer;
 import net.xmx.velthoric.core.body.VxBodyDataStore;
 import net.xmx.velthoric.core.body.client.VxClientBodyDataStore;
 import net.xmx.velthoric.core.body.client.VxClientBodyManager;
+import net.xmx.velthoric.core.body.persistence.behavior.VxPersistenceBehavior;
 import net.xmx.velthoric.core.body.server.VxServerBodyDataStore;
-import net.xmx.velthoric.core.body.VxBody;
 import net.xmx.velthoric.core.mounting.behavior.VxMountBehavior;
 import net.xmx.velthoric.core.network.internal.behavior.VxNetSyncBehavior;
 import net.xmx.velthoric.core.network.synchronization.behavior.VxSyncBehavior;
-import net.xmx.velthoric.core.body.persistence.behavior.VxPersistenceBehavior;
 import net.xmx.velthoric.core.physics.buoyancy.behavior.VxBuoyancyBehavior;
 import net.xmx.velthoric.core.physics.world.VxPhysicsWorld;
 import net.xmx.velthoric.init.VxMainClass;
@@ -84,8 +84,8 @@ public final class VxBehaviorManager {
             registerBehavior(new VxMountBehavior());
         }
 
-        if (getBehavior(VxNoKillBehavior.ID) == null) {
-            registerBehavior(new VxNoKillBehavior());
+        if (getBehavior(VxKillBehavior.ID) == null) {
+            registerBehavior(new VxKillBehavior());
         }
 
         // Use consolidated sync behavior for both sides
@@ -119,59 +119,13 @@ public final class VxBehaviorManager {
     // ================================================================================
 
     /**
-     * Attaches a behavior to a body by setting the corresponding bit in the data store.
-     * <p>
-     * This method updates the body's {@code behaviorBits} and calls the behavior's
-     * {@link VxBehavior#onAttached} callback.
-     *
-     * @param body     The body to attach the behavior to.
-     * @param behavior The behavior to attach.
-     */
-    public void attachBehavior(VxBody body, VxBehavior behavior) {
-        VxBodyDataStore dataStore = body.getDataStore();
-        if (dataStore == null) return;
-
-        VxBodyDataContainer c = dataStore.current();
-        int index = body.getDataStoreIndex();
-        if (index == -1 || index >= c.capacity) return; // Case: index too new for cached container
-
-        long mask = behavior.getId().getMask();
-        if ((c.behaviorBits.get(index) & mask) != 0) {
-            return; // Already attached
-        }
-
-        c.behaviorBits.put(index, c.behaviorBits.get(index) | mask);
-        behavior.onAttached(index, body);
-    }
-
-    /**
-     * Attaches a behavior to a body using only the behavior's ID mask.
-     * This is the fast path used during body construction when the behavior instance
-     * is known from the registered list.
+     * Attaches a behavior to a body by setting the corresponding bit in the data store
+     * and invoking the behavior's {@link VxBehavior#onAttached} callback.
      *
      * @param body       The body to attach the behavior to.
      * @param behaviorId The ID of the behavior to attach.
      */
     public void attachBehavior(VxBody body, VxBehaviorId behaviorId) {
-        int index = body.getDataStoreIndex();
-        if (index == -1) return;
-
-        // Find the registered behavior for this ID and delegate
-        for (VxBehavior behavior : behaviors) {
-            if (behavior.getId() == behaviorId) {
-                attachBehavior(body, behavior);
-                return;
-            }
-        }
-    }
-
-    /**
-     * Detaches a behavior from a body by clearing the corresponding bit in the data store.
-     *
-     * @param body     The body to detach the behavior from.
-     * @param behavior The behavior to detach.
-     */
-    public void detachBehavior(VxBody body, VxBehavior behavior) {
         VxBodyDataStore dataStore = body.getDataStore();
         if (dataStore == null) return;
 
@@ -179,12 +133,61 @@ public final class VxBehaviorManager {
         int index = body.getDataStoreIndex();
         if (index == -1 || index >= c.capacity) return;
 
-        long mask = behavior.getId().getMask();
+        long mask = behaviorId.getMask();
+        if ((c.behaviorBits.get(index) & mask) != 0) {
+            return; // Already attached
+        }
+
+        c.behaviorBits.put(index, c.behaviorBits.get(index) | mask);
+
+        // Find the registered behavior instance and call its lifecycle hook
+        for (VxBehavior behavior : behaviors) {
+            if (behavior.getId() == behaviorId) {
+                behavior.onAttached(index, body);
+                return;
+            }
+        }
+    }
+
+    /**
+     * Attaches all behaviors from a {@link VxBehaviorSet} to a body.
+     *
+     * @param body The body to attach behaviors to.
+     * @param set  The set of behavior IDs to attach.
+     */
+    public void attachBehaviors(VxBody body, VxBehaviorSet set) {
+        for (VxBehaviorId id : set.getIds()) {
+            attachBehavior(body, id);
+        }
+    }
+
+    /**
+     * Detaches a behavior from a body by clearing the corresponding bit in the data store.
+     *
+     * @param body       The body to detach the behavior from.
+     * @param behaviorId The ID of the behavior to detach.
+     */
+    public void detachBehavior(VxBody body, VxBehaviorId behaviorId) {
+        VxBodyDataStore dataStore = body.getDataStore();
+        if (dataStore == null) return;
+
+        VxBodyDataContainer c = dataStore.current();
+        int index = body.getDataStoreIndex();
+        if (index == -1 || index >= c.capacity) return;
+
+        long mask = behaviorId.getMask();
         if ((c.behaviorBits.get(index) & mask) == 0) {
             return; // Not attached
         }
 
-        behavior.onDetached(index, body);
+        // Find the registered behavior instance and call its lifecycle hook
+        for (VxBehavior behavior : behaviors) {
+            if (behavior.getId() == behaviorId) {
+                behavior.onDetached(index, body);
+                break;
+            }
+        }
+
         c.behaviorBits.put(index, c.behaviorBits.get(index) & ~mask);
     }
 

@@ -6,9 +6,10 @@ package net.xmx.velthoric.core.body.persistence.behavior;
 
 import net.xmx.velthoric.core.behavior.VxBehavior;
 import net.xmx.velthoric.core.behavior.VxBehaviorId;
+import net.xmx.velthoric.core.body.VxBody;
+import net.xmx.velthoric.core.body.persistence.VxPersistenceHandler;
 import net.xmx.velthoric.core.body.server.VxServerBodyDataStore;
 import net.xmx.velthoric.init.VxMainClass;
-import net.xmx.velthoric.core.body.VxBody;
 
 /**
  * The behavior for persistence (save/load to disk).
@@ -30,10 +31,28 @@ public class VxPersistenceBehavior implements VxBehavior {
      */
     public static final VxBehaviorId ID = new VxBehaviorId(VxMainClass.MODID, "Persistence");
 
+    private final VxPersistenceHandler handler;
+
     /**
-     * Default constructor for persistence behavior.
+     * Default constructor for basic persistence (no custom data).
      */
     public VxPersistenceBehavior() {
+        this.handler = VxPersistenceHandler.EMPTY;
+    }
+
+    /**
+     * Constructor for persistence with a custom handler.
+     */
+    public VxPersistenceBehavior(VxPersistenceHandler handler) {
+        this.handler = handler;
+    }
+
+    public VxPersistenceBehavior(VxPersistenceHandler.Writer writer, VxPersistenceHandler.Reader reader) {
+        this.handler = VxPersistenceHandler.of(writer, reader);
+    }
+
+    public VxPersistenceHandler getHandler() {
+        return handler;
     }
 
     /**
