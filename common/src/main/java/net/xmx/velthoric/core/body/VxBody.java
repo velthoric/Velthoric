@@ -24,7 +24,7 @@ import net.xmx.velthoric.core.network.synchronization.VxSynchronizedData;
 import net.xmx.velthoric.core.network.synchronization.accessor.VxClientAccessor;
 import net.xmx.velthoric.core.network.synchronization.accessor.VxDataAccessor;
 import net.xmx.velthoric.core.network.synchronization.accessor.VxServerAccessor;
-import net.xmx.velthoric.core.network.synchronization.behavior.VxSyncDataBehavior;
+import net.xmx.velthoric.core.network.synchronization.behavior.VxSynchronizedDataBehavior;
 import net.xmx.velthoric.core.physics.world.VxPhysicsWorld;
 import net.xmx.velthoric.math.VxTransform;
 import net.xmx.velthoric.network.VxByteBuf;
@@ -96,7 +96,7 @@ public class VxBody {
         this.physicsWorld = physicsWorld;
         this.physicsId = id;
         VxSynchronizedData.Builder builder = new VxSynchronizedData.Builder();
-        this.defineSyncData(builder);
+        this.initSyncData(builder);
         this.synchronizedData = builder.build();
     }
 
@@ -111,7 +111,7 @@ public class VxBody {
         this.type = type;
         this.physicsId = id;
         VxSynchronizedData.Builder builder = new VxSynchronizedData.Builder();
-        this.defineSyncData(builder);
+        this.initSyncData(builder);
         this.synchronizedData = builder.build();
         this.physicsWorld = null;
     }
@@ -183,12 +183,12 @@ public class VxBody {
     }
 
     /**
-     * Defines the synchronized data fields for this body.
+     * Initializes the synchronized data fields for this body.
      *
      * @param builder The builder used to define data accessors.
      */
-    protected void defineSyncData(VxSynchronizedData.Builder builder) {
-        VxSyncDataBehavior syncBehavior = (VxSyncDataBehavior) type.getBehavior(VxSyncDataBehavior.ID);
+    private void initSyncData(VxSynchronizedData.Builder builder) {
+        VxSynchronizedDataBehavior syncBehavior = (VxSynchronizedDataBehavior) type.getBehavior(VxSynchronizedDataBehavior.ID);
         if (syncBehavior != null) {
             syncBehavior.defineSyncData(builder);
         }

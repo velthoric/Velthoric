@@ -6,11 +6,14 @@ package net.xmx.velthoric.core.network.synchronization.behavior;
 
 import net.xmx.velthoric.core.behavior.VxBehavior;
 import net.xmx.velthoric.core.behavior.VxBehaviorId;
+import net.xmx.velthoric.core.network.synchronization.VxSynchronizedData;
 import net.xmx.velthoric.init.VxMainClass;
 
+import java.util.function.Consumer;
+
 /**
- * A behavior indicating that a physics body's custom synchronized data
- * should be synchronized between the server and the client.
+ * A behavior that defines a physics body's custom synchronized data fields
+ * and dictates that this data must be synchronized between the server and the client.
  *
  * @author xI-Mx-Ix
  */
@@ -22,9 +25,35 @@ public class VxSynchronizedDataBehavior implements VxBehavior {
     public static final VxBehaviorId ID = new VxBehaviorId(VxMainClass.MODID, "CustomDataSync");
 
     /**
-     * Default constructor.
+     * A consumer responsible for configuring the synchronized data builder.
+     */
+    private final Consumer<VxSynchronizedData.Builder> definer;
+
+    /**
+     * Default constructor without a definer.
      */
     public VxSynchronizedDataBehavior() {
+        this(null);
+    }
+
+    /**
+     * Constructs a new instance of the synchronized data behavior.
+     *
+     * @param definer A consumer used to define custom synchronized fields for the body.
+     */
+    public VxSynchronizedDataBehavior(Consumer<VxSynchronizedData.Builder> definer) {
+        this.definer = definer;
+    }
+
+    /**
+     * Applies the configured synchronized data definitions to the provided builder.
+     *
+     * @param builder The synchronized data builder to configure.
+     */
+    public void defineSyncData(VxSynchronizedData.Builder builder) {
+        if (definer != null) {
+            definer.accept(builder);
+        }
     }
 
     /**

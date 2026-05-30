@@ -60,8 +60,7 @@ public class VxChainPartRigidBody extends VxBody {
      * Defines synchronized data properties for this body.
      * The length and radius are synced from server to client.
      */
-    @Override
-    protected void defineSyncData(VxSynchronizedData.Builder builder) {
+    public static void defineSyncData(VxSynchronizedData.Builder builder) {
         builder.define(DATA_LENGTH, 0.8f);
         builder.define(DATA_RADIUS, 0.1f);
     }

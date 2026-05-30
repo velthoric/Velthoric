@@ -56,8 +56,7 @@ public class ClothSoftBody extends VxBody {
         super(type, id);
     }
 
-    @Override
-    protected void defineSyncData(VxSynchronizedData.Builder builder) {
+    public static void defineSyncData(VxSynchronizedData.Builder builder) {
         builder.define(DATA_WIDTH_SEGMENTS, 15);
         builder.define(DATA_HEIGHT_SEGMENTS, 15);
     }

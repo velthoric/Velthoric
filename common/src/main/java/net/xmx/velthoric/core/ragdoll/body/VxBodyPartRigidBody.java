@@ -52,8 +52,7 @@ public class VxBodyPartRigidBody extends VxBody {
         super(type, id);
     }
 
-    @Override
-    protected void defineSyncData(VxSynchronizedData.Builder builder) {
+    public static void defineSyncData(VxSynchronizedData.Builder builder) {
         builder.define(DATA_HALF_EXTENTS, new Vec3(0.25f, 0.25f, 0.25f));
         builder.define(DATA_BODY_PART, VxBodyPart.TORSO);
         builder.define(DATA_SKIN_ID, "");

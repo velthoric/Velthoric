@@ -50,8 +50,7 @@ public class RopeSoftBody extends VxBody {
         super(type, id);
     }
 
-    @Override
-    protected void defineSyncData(VxSynchronizedData.Builder builder) {
+    public static void defineSyncData(VxSynchronizedData.Builder builder) {
         builder.define(DATA_ROPE_RADIUS, 0.1f);
     }
 

@@ -47,8 +47,7 @@ public class BoxRigidBody extends VxBody {
         super(type, id);
     }
 
-    @Override
-    protected void defineSyncData(VxSynchronizedData.Builder builder) {
+    public static void defineSyncData(VxSynchronizedData.Builder builder) {
         builder.define(DATA_HALF_EXTENTS, new Vec3(0.5f, 0.5f, 0.5f));
         builder.define(DATA_COLOR_ORDINAL, BoxColor.RED.ordinal());
     }

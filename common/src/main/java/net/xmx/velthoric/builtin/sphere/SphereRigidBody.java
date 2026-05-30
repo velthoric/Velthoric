@@ -39,8 +39,7 @@ public class SphereRigidBody extends VxBody {
         super(type, id);
     }
 
-    @Override
-    protected void defineSyncData(VxSynchronizedData.Builder builder) {
+    public static void defineSyncData(VxSynchronizedData.Builder builder) {
         builder.define(DATA_RADIUS, 0.5f);
     }
 
