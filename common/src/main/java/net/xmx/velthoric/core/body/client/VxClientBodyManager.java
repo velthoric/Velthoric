@@ -15,7 +15,7 @@ import net.xmx.velthoric.core.body.VxBody;
 import net.xmx.velthoric.core.body.VxBodyType;
 import net.xmx.velthoric.core.body.client.time.VxClientClock;
 import net.xmx.velthoric.core.body.registry.VxBodyRegistry;
-import net.xmx.velthoric.core.network.synchronization.behavior.VxSyncBehavior;
+import net.xmx.velthoric.core.network.synchronization.VxClientSyncDataManager;
 import net.xmx.velthoric.event.api.VxClientLevelEvent;
 import net.xmx.velthoric.event.api.VxClientPlayerNetworkEvent;
 import net.xmx.velthoric.init.VxMainClass;
@@ -85,6 +85,11 @@ public class VxClientBodyManager extends VxAbstractBodyManager {
     private final List<Long> clockOffsetSamples = new ArrayList<>();
 
     /**
+     * Manager for handling client-side custom data synchronization.
+     */
+    private final VxClientSyncDataManager syncDataManager = new VxClientSyncDataManager();
+
+    /**
      * Central orchestrator for the behavior-based composition system.
      */
     private final VxBehaviorManager behaviorManager;
@@ -95,6 +100,15 @@ public class VxClientBodyManager extends VxAbstractBodyManager {
      */
     private VxClientBodyManager() {
         this.behaviorManager = new VxBehaviorManager();
+    }
+
+    /**
+     * Retrieves the client-side custom data synchronization manager.
+     *
+     * @return The synchronization manager instance.
+     */
+    public VxClientSyncDataManager getSyncDataManager() {
+        return syncDataManager;
     }
 
     /**
@@ -339,9 +353,8 @@ public class VxClientBodyManager extends VxAbstractBodyManager {
                 VxBody body = managedBodies.get(id);
 
                 if (body != null) {
-                    // Notify sync behavior to stop tracking dirtiness for this body
-                    VxSyncBehavior sync = behaviorManager.getBehavior(VxSyncBehavior.ID);
-                    if (sync != null) sync.onBodyRemoved(body);
+                    // Notify sync manager to stop tracking dirtiness for this body
+                    this.syncDataManager.onBodyRemoved(body);
 
                     // Notify the body that it has been removed from the client level.
                     ClientLevel level = Minecraft.getInstance().level;
@@ -363,20 +376,18 @@ public class VxClientBodyManager extends VxAbstractBodyManager {
      * @param body The body that changed.
      */
     public void markBodyDirty(VxBody body) {
-        VxSyncBehavior sync = behaviorManager.getBehavior(VxSyncBehavior.ID);
-        if (sync != null) sync.markDirtyC2S(body);
+        this.syncDataManager.markDirtyC2S(body);
     }
 
     /**
-     * Delegates handling of server-sent synchronized data updates to the SyncBehavior.
+     * Delegates handling of server-sent synchronized data updates to the sync manager.
      * This handles updates to custom SyncedDataEntries.
      *
      * @param networkId The network ID of the body.
      * @param data      The buffer containing the data.
      */
     public void updateSynchronizedData(int networkId, ByteBuf data) {
-        VxSyncBehavior sync = behaviorManager.getBehavior(VxSyncBehavior.ID);
-        if (sync != null) sync.applyS2CUpdate(this, networkId, data);
+        this.syncDataManager.applyS2CUpdate(this, networkId, data);
     }
 
     /**
@@ -386,8 +397,7 @@ public class VxClientBodyManager extends VxAbstractBodyManager {
     public void clearAll() {
         store.clear();
         this.clearInternal();
-        VxSyncBehavior sync = behaviorManager.getBehavior(VxSyncBehavior.ID);
-        if (sync != null) sync.clear();
+        this.syncDataManager.clear();
         isClockOffsetInitialized = false;
         clockOffsetNanos = 0L;
         synchronized (clockOffsetSamples) {
@@ -427,6 +437,7 @@ public class VxClientBodyManager extends VxAbstractBodyManager {
         }
 
         // Process synchronization tasks (sending C2S updates for dirty bodies)
+        this.syncDataManager.tick(this, store);
         behaviorManager.onClientTick(this, store);
 
         // Calculate and smooth clock offset

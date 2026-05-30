@@ -15,6 +15,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.xmx.velthoric.core.behavior.VxBehaviorManager;
 import net.xmx.velthoric.core.body.VxAbstractBodyManager;
+import net.xmx.velthoric.core.network.synchronization.VxServerSyncDataManager;
 import net.xmx.velthoric.core.body.VxBody;
 import net.xmx.velthoric.core.body.VxBodyType;
 import net.xmx.velthoric.core.body.VxRemovalReason;
@@ -82,6 +83,11 @@ public class VxServerBodyManager extends VxAbstractBodyManager implements VxChun
      * This uses a data-driven bitmask system for maximum cache efficiency.
      */
     private final VxBehaviorManager behaviorManager;
+
+    /**
+     * Manager for handling server-side custom data synchronization.
+     */
+    private final VxServerSyncDataManager syncDataManager = new VxServerSyncDataManager();
 
     /**
      * Optimized lookup map connecting Jolt's native integer BodyIDs to the Java wrapper {@link VxBody}.
@@ -712,5 +718,14 @@ public class VxServerBodyManager extends VxAbstractBodyManager implements VxChun
      */
     public VxBehaviorManager getBehaviorManager() {
         return behaviorManager;
+    }
+
+    /**
+     * Retrieves the server-side custom data synchronization manager.
+     *
+     * @return The synchronization manager instance.
+     */
+    public VxServerSyncDataManager getSyncDataManager() {
+        return syncDataManager;
     }
 }

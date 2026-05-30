@@ -15,7 +15,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.xmx.velthoric.core.network.internal.behavior.VxNetSyncBehavior;
-import net.xmx.velthoric.core.network.synchronization.behavior.VxSyncBehavior;
+import net.xmx.velthoric.core.network.synchronization.behavior.VxSynchronizedDataBehavior;
 import net.xmx.velthoric.core.body.server.VxServerBodyDataStore;
 import net.xmx.velthoric.core.body.server.VxServerBodyDataContainer;
 import net.xmx.velthoric.core.body.server.VxServerBodyManager;
@@ -212,10 +212,7 @@ public class VxNetworkDispatcher {
                 }
 
                 // Sync custom data
-                VxSyncBehavior behavior = this.manager.getBehaviorManager().getBehavior(VxSyncBehavior.ID);
-                if (behavior != null) {
-                    behavior.broadcastS2CUpdates(this.manager, this);
-                }
+                this.manager.getSyncDataManager().broadcastS2CUpdates(this.manager, this);
 
                 // Clean up grouping buffers and return them to the pool
                 recycleLists();
@@ -485,7 +482,7 @@ public class VxNetworkDispatcher {
 
         VxServerBodyDataContainer c = dataStore.serverCurrent();
         long behaviorBits = c.behaviorBits.get(index);
-        if (!VxNetSyncBehavior.ID.isSet(behaviorBits) && !VxSyncBehavior.ID.isSet(behaviorBits)) return;
+        if (!VxNetSyncBehavior.ID.isSet(behaviorBits) && !VxSynchronizedDataBehavior.ID.isSet(behaviorBits)) return;
 
         IntSet tracked = playerTrackedBodies.computeIfAbsent(player.getUUID(), k -> IntSets.synchronize(new IntOpenHashSet()));
         if (tracked.add(body.getNetworkId())) {

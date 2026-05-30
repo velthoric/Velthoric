@@ -16,7 +16,7 @@ import net.xmx.velthoric.core.body.persistence.behavior.VxPersistenceBehavior;
 import net.xmx.velthoric.core.body.server.VxServerBodyDataStore;
 import net.xmx.velthoric.core.mounting.behavior.VxMountBehavior;
 import net.xmx.velthoric.core.network.internal.behavior.VxNetSyncBehavior;
-import net.xmx.velthoric.core.network.synchronization.behavior.VxSyncBehavior;
+import net.xmx.velthoric.core.network.synchronization.behavior.VxSynchronizedDataBehavior;
 import net.xmx.velthoric.core.physics.buoyancy.behavior.VxBuoyancyBehavior;
 import net.xmx.velthoric.core.physics.world.VxPhysicsWorld;
 import net.xmx.velthoric.init.VxMainClass;
@@ -89,8 +89,8 @@ public final class VxBehaviorManager {
         }
 
         // Use consolidated sync behavior for both sides
-        if (getBehavior(VxSyncBehavior.ID) == null) {
-            registerBehavior(new VxSyncBehavior());
+        if (getBehavior(VxSynchronizedDataBehavior.ID) == null) {
+            registerBehavior(new VxSynchronizedDataBehavior());
         }
     }
 
