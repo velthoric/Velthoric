@@ -2,7 +2,7 @@
  * This file is part of Velthoric.
  * Licensed under LGPL 3.0.
  */
-package net.xmx.velthoric.core.behavior.impl;
+package net.xmx.velthoric.core.body.server;
 
 import com.github.stephengold.joltjni.BatchBodyInterface;
 import com.github.stephengold.joltjni.BodyIdArray;
@@ -10,33 +10,22 @@ import com.github.stephengold.joltjni.enumerate.EActivation;
 import com.github.stephengold.joltjni.enumerate.EMotionType;
 import com.github.stephengold.joltjni.readonly.ConstBodyIdArray;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
-import net.xmx.velthoric.core.behavior.VxBehavior;
 import net.xmx.velthoric.core.behavior.VxBehaviorId;
 import net.xmx.velthoric.core.body.VxBody;
-import net.xmx.velthoric.core.body.server.VxServerBodyDataContainer;
-import net.xmx.velthoric.core.body.server.VxServerBodyDataStore;
-import net.xmx.velthoric.core.body.server.VxServerBodyManager;
 import net.xmx.velthoric.core.body.tracking.VxSpatialManager;
 import net.xmx.velthoric.core.physics.world.VxPhysicsWorld;
-import net.xmx.velthoric.init.VxMainClass;
 import net.xmx.velthoric.jni.BatchPhysicsSync;
 
 /**
- * Synchronizes the native Jolt simulation results with the Java-side data store.
+ * Writes physics data from the native Jolt simulation to the server-side data store.
  * <p>
- * This behavior utilizes high-performance native batch calls to minimize JNI overhead when processing
+ * This class utilizes high-performance native batch calls to minimize JNI overhead when processing
  * large numbers of bodies. It extracts transformations, velocities, activity states, and vertex data
  * for soft bodies, updating the Structure of Arrays (SoA) layout directly in memory.
  *
  * @author xI-Mx-Ix
  */
-public class VxPhysicsSyncBehavior implements VxBehavior {
-
-    /**
-     * The unique identifier for this behavior.
-     * Consumed by the behavior manager for bitmask allocation and dispatch.
-     */
-    public static final VxBehaviorId ID = new VxBehaviorId(VxMainClass.MODID, "PhysicsSync");
+public class VxBufferWriter {
 
     /**
      * Number of bodies processed in a single JNI batch operation.
@@ -74,33 +63,23 @@ public class VxPhysicsSyncBehavior implements VxBehavior {
     private final ThreadLocal<long[]> behaviorBitsBuffer = ThreadLocal.withInitial(() -> new long[BATCH_SIZE]);
 
     /**
-     * Default constructor for the synchronization behavior.
+     * Default constructor for the buffer writer.
      */
-    public VxPhysicsSyncBehavior() {
-    }
-
-    /**
-     * Retrieves the unique identifier for this behavior.
-     *
-     * @return The behavior ID.
-     */
-    @Override
-    public VxBehaviorId getId() {
-        return ID;
+    public VxBufferWriter() {
     }
 
     /**
      * Extracts results from the Jolt simulation and synchronizes them to the data store.
-     * Called by the behavior manager during the post-simulation sync phase.
      *
-     * @param world     The physics world.
-     * @param dataStore The server body data store.
+     * @param timestampNanos Current simulation timestamp.
+     * @param world          The physics world.
+     * @param dataStore      The server body data store.
+     * @param behaviorId     The behavior ID to filter bodies.
+     * @param softBodyBehaviorMask The behavior mask for soft bodies.
      */
-    @Override
-    public void onPhysicsTick(VxPhysicsWorld world, VxServerBodyDataStore dataStore) {
-        long timestampNanos = System.nanoTime();
+    public void writePhysicsData(long timestampNanos, VxPhysicsWorld world, VxServerBodyDataStore dataStore, VxBehaviorId behaviorId, long softBodyBehaviorMask) {
         final BatchBodyInterface bodyInterface = world.getPhysicsSystem().getBodyInterfaceNoLock();
-        postUpdateSync(timestampNanos, world, dataStore, bodyInterface);
+        postUpdateSync(timestampNanos, world, dataStore, bodyInterface, behaviorId, softBodyBehaviorMask);
     }
 
     /**
@@ -110,12 +89,14 @@ public class VxPhysicsSyncBehavior implements VxBehavior {
      * @param world          The physics world.
      * @param dataStore      The server data store.
      * @param bodyInterface  The native batch interface.
+     * @param behaviorId     The behavior ID to filter bodies.
+     * @param softBodyBehaviorMask The behavior mask for soft bodies.
      */
-    private void postUpdateSync(long timestampNanos, VxPhysicsWorld world, VxServerBodyDataStore dataStore, BatchBodyInterface bodyInterface) {
+    private void postUpdateSync(long timestampNanos, VxPhysicsWorld world, VxServerBodyDataStore dataStore, BatchBodyInterface bodyInterface, VxBehaviorId behaviorId, long softBodyBehaviorMask) {
         VxServerBodyDataContainer c = dataStore.serverCurrent();
         final VxBody[] bodies = c.bodies;
         final int capacity = c.getCapacity();
-        long mask = getId().getMask();
+        long mask = behaviorId.getMask();
 
         BodyIdArray localBatchIds = batchBodyIds.get();
         IntArrayList localIndices = batchDataIndices.get();
@@ -123,7 +104,7 @@ public class VxPhysicsSyncBehavior implements VxBehavior {
         int currentBatchCount = 0;
 
         for (int i = 0; i < capacity; ++i) {
-            // Only process bodies that have the PhysicsSync behavior attached.
+            // Only process bodies that have the behavior attached.
             if ((c.behaviorBits.get(i) & mask) == 0) continue;
 
             VxBody obj = bodies[i];
@@ -137,7 +118,7 @@ public class VxPhysicsSyncBehavior implements VxBehavior {
             currentBatchCount++;
 
             if (currentBatchCount == BATCH_SIZE) {
-                processUpdateBatch(timestampNanos, world, dataStore, c, bodyInterface, localBatchIds, currentBatchCount);
+                processUpdateBatch(timestampNanos, world, dataStore, c, bodyInterface, localBatchIds, currentBatchCount, softBodyBehaviorMask);
                 currentBatchCount = 0;
                 localIndices.clear();
             }
@@ -149,7 +130,7 @@ public class VxPhysicsSyncBehavior implements VxBehavior {
             for (int j = 0; j < currentBatchCount; j++) {
                 tailIds.set(j, localBatchIds.get(j));
             }
-            processUpdateBatch(timestampNanos, world, dataStore, c, bodyInterface, tailIds, currentBatchCount);
+            processUpdateBatch(timestampNanos, world, dataStore, c, bodyInterface, tailIds, currentBatchCount, softBodyBehaviorMask);
             localIndices.clear();
         }
     }
@@ -167,8 +148,9 @@ public class VxPhysicsSyncBehavior implements VxBehavior {
      * @param bodyInterface  The native interface.
      * @param ids            The array of body IDs to process.
      * @param count          Number of bodies in this batch.
+     * @param softBodyBehaviorMask The behavior mask for soft bodies.
      */
-    private void processUpdateBatch(long timestampNanos, VxPhysicsWorld world, VxServerBodyDataStore dataStore, VxServerBodyDataContainer c, BatchBodyInterface bodyInterface, ConstBodyIdArray ids, int count) {
+    private void processUpdateBatch(long timestampNanos, VxPhysicsWorld world, VxServerBodyDataStore dataStore, VxServerBodyDataContainer c, BatchBodyInterface bodyInterface, ConstBodyIdArray ids, int count, long softBodyBehaviorMask) {
         IntArrayList indices = batchDataIndices.get();
         int[] bodyIds = new int[count];
         long[] behaviorBits = behaviorBitsBuffer.get();
@@ -199,7 +181,7 @@ public class VxPhysicsSyncBehavior implements VxBehavior {
                 motionTypes,
                 dirtyIndices,
                 c.vertexData,
-                VxSoftPhysicsBehavior.ID.getMask(),
+                softBodyBehaviorMask,
                 timestampNanos
         );
 

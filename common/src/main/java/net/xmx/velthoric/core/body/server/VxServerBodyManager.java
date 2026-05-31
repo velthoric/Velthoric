@@ -14,6 +14,9 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.xmx.velthoric.core.behavior.VxBehaviorManager;
+import net.xmx.velthoric.core.behavior.VxBehaviorId;
+import net.xmx.velthoric.core.behavior.impl.VxBufferWriterBehavior;
+import net.xmx.velthoric.core.behavior.impl.VxSoftPhysicsBehavior;
 import net.xmx.velthoric.core.body.VxAbstractBodyManager;
 import net.xmx.velthoric.core.network.synchronization.VxServerSyncDataManager;
 import net.xmx.velthoric.core.body.VxBody;
@@ -85,6 +88,11 @@ public class VxServerBodyManager extends VxAbstractBodyManager implements VxChun
     private final VxBehaviorManager behaviorManager;
 
     /**
+     * The buffer writer that extracts physics data from the native simulation.
+     */
+    private final VxBufferWriter bufferWriter;
+
+    /**
      * Manager for handling server-side custom data synchronization.
      */
     private final VxServerSyncDataManager syncDataManager = new VxServerSyncDataManager();
@@ -118,6 +126,7 @@ public class VxServerBodyManager extends VxAbstractBodyManager implements VxChun
         this.networkDispatcher = new VxNetworkDispatcher(world.getLevel(), this);
         this.spatialManager = new VxSpatialManager();
         this.behaviorManager = new VxBehaviorManager();
+        this.bufferWriter = new VxBufferWriter();
 
         // Initialize the behavior system with built-in behaviors.
         this.behaviorManager.init(world.getLevel(), world);
@@ -175,6 +184,12 @@ public class VxServerBodyManager extends VxAbstractBodyManager implements VxChun
      */
     public void onPhysicsTick(VxPhysicsWorld world) {
         behaviorManager.onPhysicsTick(this.world, this.dataStore);
+
+        // Extract physics data for bodies with the BufferWriter behavior
+        long timestampNanos = System.nanoTime();
+        VxBehaviorId bufferWriterId = VxBufferWriterBehavior.ID;
+        long softBodyMask = VxSoftPhysicsBehavior.ID.getMask();
+        bufferWriter.writePhysicsData(timestampNanos, this.world, this.dataStore, bufferWriterId, softBodyMask);
     }
 
     /**

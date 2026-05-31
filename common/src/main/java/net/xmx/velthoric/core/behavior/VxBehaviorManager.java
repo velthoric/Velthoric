@@ -75,7 +75,7 @@ public final class VxBehaviorManager {
             if (physicsWorld != null) {
                 registerBehavior(new VxBuoyancyBehavior(physicsWorld));
             }
-            registerBehavior(new VxPhysicsSyncBehavior());
+            registerBehavior(new VxBufferWriterBehavior());
             registerBehavior(new VxNetSyncBehavior());
             registerBehavior(new VxTickBehavior());
         }

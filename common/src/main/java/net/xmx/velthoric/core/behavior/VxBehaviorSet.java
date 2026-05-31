@@ -5,7 +5,7 @@
 package net.xmx.velthoric.core.behavior;
 
 import net.xmx.velthoric.core.behavior.impl.VxKillBehavior;
-import net.xmx.velthoric.core.behavior.impl.VxPhysicsSyncBehavior;
+import net.xmx.velthoric.core.behavior.impl.VxBufferWriterBehavior;
 import net.xmx.velthoric.core.behavior.impl.VxRigidPhysicsBehavior;
 import net.xmx.velthoric.core.behavior.impl.VxSoftPhysicsBehavior;
 
@@ -47,7 +47,7 @@ public final class VxBehaviorSet {
     public static VxBehaviorSet rigid() {
         return new Builder()
                 .add(new VxRigidPhysicsBehavior())
-                .add(new VxPhysicsSyncBehavior())
+                .add(new VxBufferWriterBehavior())
                 .add(new VxKillBehavior())
                 .build();
     }
@@ -60,7 +60,7 @@ public final class VxBehaviorSet {
     public static VxBehaviorSet soft() {
         return new Builder()
                 .add(new VxSoftPhysicsBehavior())
-                .add(new VxPhysicsSyncBehavior())
+                .add(new VxBufferWriterBehavior())
                 .add(new VxKillBehavior())
                 .build();
     }
