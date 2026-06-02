@@ -21,5 +21,4 @@ dependencies {
     def mixinExtras = "io.github.llamalad7:mixinextras-fabric:${project.mixinextras_version}"
     annotationProcessor(mixinExtras)
     implementation(mixinExtras)
-    include(mixinExtras)
 }
