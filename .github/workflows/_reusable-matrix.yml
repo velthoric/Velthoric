@@ -31,5 +31,5 @@ jobs:
       - name: "Generate Matrix"
         id: set-matrix
         run: |
-          MATRIX_JSON=$(./gradlew :printStonecutterMatrix -q | grep "JSON_MATRIX:" | cut -d':' -f2-)
+          MATRIX_JSON=$(./gradlew printStonecutterMatrix -q | grep "JSON_MATRIX:" | cut -d':' -f2-)
           echo "matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
