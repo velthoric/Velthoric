@@ -23,7 +23,7 @@ configurations {
 }
 
 dependencies {
-    implementation "org.slf4j:slf4j-api:2.0.13"
+    compileOnly "org.slf4j:slf4j-api:2.0.13"
 
     // We use 'api' here so that projects depending on vx-native (like common)
     // can access the Zstd and Jolt Java classes.
