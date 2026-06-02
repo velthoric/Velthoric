@@ -125,6 +125,12 @@ public class VelthoricPublishingPlugin implements Plugin<Project> {
      * @param project The subproject to configure.
      */
     private void configureSubmodule(Project project) {
+        // Setup root lifecycle task if not already present
+        Project root = project.getRootProject();
+        if (root.getTasks().findByName(LIFECYCLE_TASK_NAME) == null) {
+            configureRootLifecycle(root);
+        }
+
         // 1. Register the DSL Extension exposed to build.gradle
         VelthoricExtension extension = project.getExtensions()
                 .create(EXTENSION_NAME, VelthoricExtension.class);

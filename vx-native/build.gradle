@@ -1,14 +1,14 @@
 import org.apache.tools.ant.taskdefs.condition.Os
 
 plugins {
-    id 'java-library'
+    id 'velthoric.base-conventions'
 }
 
 group = 'net.xmx.vxnative'
 version = '0.0.3'
 
-repositories {
-    mavenCentral()
+base {
+    archivesName = "vx-native"
 }
 
 tasks.withType(JavaCompile) {
@@ -25,11 +25,11 @@ configurations {
 dependencies {
     // We use 'api' here so that projects depending on vx-native (like common)
     // can access the Zstd and Jolt Java classes.
-    api "com.github.luben:zstd-jni:1.5.7-6"
+    api "com.github.luben:zstd-jni:${project.zstd_jni_version}"
     api "vx-jolt-jni:jolt-jni:${project.jolt_jni_version}@jar"
 
     // These are the dependencies we only download to extract the .dll and .so files.
-    nativeExtraction "com.github.luben:zstd-jni:1.5.7-6"
+    nativeExtraction "com.github.luben:zstd-jni:${project.zstd_jni_version}"
     nativeExtraction "vx-jolt-jni:joltjni:${project.jolt_jni_version}:windows-x64-ReleaseDp@dll"
     nativeExtraction "vx-jolt-jni:joltjni:${project.jolt_jni_version}:linux-x64-ReleaseDp@so"
     nativeExtraction "vx-jolt-jni:joltjni:${project.jolt_jni_version}:linux-arm64-ReleaseDp@so"
@@ -45,27 +45,27 @@ processResources {
 
     // Extract Zstd natives and rename them to match our custom folder structure.
     from(zipTree(findJar('zstd-jni'))) {
-        include 'win/amd64/libzstd-jni-1.5.7-6.dll'
+        include 'win/amd64/libzstd-jni-*.dll'
         eachFile { fcd -> fcd.path = "natives/win/x86_64/zstd-jni.dll" }
         includeEmptyDirs = false
     }
     from(zipTree(findJar('zstd-jni'))) {
-        include 'linux/amd64/libzstd-jni-1.5.7-6.so'
+        include 'linux/amd64/libzstd-jni-*.so'
         eachFile { fcd -> fcd.path = "natives/linux/x86_64/libzstd-jni.so" }
         includeEmptyDirs = false
     }
     from(zipTree(findJar('zstd-jni'))) {
-        include 'linux/aarch64/libzstd-jni-1.5.7-6.so'
+        include 'linux/aarch64/libzstd-jni-*.so'
         eachFile { fcd -> fcd.path = "natives/linux/aarch64/libzstd-jni.so" }
         includeEmptyDirs = false
     }
     from(zipTree(findJar('zstd-jni'))) {
-        include 'darwin/x86_64/libzstd-jni-1.5.7-6.dylib'
+        include 'darwin/x86_64/libzstd-jni-*.dylib'
         eachFile { fcd -> fcd.path = "natives/osx/x86_64/libzstd-jni.dylib" }
         includeEmptyDirs = false
     }
     from(zipTree(findJar('zstd-jni'))) {
-        include 'darwin/aarch64/libzstd-jni-1.5.7-6.dylib'
+        include 'darwin/aarch64/libzstd-jni-*.dylib'
         eachFile { fcd -> fcd.path = "natives/osx/aarch64/libzstd-jni.dylib" }
         includeEmptyDirs = false
     }
@@ -117,7 +117,7 @@ processResources {
 
     def buildDir = file("src/main/cpp/build")
     def osName = Os.isFamily(Os.FAMILY_WINDOWS) ? "win" : (Os.isFamily(Os.FAMILY_MAC) ? "osx" : "linux")
-    
+
     // Architecture detection: prioritize targetArch if set (for cross-builds), otherwise use system arch
     def currentArch = project.hasProperty('targetArch') ? project.targetArch : System.getProperty("os.arch")
     def archFolder = (currentArch == "amd64" || currentArch == "x86_64") ? "x86_64" : "aarch64"
@@ -126,7 +126,7 @@ processResources {
     from(buildDir) {
         // Find the library anywhere in the build tree (handles MSVC vs Unix differences)
         include "**/*.dll", "**/*.so", "**/*.dylib"
-        
+
         // Normalize the path for the final JAR resources
         eachFile { fcd ->
             // Filter to only include the main library, ignoring build artifacts or Jolt dependencies
@@ -155,19 +155,19 @@ processResources {
 // Native Build Tasks
 tasks.register('cmakeConfigure', Exec) {
     workingDir 'src/main/cpp'
-    
+
     def targetArch = project.hasProperty('targetArch') ? project.targetArch : System.getProperty("os.arch")
     def archName = (targetArch == "amd64" || targetArch == "x86_64") ? "x64" : "arm64"
 
     doFirst {
         file('src/main/cpp/build').mkdirs()
     }
-    
+
     if (Os.isFamily(Os.FAMILY_WINDOWS)) {
         commandLine 'cmake', '-S', '.', '-B', 'build', '-G', 'Visual Studio 17 2022', '-A', 'x64', "-DJOLT_JNI_VERSION=${project.jolt_jni_version}"
     } else {
         def args = ['cmake', '-S', '.', '-B', 'build', '-DCMAKE_BUILD_TYPE=Release', "-DJOLT_JNI_VERSION=${project.jolt_jni_version}"]
-        
+
         // Handle MacOS cross-compilation (Universal binaries or specific arch)
         if (Os.isFamily(Os.FAMILY_MAC)) {
             args << "-DCMAKE_OSX_ARCHITECTURES=${archName == 'x64' ? 'x86_64' : 'arm64'}"

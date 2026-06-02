@@ -3,7 +3,22 @@ pluginManagement {
         maven { url "https://maven.fabricmc.net/" }
         maven { url "https://maven.architectury.dev/" }
         maven { url "https://files.minecraftforge.net/maven/" }
+        maven { url "https://maven.kikugie.dev/snapshots/" }
         gradlePluginPortal()
+    }
+}
+
+plugins {
+    id("dev.kikugie.stonecutter").version "0.9.4"
+}
+
+stonecutter {
+    kotlinController = false
+    centralScript = "build.gradle"
+
+    create(rootProject) {
+        versions "1.21.1"
+        vcsVersion = "1.21.1"
     }
 }
 
@@ -12,6 +27,5 @@ rootProject.name = 'Velthoric'
 include 'common'
 include 'fabric'
 include 'neoforge'
-
 include 'vx-native'
 include 'vx-events'

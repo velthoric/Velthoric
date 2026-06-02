@@ -1,0 +1,25 @@
+plugins {
+    id 'com.gradleup.shadow'
+}
+
+shadowJar {
+    archiveClassifier = 'dev-shadow'
+    destinationDirectory = file("${project.layout.buildDirectory.get()}/intermediates")
+
+    // Exclude redundant native libraries
+    exclude 'aix/**'
+    exclude 'darwin/**'
+    exclude 'freebsd/**'
+    exclude 'linux/**'
+    exclude 'win/**'
+}
+
+remapJar {
+    inputFile.set shadowJar.archiveFile
+}
+
+tasks.named("sourcesJar") {
+    def commonSources = project(":common").sourceSets.main.allSource
+    from commonSources
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}

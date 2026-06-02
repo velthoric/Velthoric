@@ -1,5 +1,11 @@
 plugins {
-    id 'com.gradleup.shadow'
+    id 'velthoric.minecraft-conventions'
+    id 'velthoric.shadow-conventions'
+    id 'net.xmx.velthoric.publishing'
+}
+
+base {
+    archivesName = "velthoric-neoforge"
 }
 
 loom {
@@ -52,12 +58,12 @@ repositories {
 }
 
 dependencies {
-    neoForge "net.neoforged:neoforge:$rootProject.neoforge_version"
+    neoForge "net.neoforged:neoforge:${project.neoforge_version}"
 
-    modImplementation "dev.architectury:architectury-neoforge:$rootProject.architectury_api_version"
+    modImplementation "dev.architectury:architectury-neoforge:${project.architectury_api_version}"
 
-    minecraftRuntimeLibraries(project(path: ":vx-native", configuration: "namedElements"))
-    shadowBundle project(path: ":vx-native", configuration: "namedElements")
+    minecraftRuntimeLibraries(project(path: ":vx-native"))
+    shadowBundle project(path: ":vx-native")
 
     common(project(path: ":vx-events", configuration: "namedElements")) { transitive false }
     shadowBundle project(path: ":vx-events", configuration: "transformProductionNeoForge")
@@ -68,18 +74,18 @@ dependencies {
 
 processResources {
     var replaceProperties = [
-            minecraft_version: rootProject.minecraft_version,
-            minecraft_version_range: rootProject.minecraft_version_range,
-            neoforge_version: rootProject.neoforge_version,
-            neoforge_version_range: rootProject.neoforge_version_range,
-            loader_version_range: rootProject.loader_version_range,
-            mod_id: rootProject.mod_id,
-            mod_name: rootProject.mod_name,
-            mod_license: rootProject.mod_license,
-            mod_version: rootProject.mod_version,
-            mod_authors: rootProject.mod_authors,
-            mod_description: rootProject.mod_description,
-            architectury_api_version: rootProject.architectury_api_version
+            minecraft_version: project.minecraft_version,
+            minecraft_version_range: project.minecraft_version_range,
+            neoforge_version: project.neoforge_version,
+            neoforge_version_range: project.neoforge_version_range,
+            loader_version_range: project.loader_version_range,
+            mod_id: project.mod_id,
+            mod_name: project.mod_name,
+            mod_license: project.mod_license,
+            mod_version: project.mod_version,
+            mod_authors: project.mod_authors,
+            mod_description: project.mod_description,
+            architectury_api_version: project.architectury_api_version
     ]
 
     inputs.properties replaceProperties
@@ -91,27 +97,6 @@ processResources {
 
 shadowJar {
     configurations = [project.configurations.shadowBundle]
-    archiveClassifier = 'dev-shadow'
-    destinationDirectory = file("${project.layout.buildDirectory.get()}/intermediates")
-
-    // Natives are bundled in vx-native, no need to include them here
-    exclude 'aix/**'
-    exclude 'darwin/**'
-    exclude 'freebsd/**'
-    exclude 'linux/**'
-    exclude 'win/**'
-}
-
-remapJar {
-    inputFile.set shadowJar.archiveFile
-}
-
-// Configures the sourcesJar task to include source code from the common module
-// ensuring that the resulting sources jar contains the full codebase.
-tasks.named("sourcesJar") {
-    def commonSources = project(":common").sourceSets.main.allSource
-    from commonSources
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 afterEvaluate {
