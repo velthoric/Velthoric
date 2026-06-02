@@ -79,8 +79,14 @@ jobs:
 
       - name: "Publish Snapshot to Maven"
         run: |
-          VERSION=$(grep "mod_version" gradle.properties | cut -d'=' -f2)
-          ./gradlew publishVelthoric -Pvelthoric.snapshot=true -Pmod_version="${VERSION}-SNAPSHOT" -x :vx-native:cmakeBuild
+          VERSION=$(grep "mod_version" gradle.properties | cut -d'=' -f2 | tr -d '\r' | xargs)
+          
+          # Only append -SNAPSHOT if it's not already present in mod_version
+          if [[ ! "$VERSION" == *"-SNAPSHOT" ]]; then
+            VERSION="${VERSION}-SNAPSHOT"
+          fi
+          
+          ./gradlew publishVelthoric -Pvelthoric.snapshot=true -Pmod_version="${VERSION}" -x :vx-native:cmakeBuild
         env:
           MAVEN_USER: ${{ secrets.MAVEN_USER }}
           MAVEN_TOKEN: ${{ secrets.MAVEN_TOKEN }}
