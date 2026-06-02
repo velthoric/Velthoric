@@ -17,6 +17,11 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Call the reusable workflow to fetch the matrix dynamically
+  setup-matrix:
+    name: "Initialize Matrix"
+    uses: ./.github/workflows/_reusable-matrix.yml
+
   # Stage 1: Native Libraries
   build-natives:
     name: "Stage 1 - Build Natives"
@@ -24,41 +29,62 @@ jobs:
 
   # Stage 2: Mod Assembly
   build-mod:
-    name: "Stage 2 - Build Mod"
-    needs: build-natives
+    name: "Stage 2 - Build Mod (${{ matrix.mc_version }})"
+    needs: [setup-matrix, build-natives]
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
     uses: ./.github/workflows/_reusable-build-mod.yml
     with:
+      mc_version: ${{ matrix.mc_version }}
+      java_version: ${{ matrix.java_version }}
       natives-artifact-prefix: "velthoric-natives-${{ github.run_id }}"
-      retention-days: 7
+      retention-days: 3
 
   # Stage 3: Automated Tests
   # Publishing is blocked entirely if any GameTest fails.
   gametests:
-    name: "Stage 3 - GameTests"
-    needs: build-mod
+    name: "Stage 3 - GameTests (${{ matrix.mc_version }})"
+    needs: [setup-matrix, build-mod]
+    strategy:
+      fail-fast: true
+      matrix:
+        include: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
     uses: ./.github/workflows/_reusable-gametests.yml
     with:
+      mc_version: ${{ matrix.mc_version }}
+      java_version: ${{ matrix.java_version }}
       natives-artifact-prefix: "velthoric-natives-${{ github.run_id }}"
 
   # Stage 4: Multi-Platform Publish
   # This job only runs after all GameTests have passed successfully.
   publish:
-    name: "Stage 4 - Publish to All Platforms"
-    needs: gametests
+    name: "Stage 4 - Publish to All Platforms (${{ matrix.mc_version }})"
+    needs: [setup-matrix, gametests]
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    strategy:
+      fail-fast: true
+      matrix:
+        include: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
 
     steps:
       - name: "Checkout Repository"
         uses: actions/checkout@v4
 
-      - name: "Setup Java 21 (Temurin)"
+      - name: "Setup Java ${{ matrix.java_version }} (Temurin)"
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: ${{ matrix.java_version }}
           distribution: 'temurin'
           cache: 'gradle'
+
+      - name: "Set Active Stonecutter Version"
+        run: |
+          mkdir -p .gradle/stonecutter
+          echo "${{ matrix.mc_version }}" > .gradle/stonecutter/active
 
       # Download all per-platform natives and place them in the prebuilt-natives
       # directory so the Gradle build can skip the CMake compilation step.

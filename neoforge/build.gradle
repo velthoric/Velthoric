@@ -5,7 +5,7 @@ plugins {
 }
 
 base {
-    archivesName = "velthoric-neoforge"
+    archivesName = "velthoric-${project.minecraft_version}-neoforge"
 }
 
 loom {

@@ -12,6 +12,14 @@ name: "Reusable - Build Mod"
 on:
   workflow_call:
     inputs:
+      mc_version:
+        description: "Minecraft version target."
+        type: string
+        required: true
+      java_version:
+        description: "Java version needed to build."
+        type: string
+        required: true
       natives-artifact-prefix:
         description: "Prefix of the native library artifacts to download."
         type: string
@@ -23,25 +31,28 @@ on:
     outputs:
       artifact-name:
         description: "Name of the artifact containing the assembled mod JARs."
-        value: ${{ jobs.build-mod.outputs.artifact-name }}
+        value: "velthoric-jars-${{ inputs.mc_version }}-${{ github.run_id }}"
 
 jobs:
   build-mod:
     name: "Assemble Mod JARs"
     runs-on: ubuntu-latest
-    outputs:
-      artifact-name: "velthoric-jars-${{ github.run_id }}"
 
     steps:
       - name: "Checkout Repository"
         uses: actions/checkout@v4
 
-      - name: "Setup Java 21 (Temurin)"
+      - name: "Setup Java ${{ inputs.java_version }} (Temurin)"
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: ${{ inputs.java_version }}
           distribution: 'temurin'
           cache: 'gradle'
+
+      - name: "Set Active Stonecutter Version"
+        run: |
+          mkdir -p .gradle/stonecutter
+          echo "${{ inputs.mc_version }}" > .gradle/stonecutter/active
 
       # Download all per-platform native artifacts and merge them into a single
       # directory tree, matching the prebuilt-natives layout expected by vx-native.
@@ -65,10 +76,10 @@ jobs:
         run: |
           mkdir -p release-jars
           find . -path "*/build/libs/*.jar" \
-            \( -name "velthoric-fabric-[0-9]*.jar" \
-            -o -name "velthoric-neoforge-[0-9]*.jar" \
-            -o -name "velthoric-fabric-*-sources.jar" \
-            -o -name "velthoric-neoforge-*-sources.jar" \) \
+            \( -name "velthoric-${{ inputs.mc_version }}-fabric-[0-9]*.jar" \
+            -o -name "velthoric-${{ inputs.mc_version }}-neoforge-[0-9]*.jar" \
+            -o -name "velthoric-${{ inputs.mc_version }}-fabric-*-sources.jar" \
+            -o -name "velthoric-${{ inputs.mc_version }}-neoforge-*-sources.jar" \) \
             -not -name "*-dev.jar" \
             -not -name "*-shadow.jar" \
             -not -name "*-dev-shadow.jar" \
@@ -77,6 +88,6 @@ jobs:
       - name: "Upload Assembled JARs"
         uses: actions/upload-artifact@v4
         with:
-          name: "velthoric-jars-${{ github.run_id }}"
+          name: "velthoric-jars-${{ inputs.mc_version }}-${{ github.run_id }}"
           path: release-jars/*.jar
           retention-days: ${{ inputs.retention-days }}

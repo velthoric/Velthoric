@@ -1,0 +1,35 @@
+# Reusable workflow to dynamically generate the matrix using Gradle
+name: "Reusable - Get Matrix"
+
+on:
+  workflow_call:
+    outputs:
+      matrix:
+        description: "Dynamic JSON matrix of Minecraft and Java versions"
+        value: ${{ jobs.matrix.outputs.matrix }}
+
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: "Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "Setup Java 21 (Temurin)"
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: "Grant Gradle Wrapper Execute Permission"
+        run: chmod +x gradlew
+
+      # Run the custom task and extract the JSON output safely
+      - name: "Generate Matrix"
+        id: set-matrix
+        run: |
+          MATRIX_JSON=$(./gradlew :printStonecutterMatrix -q | grep "JSON_MATRIX:" | cut -d':' -f2-)
+          echo "matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT

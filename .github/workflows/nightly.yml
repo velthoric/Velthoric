@@ -19,6 +19,11 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Call the reusable workflow to fetch the matrix dynamically
+  setup-matrix:
+    name: "Initialize Matrix"
+    uses: ./.github/workflows/_reusable-matrix.yml
+
   # Stage 1: Native Libraries
   build-natives:
     name: "Stage 1 - Build Natives"
@@ -26,46 +31,57 @@ jobs:
 
   # Stage 2: Mod Assembly
   build-mod:
-    name: "Stage 2 - Build Mod"
-    needs: build-natives
+    name: "Stage 2 - Build Mod (${{ matrix.mc_version }})"
+    needs: [setup-matrix, build-natives]
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
     uses: ./.github/workflows/_reusable-build-mod.yml
     with:
+      mc_version: ${{ matrix.mc_version }}
+      java_version: ${{ matrix.java_version }}
       natives-artifact-prefix: "velthoric-natives-${{ github.run_id }}"
       retention-days: 3
 
   # Stage 3: Automated Tests
   gametests:
-    name: "Stage 3 - GameTests"
-    needs: build-mod
+    name: "Stage 3 - GameTests (${{ matrix.mc_version }})"
+    needs: [setup-matrix, build-mod]
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
     uses: ./.github/workflows/_reusable-gametests.yml
     with:
+      mc_version: ${{ matrix.mc_version }}
+      java_version: ${{ matrix.java_version }}
       natives-artifact-prefix: "velthoric-natives-${{ github.run_id }}"
 
-  # Stage 4: Nightly Release
-  nightly-release:
-    name: "Stage 4 - Publish Nightly Release"
-    needs: gametests
+  # Stage 4a: Publish Snapshots to Maven
+  publish-maven:
+    name: "Stage 4a - Publish Maven Snapshot (${{ matrix.mc_version }})"
+    needs: [setup-matrix, gametests]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
     steps:
       - name: "Checkout Repository"
         uses: actions/checkout@v4
 
-      # Download the assembled mod JARs produced in Stage 2.
-      - name: "Download Assembled JARs"
-        uses: actions/download-artifact@v4
-        with:
-          name: "velthoric-jars-${{ github.run_id }}"
-          path: release-artifacts
-
-      - name: "Setup Java 21 (Temurin)"
+      - name: "Setup Java ${{ matrix.java_version }} (Temurin)"
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: ${{ matrix.java_version }}
           distribution: 'temurin'
           cache: 'gradle'
+
+      - name: "Set Active Stonecutter Version"
+        run: |
+          mkdir -p .gradle/stonecutter
+          echo "${{ matrix.mc_version }}" > .gradle/stonecutter/active
 
       - name: "Download Compiled Natives"
         uses: actions/download-artifact@v4
@@ -90,6 +106,43 @@ jobs:
         env:
           MAVEN_USER: ${{ secrets.MAVEN_USER }}
           MAVEN_TOKEN: ${{ secrets.MAVEN_TOKEN }}
+
+  # Stage 4: Nightly Release
+  nightly-release:
+    name: "Stage 4b - Publish Nightly Release"
+    needs: gametests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: "Checkout Repository"
+        uses: actions/checkout@v4
+
+      # Download the assembled mod JARs produced in Stage 2.
+      - name: "Download Assembled JARs (All Versions)"
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "velthoric-jars-*-${{ github.run_id }}"
+          path: release-artifacts
+          merge-multiple: true
+
+      - name: "Setup Java 21 (Temurin)"
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: "Download Compiled Natives"
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "velthoric-natives-${{ github.run_id }}-*"
+          path: vx-native/prebuilt-natives
+          merge-multiple: true
+
+      - name: "Grant Gradle Wrapper Execute Permission"
+        run: chmod +x gradlew
 
       # Creates or overwrites the rolling "nightly" pre-release tag.
       # Every successful nightly build replaces the previous release files.

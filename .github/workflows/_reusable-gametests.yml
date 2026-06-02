@@ -9,6 +9,14 @@ name: "Reusable - GameTests"
 on:
   workflow_call:
     inputs:
+      mc_version:
+        description: "Minecraft version target."
+        type: string
+        required: true
+      java_version:
+        description: "Java version needed to run tests."
+        type: string
+        required: true
       natives-artifact-prefix:
         description: "Prefix of the native library artifacts to download."
         type: string
@@ -31,12 +39,17 @@ jobs:
       - name: "Checkout Repository"
         uses: actions/checkout@v4
 
-      - name: "Setup Java 21 (Temurin)"
+      - name: "Setup Java ${{ inputs.java_version }} (Temurin)"
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: ${{ inputs.java_version }}
           distribution: 'temurin'
           cache: 'gradle'
+
+      - name: "Set Active Stonecutter Version"
+        run: |
+          mkdir -p .gradle/stonecutter
+          echo "${{ inputs.mc_version }}" > .gradle/stonecutter/active
 
       # Native binaries must be present before Gradle configures the project,
       # as the vx-native module resolves them at configuration time.

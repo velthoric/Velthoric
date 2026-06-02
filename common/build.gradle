@@ -4,7 +4,7 @@ plugins {
 }
 
 base {
-    archivesName = "velthoric-common"
+    archivesName = "velthoric-${project.minecraft_version}-common"
 }
 
 architectury {
