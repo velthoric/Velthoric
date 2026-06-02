@@ -66,44 +66,12 @@ repositories {
         metadataSources {
             artifact()
         }
+        content {
+            includeGroup "vx-jolt-jni"
+        }
     }
 
     flatDir {
         dirs rootProject.file('libraries')
-    }
-}
-
-import groovy.json.JsonOutput
-
-/**
- * Dynamically queries all configured Stonecutter target versions in the project.
- *
- * The task outputs a structured JSON matrix format prefixed with "JSON_MATRIX:"
- * which can be reliably extracted and parsed by GitHub Actions CI pipelines.
- */
-tasks.register("printStonecutterMatrix") {
-    group = "publishing"
-    description = "Generates a JSON matrix of registered Stonecutter versions and their Java versions."
-
-    doLast {
-        def versionsDir = file("versions")
-        def matrixList = []
-
-        if (versionsDir.exists()) {
-            versionsDir.eachDir { dir ->
-                def propsFile = file("${dir.absolutePath}/gradle.properties")
-                if (propsFile.exists()) {
-                    def props = new Properties()
-                    propsFile.withInputStream { props.load(it) }
-
-                    // Retrieve java_version with a default fallback to 21
-                    def javaVer = props.getProperty("java_version", "21").trim()
-                    matrixList << [mc_version: dir.name, java_version: javaVer]
-                }
-            }
-        }
-
-        // Output with a prefix to easily parse in CI
-        println "JSON_MATRIX:" + JsonOutput.toJson(matrixList)
     }
 }
