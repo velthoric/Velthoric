@@ -10,3 +10,50 @@ if (project == rootProject) {
         minecraft = rootProject.minecraft_version
     }
 }
+
+import groovy.json.JsonOutput
+
+/**
+ * Dynamically queries all configured Stonecutter target versions in the project.
+ *
+ * The task outputs a structured JSON matrix format prefixed with "JSON_MATRIX:"
+ * which can be reliably extracted and parsed by GitHub Actions CI pipelines.
+ */
+tasks.register("printStonecutterMatrix") {
+    group = "publishing"
+    description = "Generates a JSON matrix of registered Stonecutter versions and their Java versions."
+
+    doLast {
+        // Use rootDir to safely point to the absolute physical project root
+        def versionsDir = new File(rootDir, "versions")
+        def matrixList = []
+
+        if (versionsDir.exists()) {
+            versionsDir.eachDir { dir ->
+                def propsFile = new File(dir, "gradle.properties")
+
+                def javaVer = "21" // default fallback
+
+                if (propsFile.exists()) {
+                    def props = new Properties()
+                    propsFile.withInputStream { props.load(it) }
+
+                    if (props.containsKey("java_version")) {
+                        javaVer = props.getProperty("java_version").trim()
+                    } else {
+                        logger.warn("Property 'java_version' is not set in ${propsFile.path}. Falling back to default Java 21 for ${dir.name}.")
+                    }
+                } else {
+                    logger.warn("Missing gradle.properties in ${dir.name}. Falling back to default Java 21.")
+                }
+
+                matrixList << [mc_version: dir.name, java_version: javaVer]
+            }
+        } else {
+            logger.warn("Versions directory '${versionsDir.path}' does not exist. No matrix generated.")
+        }
+
+        // Output with a prefix to easily parse in CI
+        println "JSON_MATRIX:" + JsonOutput.toJson(matrixList)
+    }
+}
