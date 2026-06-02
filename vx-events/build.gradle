@@ -6,7 +6,7 @@ group = 'net.xmx.vxevents'
 version = '0.0.1'
 
 base {
-    archivesName = "vx-events"
+    archivesName = "vx-events-${project.minecraft_version}"
 }
 
 architectury {

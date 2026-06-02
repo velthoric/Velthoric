@@ -5,7 +5,7 @@ plugins {
 }
 
 base {
-    archivesName = "velthoric-fabric"
+    archivesName = "velthoric-${project.minecraft_version}-fabric"
 }
 
 architectury {

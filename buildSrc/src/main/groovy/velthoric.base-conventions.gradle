@@ -24,16 +24,29 @@ if (!rootProject.ext.has("stonecutter_properties_loaded")) {
 group = rootProject.maven_group
 version = rootProject.mod_version
 
+// Resolve target Java version dynamically from the active properties file
+def targetJava = rootProject.hasProperty("java_version")
+        ? rootProject.java_version.toString().trim()
+        : null
+
+if (targetJava == null) {
+    logger.warn("Property 'java_version' is not set in rootProject. Falling back to default Java 21.")
+    targetJava = "21"
+}
+
+def targetJavaVersion = JavaVersion.toVersion(targetJava)
+def targetJavaInt = Integer.parseInt(targetJavaVersion.getMajorVersion())
+
 java {
     withSourcesJar()
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
+
+    // Automatically locate and use the correct JDK toolchain version for compiling
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(targetJavaInt)
+    }
 }
 
-tasks.withType(JavaCompile).configureEach {
-    options.release = 21
-}
-
+// Disable module metadata generation to avoid publishing issues
 tasks.withType(GenerateModuleMetadata).configureEach {
     enabled = false
 }
@@ -57,5 +70,40 @@ repositories {
 
     flatDir {
         dirs rootProject.file('libraries')
+    }
+}
+
+import groovy.json.JsonOutput
+
+/**
+ * Dynamically queries all configured Stonecutter target versions in the project.
+ *
+ * The task outputs a structured JSON matrix format prefixed with "JSON_MATRIX:"
+ * which can be reliably extracted and parsed by GitHub Actions CI pipelines.
+ */
+tasks.register("printStonecutterMatrix") {
+    group = "publishing"
+    description = "Generates a JSON matrix of registered Stonecutter versions and their Java versions."
+
+    doLast {
+        def versionsDir = file("versions")
+        def matrixList = []
+
+        if (versionsDir.exists()) {
+            versionsDir.eachDir { dir ->
+                def propsFile = file("${dir.absolutePath}/gradle.properties")
+                if (propsFile.exists()) {
+                    def props = new Properties()
+                    propsFile.withInputStream { props.load(it) }
+
+                    // Retrieve java_version with a default fallback to 21
+                    def javaVer = props.getProperty("java_version", "21").trim()
+                    matrixList << [mc_version: dir.name, java_version: javaVer]
+                }
+            }
+        }
+
+        // Output with a prefix to easily parse in CI
+        println "JSON_MATRIX:" + JsonOutput.toJson(matrixList)
     }
 }
