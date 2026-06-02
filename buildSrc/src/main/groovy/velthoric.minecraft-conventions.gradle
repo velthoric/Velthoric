@@ -1,0 +1,33 @@
+plugins {
+    id 'velthoric.base-conventions'
+    id 'dev.architectury.loom'
+    id 'architectury-plugin'
+}
+
+loom {
+    silentMojangMappingsLicense()
+
+    mixin {
+        useLegacyMixinAp = true
+    }
+
+    def refmaps = [
+            'vx-events': 'vx-events-refmap.json',
+            'common'   : 'velthoric-refmap.json'
+    ]
+
+    refmaps.each { proj, refmap ->
+        if (project.name == proj) {
+            mixin.defaultRefmapName.set(refmap)
+        }
+    }
+}
+
+dependencies {
+    minecraft "net.minecraft:minecraft:${project.minecraft_version}"
+
+    mappings loom.layered {
+        officialMojangMappings()
+        parchment("org.parchmentmc.data:parchment-${project.minecraft_version}:${project.parchment_version}@zip")
+    }
+}

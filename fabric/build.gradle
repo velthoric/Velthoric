@@ -1,5 +1,11 @@
 plugins {
-    id 'com.gradleup.shadow'
+    id 'velthoric.minecraft-conventions'
+    id 'velthoric.shadow-conventions'
+    id 'net.xmx.velthoric.publishing'
+}
+
+base {
+    archivesName = "velthoric-fabric"
 }
 
 architectury {
@@ -30,7 +36,6 @@ loom {
     accessWidenerPath = project(":common").loom.accessWidenerPath
 }
 
-
 configurations {
     common {
         canBeResolved = true
@@ -47,20 +52,23 @@ configurations {
 }
 
 dependencies {
-    modImplementation "net.fabricmc:fabric-loader:$rootProject.fabric_loader_version"
+    modImplementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
 
-    include(implementation(annotationProcessor("io.github.llamalad7:mixinextras-fabric:$mixinextras_version")))
+    def mixinExtras = "io.github.llamalad7:mixinextras-fabric:${project.mixinextras_version}"
+    annotationProcessor(mixinExtras)
+    implementation(mixinExtras)
+    include(mixinExtras)
 
-    modImplementation "net.fabricmc.fabric-api:fabric-api:$rootProject.fabric_api_version"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
     modLocalRuntime "curse.maven:sodium-394468:6382649"
     modLocalRuntime "curse.maven:modmenu-308702:5810603"
     modLocalRuntime "curse.maven:lithium-360438:7246287"
 
-    modImplementation "dev.architectury:architectury-fabric:$rootProject.architectury_api_version"
+    modImplementation "dev.architectury:architectury-fabric:${project.architectury_api_version}"
 
-    minecraftRuntimeLibraries(project(path: ":vx-native", configuration: "namedElements"))
-    shadowBundle project(path: ":vx-native", configuration: "namedElements")
+    minecraftRuntimeLibraries(project(path: ":vx-native"))
+    shadowBundle project(path: ":vx-native")
 
     common(project(path: ":vx-events", configuration: "namedElements")) { transitive false }
     shadowBundle project(path: ":vx-events", configuration: "transformProductionFabric")
@@ -71,19 +79,19 @@ dependencies {
 
 processResources {
     def propertiesToExpand = [
-            minecraft_version: rootProject.minecraft_version,
-            mod_id: rootProject.mod_id,
-            mod_name: rootProject.mod_name,
-            mod_license: rootProject.mod_license,
-            mod_version: rootProject.mod_version,
-            mod_authors: rootProject.mod_authors,
-            mod_description: rootProject.mod_description,
-            minecraft_version_range: rootProject.minecraft_version_range,
-            loader_version_range: rootProject.loader_version_range,
+            minecraft_version: project.minecraft_version,
+            mod_id: project.mod_id,
+            mod_name: project.mod_name,
+            mod_license: project.mod_license,
+            mod_version: project.mod_version,
+            mod_authors: project.mod_authors,
+            mod_description: project.mod_description,
+            minecraft_version_range: project.minecraft_version_range,
+            loader_version_range: project.loader_version_range,
 
-            fabric_loader_version: rootProject.fabric_loader_version,
-            fabric_api_version: rootProject.fabric_api_version,
-            architectury_api_version: rootProject.architectury_api_version
+            fabric_loader_version: project.fabric_loader_version,
+            fabric_api_version: project.fabric_api_version,
+            architectury_api_version: project.architectury_api_version
     ]
 
     inputs.properties propertiesToExpand
@@ -95,27 +103,6 @@ processResources {
 
 shadowJar {
     configurations = [project.configurations.shadowBundle]
-    archiveClassifier = 'dev-shadow'
-    destinationDirectory = file("${project.layout.buildDirectory.get()}/intermediates")
-
-    // Natives are bundled in vx-native, no need to include them here
-    exclude 'aix/**'
-    exclude 'darwin/**'
-    exclude 'freebsd/**'
-    exclude 'linux/**'
-    exclude 'win/**'
-}
-
-remapJar {
-    inputFile.set shadowJar.archiveFile
-}
-
-// Configures the sourcesJar task to include source code from the common module
-// ensuring that the resulting sources jar contains the full codebase.
-tasks.named("sourcesJar") {
-    def commonSources = project(":common").sourceSets.main.allSource
-    from commonSources
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 afterEvaluate {

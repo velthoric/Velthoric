@@ -1,16 +1,30 @@
+plugins {
+    id 'velthoric.minecraft-conventions'
+    id 'net.xmx.velthoric.publishing'
+}
+
+base {
+    archivesName = "velthoric-common"
+}
+
 architectury {
-    common rootProject.enabled_platforms.split(',')
+    common project.enabled_platforms.split(',')
 }
 
 dependencies {
     // We depend on Fabric Loader here to use the Fabric @Environment annotations,
     // which get remapped to the correct annotations on each platform.
     // Do NOT use other classes from Fabric Loader.
-    modImplementation "net.fabricmc:fabric-loader:$rootProject.fabric_loader_version"
-    modImplementation "dev.architectury:architectury:$rootProject.architectury_api_version"
-    implementation project(path: ":vx-native", configuration: "namedElements")
+    modImplementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
+    modImplementation "dev.architectury:architectury:${project.architectury_api_version}"
+
     implementation project(path: ":vx-events", configuration: "namedElements")
-    include(implementation(annotationProcessor("io.github.llamalad7:mixinextras-fabric:$mixinextras_version")))
+    implementation project(path: ":vx-native")
+
+    def mixinExtras = "io.github.llamalad7:mixinextras-fabric:${project.mixinextras_version}"
+    annotationProcessor(mixinExtras)
+    implementation(mixinExtras)
+    include(mixinExtras)
 }
 
 loom {
@@ -32,8 +46,6 @@ afterEvaluate {
         }
     }
 }
-
-apply plugin: 'net.xmx.velthoric.publishing'
 
 velthoricPublishing {
     loader = "common"

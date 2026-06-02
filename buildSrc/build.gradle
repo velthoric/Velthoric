@@ -1,15 +1,28 @@
 plugins {
-    id 'java-gradle-plugin'
+    id 'groovy-gradle-plugin'
 }
 
 repositories {
     gradlePluginPortal()
     mavenCentral()
+    maven { url "https://maven.fabricmc.net/" }
+    maven { url "https://maven.architectury.dev/" }
+    maven { url "https://maven.minecraftforge.net/" }
 }
 
 dependencies {
     implementation "me.modmuss50:mod-publish-plugin:0.8.4"
     implementation "com.github.breadmoirai:github-release:2.4.1"
+    implementation "dev.architectury.loom:dev.architectury.loom.gradle.plugin:1.13-SNAPSHOT"
+    implementation "architectury-plugin:architectury-plugin.gradle.plugin:3.4-SNAPSHOT"
+    implementation "com.gradleup.shadow:com.gradleup.shadow.gradle.plugin:8.3.6"
+}
+
+sourceSets {
+    main {
+        java { srcDirs = ['src/main/java'] }
+        groovy { srcDirs = ['src/main/groovy'] }
+    }
 }
 
 gradlePlugin {

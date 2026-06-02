@@ -1,0 +1,61 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+// Load Stonecutter properties
+if (!rootProject.ext.has("stonecutter_properties_loaded")) {
+    rootProject.ext.set("stonecutter_properties_loaded", true)
+
+    def activeFile = rootProject.file(".gradle/stonecutter/active")
+    def activeVersion = activeFile.exists() ? activeFile.text.trim() : "1.21.1"
+    def activePropsFile = rootProject.file("versions/${activeVersion}/gradle.properties")
+
+    if (activePropsFile.exists()) {
+        def activeProps = new Properties()
+        activePropsFile.withInputStream { activeProps.load(it) }
+        activeProps.each { key, val ->
+            rootProject.ext.set(key, val)
+        }
+    }
+}
+
+
+group = rootProject.maven_group
+version = rootProject.mod_version
+
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+}
+
+tasks.withType(GenerateModuleMetadata).configureEach {
+    enabled = false
+}
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://cursemaven.com'}
+    maven { url = 'https://maven.parchmentmc.org' }
+    maven { url = 'https://jitpack.io' }
+    maven { url = 'https://s01.oss.sonatype.org/content/repositories/snapshots'}
+
+    ivy {
+        url "https://github.com/velthoric/vx-jolt-jni/releases/download/${project.jolt_jni_version}/"
+        patternLayout {
+            artifact "[artifact]-[revision](-[classifier]).[ext]"
+        }
+        metadataSources {
+            artifact()
+        }
+    }
+
+    flatDir {
+        dirs rootProject.file('libraries')
+    }
+}
