@@ -11,6 +11,10 @@ import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.game.ClientboundLoginPacket;
 import net.minecraft.network.protocol.game.ClientboundRespawnPacket;
 import net.xmx.velthoric.event.api.VxClientPlayerNetworkEvent;
+/*? if <1.21.1 {*/
+/*import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Shadow;
+*//*?}*/
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -25,9 +29,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ClientPacketListener.class)
 public abstract class MixinClientPacketListener_VxClientPlayerNetworkEvent {
 
-    /**
-     * Stores the player instance before a respawn packet is processed to detect entity changes.
-     */
+    /*? if <1.21.1 {*/
+    /*@Shadow @Final private Minecraft minecraft;
+    @Shadow @Final private Connection connection;
+    *//*?}*/
+
     @Unique
     private LocalPlayer capturedOldPlayerForClone;
 
@@ -39,14 +45,17 @@ public abstract class MixinClientPacketListener_VxClientPlayerNetworkEvent {
      */
     @Inject(method = "handleLogin(Lnet/minecraft/network/protocol/game/ClientboundLoginPacket;)V", at = @At("TAIL"))
     private void velthoric_fireClientLoggingInEvent(ClientboundLoginPacket packet, CallbackInfo ci) {
+        /*? if >=1.21.1 {*/
         Minecraft mc = Minecraft.getInstance();
-
-        // Use the Accessor interface to safely get the protected 'connection' field from the parent class
-        Connection connection = ((ClientCommonPacketListenerImplAccessor) this).velthoric$getConnection();
-
+        Connection conn = ((ClientCommonPacketListenerImplAccessor) this).velthoric$getConnection();
         VxClientPlayerNetworkEvent.LoggingIn.EVENT.invoker().onClientLoggingIn(
-                new VxClientPlayerNetworkEvent.LoggingIn(mc.gameMode, mc.player, connection)
+                new VxClientPlayerNetworkEvent.LoggingIn(mc.gameMode, mc.player, conn)
         );
+        /*?} else {*/
+        /*VxClientPlayerNetworkEvent.LoggingIn.EVENT.invoker().onClientLoggingIn(
+                new VxClientPlayerNetworkEvent.LoggingIn(this.minecraft.gameMode, this.minecraft.player, this.connection)
+        );
+        *//*?}*/
     }
 
     /**
@@ -57,7 +66,11 @@ public abstract class MixinClientPacketListener_VxClientPlayerNetworkEvent {
             at = @At("HEAD")
     )
     private void velthoric_captureOldPlayerForClone(ClientboundRespawnPacket packet, CallbackInfo ci) {
+        /*? if >=1.21.1 {*/
         this.capturedOldPlayerForClone = Minecraft.getInstance().player;
+        /*?} else {*/
+        /*this.capturedOldPlayerForClone = this.minecraft.player;
+        *//*?}*/
     }
 
     /**
@@ -68,16 +81,25 @@ public abstract class MixinClientPacketListener_VxClientPlayerNetworkEvent {
             at = @At("TAIL")
     )
     private void velthoric_fireClientPlayerCloneEvent(ClientboundRespawnPacket packet, CallbackInfo ci) {
+        /*? if >=1.21.1 {*/
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer newPlayer = mc.player;
-
-        // Retrieve connection via Accessor again
-        Connection connection = ((ClientCommonPacketListenerImplAccessor) this).velthoric$getConnection();
+        Connection conn = ((ClientCommonPacketListenerImplAccessor) this).velthoric$getConnection();
+        /*?} else {*/
+        /*LocalPlayer newPlayer = this.minecraft.player;
+        Connection conn = this.connection;
+        *//*?}*/
 
         if (this.capturedOldPlayerForClone != null && newPlayer != null && this.capturedOldPlayerForClone != newPlayer) {
+            /*? if >=1.21.1 {*/
             VxClientPlayerNetworkEvent.Clone.EVENT.invoker().onClientPlayerClone(
-                    new VxClientPlayerNetworkEvent.Clone(mc.gameMode, this.capturedOldPlayerForClone, newPlayer, connection)
+                    new VxClientPlayerNetworkEvent.Clone(mc.gameMode, this.capturedOldPlayerForClone, newPlayer, conn)
             );
+            /*?} else {*/
+            /*VxClientPlayerNetworkEvent.Clone.EVENT.invoker().onClientPlayerClone(
+                    new VxClientPlayerNetworkEvent.Clone(this.minecraft.gameMode, this.capturedOldPlayerForClone, newPlayer, conn)
+            );
+            *//*?}*/
         }
 
         this.capturedOldPlayerForClone = null;
