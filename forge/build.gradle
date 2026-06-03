@@ -61,8 +61,8 @@ dependencies {
     minecraftRuntimeLibraries(project(path: ":vx-native"))
     shadowBundle project(path: ":vx-native")
 
-    common(project(path: ":vx-events", configuration: "namedElements")) { transitive false }
-    shadowBundle project(path: ":vx-events", configuration: "transformProductionForge")
+    common(project(path: ":vx-events:${project.minecraft_version}", configuration: "namedElements")) { transitive false }
+    shadowBundle project(path: ":vx-events:${project.minecraft_version}", configuration: "transformProductionForge")
 
     common(project(path: ':common', configuration: 'namedElements')) { transitive false }
     shadowBundle project(path: ':common', configuration: 'transformProductionForge')
