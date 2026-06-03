@@ -19,7 +19,7 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
     modImplementation "dev.architectury:architectury:${project.architectury_api_version}"
 
-    implementation project(path: ":vx-events", configuration: "namedElements")
+    implementation project(path: ":vx-events:${project.minecraft_version}", configuration: "namedElements")
     implementation project(path: ":vx-native")
 
     def mixinExtras = "io.github.llamalad7:mixinextras-fabric:${project.mixinextras_version}"

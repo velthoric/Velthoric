@@ -39,17 +39,33 @@ if (!rootProject.ext.has("stonecutter_properties_loaded")) {
     }
 }
 
+// Load project-specific properties if it's a versioned project or Stonecutter node
+def currentVersion = null
+if (project.projectDir.parentFile?.name == "versions") {
+    currentVersion = project.name
+}
 
-group = rootProject.maven_group
-version = rootProject.mod_version
+if (currentVersion != null) {
+    def versionPropsFile = rootProject.file("versions/${currentVersion}/gradle.properties")
+    if (versionPropsFile.exists()) {
+        def versionProps = new Properties()
+        versionPropsFile.withInputStream { versionProps.load(it) }
+        versionProps.each { key, val ->
+            project.ext.set(key, val)
+        }
+    }
+}
 
-// Resolve target Java version dynamically from the active properties file
-def targetJava = rootProject.hasProperty("java_version")
-        ? rootProject.java_version.toString().trim()
+group = project.maven_group
+version = project.mod_version
+
+// Resolve target Java version dynamically from the project properties
+def targetJava = project.hasProperty("java_version")
+        ? project.java_version.toString().trim()
         : null
 
 if (targetJava == null) {
-    logger.warn("Property 'java_version' is not set in rootProject. Falling back to default Java 21.")
+    logger.warn("Property 'java_version' is not set in project ${project.path}. Falling back to default Java 21.")
     targetJava = "21"
 }
 
@@ -63,6 +79,10 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(targetJavaInt)
     }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs.add('--enable-preview')
 }
 
 // Disable module metadata generation to avoid publishing issues
