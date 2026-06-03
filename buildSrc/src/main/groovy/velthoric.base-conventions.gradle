@@ -7,8 +7,20 @@ plugins {
 if (!rootProject.ext.has("stonecutter_properties_loaded")) {
     rootProject.ext.set("stonecutter_properties_loaded", true)
 
-    def activeFile = rootProject.file(".gradle/stonecutter/active")
-    def activeVersion = activeFile.exists() ? activeFile.text.trim() : "1.21.1"
+    def activeVersion = null
+    def stonecutterFile = rootProject.file("stonecutter.gradle")
+    if (stonecutterFile.exists()) {
+        def matcher = stonecutterFile.text =~ /stonecutter\.active\s*["']([^"']+)["']/
+        if (matcher.find()) {
+            activeVersion = matcher.group(1).trim()
+        }
+    }
+
+    if (activeVersion == null) {
+        logger.warn("Failed to find active version in stonecutter.gradle. Falling back to default version '1.21.1'.")
+        activeVersion = "1.21.1"
+    }
+
     def activePropsFile = rootProject.file("versions/${activeVersion}/gradle.properties")
 
     if (activePropsFile.exists()) {
@@ -17,6 +29,8 @@ if (!rootProject.ext.has("stonecutter_properties_loaded")) {
         activeProps.each { key, val ->
             rootProject.ext.set(key, val)
         }
+    } else {
+        logger.warn("Stonecutter properties file not found at: ${activePropsFile.absolutePath}")
     }
 }
 
