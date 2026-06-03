@@ -17,7 +17,7 @@ stonecutter {
     centralScript = "build.gradle"
 
     create(rootProject) {
-        versions "1.21.1"
+        versions "1.20.1", "1.21.1"
         vcsVersion = "1.21.1"
     }
 }
@@ -27,5 +27,6 @@ rootProject.name = 'Velthoric'
 include 'common'
 include 'fabric'
 include 'neoforge'
+include 'forge'
 include 'vx-native'
 include 'vx-events'

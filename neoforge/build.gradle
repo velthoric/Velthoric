@@ -1,8 +1,8 @@
-plugins {
-    id 'velthoric.minecraft-conventions'
-    id 'velthoric.shadow-conventions'
-    id 'net.xmx.velthoric.publishing'
-}
+if (!rootProject.isPlatformEnabled("neoforge")) return
+
+apply plugin: 'velthoric.minecraft-conventions'
+apply plugin: 'velthoric.shadow-conventions'
+apply plugin: 'net.xmx.velthoric.publishing'
 
 base {
     archivesName = "velthoric-${project.minecraft_version}-neoforge"

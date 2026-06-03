@@ -1,39 +1,41 @@
-if (!rootProject.isPlatformEnabled("fabric")) return
+if (!rootProject.isPlatformEnabled("forge")) return
 
 apply plugin: 'velthoric.minecraft-conventions'
 apply plugin: 'velthoric.shadow-conventions'
 apply plugin: 'net.xmx.velthoric.publishing'
 
 base {
-    archivesName = "velthoric-${project.minecraft_version}-fabric"
-}
-
-architectury {
-    platformSetupLoomIde()
-    fabric()
+    archivesName = "velthoric-${project.minecraft_version}-forge"
 }
 
 loom {
+    forge {
+        mixinConfig "velthoric.mixins.json", "vx-events.mixins.json"
+    }
+
     runs {
         server {
             runDir "run-server"
         }
-        gameTest {
+        gameTestServer {
             server()
             name "GameTest Server"
             runDir "run-gametest"
-            property "fabric-api.gametest", "true"
+            property "forge.enableGameTest", "true"
+            property "forge.gameTestServer", "true"
         }
         client {
             runDir "run-client"
             programArgs '--username', 'dev'
-
-            vmArg "-XX:+UnlockDiagnosticVMOptions"
-            vmArg "-XX:+DebugNonSafepoints"
         }
     }
 
     accessWidenerPath = project(":common").loom.accessWidenerPath
+}
+
+architectury {
+    platformSetupLoomIde()
+    forge()
 }
 
 configurations {
@@ -43,7 +45,7 @@ configurations {
     }
     compileClasspath.extendsFrom common
     runtimeClasspath.extendsFrom common
-    developmentFabric.extendsFrom common
+    developmentForge.extendsFrom common
 
     shadowBundle {
         canBeResolved = true
@@ -52,52 +54,39 @@ configurations {
 }
 
 dependencies {
-    modImplementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
+    forge "net.minecraftforge:forge:${project.forge_version}"
 
-    def mixinExtras = "io.github.llamalad7:mixinextras-fabric:${project.mixinextras_version}"
-    annotationProcessor(mixinExtras)
-    implementation(mixinExtras)
-    include(mixinExtras)
-
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-
-    modLocalRuntime "curse.maven:sodium-394468:6382649"
-    modLocalRuntime "curse.maven:modmenu-308702:5810603"
-    modLocalRuntime "curse.maven:lithium-360438:7246287"
-
-    modImplementation "dev.architectury:architectury-fabric:${project.architectury_api_version}"
+    modImplementation "dev.architectury:architectury-forge:${project.architectury_api_version}"
 
     minecraftRuntimeLibraries(project(path: ":vx-native"))
     shadowBundle project(path: ":vx-native")
 
     common(project(path: ":vx-events", configuration: "namedElements")) { transitive false }
-    shadowBundle project(path: ":vx-events", configuration: "transformProductionFabric")
+    shadowBundle project(path: ":vx-events", configuration: "transformProductionForge")
 
     common(project(path: ':common', configuration: 'namedElements')) { transitive false }
-    shadowBundle project(path: ':common', configuration: 'transformProductionFabric')
+    shadowBundle project(path: ':common', configuration: 'transformProductionForge')
 }
 
 processResources {
-    def propertiesToExpand = [
+    var replaceProperties = [
             minecraft_version: project.minecraft_version,
+            minecraft_version_range: project.minecraft_version_range,
+            forge_version: project.forge_version,
+            forge_version_range: project.forge_version_range,
+            loader_version_range: project.loader_version_range,
             mod_id: project.mod_id,
             mod_name: project.mod_name,
             mod_license: project.mod_license,
             mod_version: project.mod_version,
             mod_authors: project.mod_authors,
-            mod_description: project.mod_description,
-            minecraft_version_range: project.minecraft_version_range,
-            loader_version_range: project.loader_version_range,
-
-            fabric_loader_version: project.fabric_loader_version,
-            fabric_api_version: project.fabric_api_version,
-            architectury_api_version: project.architectury_api_version
+            mod_description: project.mod_description
     ]
 
-    inputs.properties propertiesToExpand
+    inputs.properties replaceProperties
 
-    filesMatching(['fabric.mod.json', 'pack.mcmeta']) {
-        expand propertiesToExpand + [project: project]
+    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
+        expand replaceProperties + [project: project]
     }
 }
 
@@ -123,10 +112,10 @@ afterEvaluate {
 }
 
 /**
- * Configure Velthoric Publishing for Fabric.
+ * Configure Velthoric Publishing for Forge.
  */
 velthoricPublishing {
-    loader = "fabric"
-    displayName = "Fabric"
+    loader = "forge"
+    displayName = "Forge"
     artifact = tasks.named("remapJar")
 }
