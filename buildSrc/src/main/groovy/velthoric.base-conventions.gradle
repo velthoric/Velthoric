@@ -32,6 +32,11 @@ if (!rootProject.ext.has("stonecutter_properties_loaded")) {
     } else {
         logger.warn("Stonecutter properties file not found at: ${activePropsFile.absolutePath}")
     }
+
+    rootProject.ext.isPlatformEnabled = { String platform ->
+        def platforms = rootProject.ext.has("enabled_platforms") ? rootProject.ext.get("enabled_platforms") : ""
+        return platforms.split(',').contains(platform)
+    }
 }
 
 

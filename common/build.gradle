@@ -8,7 +8,8 @@ base {
 }
 
 architectury {
-    common project.enabled_platforms.split(',')
+    def platforms = rootProject.ext.has("enabled_platforms") ? rootProject.ext.get("enabled_platforms") : (project.findProperty("enabled_platforms") ?: "")
+    common platforms.split(',')
 }
 
 dependencies {
