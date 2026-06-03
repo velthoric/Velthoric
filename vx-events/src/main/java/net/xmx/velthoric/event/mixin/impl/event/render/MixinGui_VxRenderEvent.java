@@ -4,7 +4,9 @@
  */
 package net.xmx.velthoric.event.mixin.impl.event.render;
 
+/*? if >=1.21.1 {*/
 import net.minecraft.client.DeltaTracker;
+/*?}*/
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiGraphics;
 import net.xmx.velthoric.event.api.VxRenderEvent;
@@ -22,10 +24,17 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MixinGui_VxRenderEvent {
 
     @Inject(method = "render", at = @At("TAIL"))
-    private void velthoric_fireRenderHudEvent(GuiGraphics guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
-        // Normalize partial tick handling for the event API (consistency between versions)
+    private void velthoric_fireRenderHudEvent(
+            GuiGraphics guiGraphics,
+            /*? if >=1.21.1 {*/
+            DeltaTracker deltaTracker,
+            /*?} else {*/
+            /*float partialTick,
+            *//*?}*/
+            CallbackInfo ci) {
+        /*? if >=1.21.1 {*/
         float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
-
+        /*?}*/
         VxRenderEvent.ClientRenderHudEvent.EVENT.invoker().onRenderHud(
                 new VxRenderEvent.ClientRenderHudEvent(guiGraphics, partialTick)
         );
