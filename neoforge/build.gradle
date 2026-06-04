@@ -106,6 +106,9 @@ afterEvaluate {
                 artifactId = base.archivesName.get()
                 from components.java
 
+                // Add sources jar
+                artifact(tasks.named("sourcesJar"))
+
                 // Filters out development and shadow artifacts to reduce file size
                 // and ensure only the production jar is published.
                 artifacts.removeAll { artifact ->

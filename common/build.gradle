@@ -31,22 +31,6 @@ loom {
     accessWidenerPath = project(":common").file("src/main/resources/velthoric.accesswidener")
 }
 
-afterEvaluate {
-    publishing {
-        publications {
-            mavenJava(MavenPublication) {
-                artifactId = base.archivesName.get()
-                from components.java
-
-                // Filters out development and shadow artifacts from the publication.
-                artifacts.removeAll { artifact ->
-                    artifact.classifier in ['dev', 'shadow', 'dev-shadow']
-                }
-            }
-        }
-    }
-}
-
 velthoricPublishing {
     loader = "common"
     publishGitHub = true
