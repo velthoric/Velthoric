@@ -85,9 +85,7 @@ jobs:
           cache: 'gradle'
 
       - name: "Set Active Stonecutter Version"
-        run: |
-          mkdir -p .gradle/stonecutter
-          echo "${{ matrix.mc_version }}" > .gradle/stonecutter/active
+        run: ./gradlew stonecutterSwitchTo${{ matrix.mc_version }}
 
       - name: "Download Compiled Natives"
         uses: actions/download-artifact@v4

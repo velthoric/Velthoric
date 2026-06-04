@@ -49,9 +49,7 @@ jobs:
           cache: 'gradle'
 
       - name: "Set Active Stonecutter Version"
-        run: |
-          mkdir -p .gradle/stonecutter
-          echo "${{ inputs.mc_version }}" > .gradle/stonecutter/active
+        run: ./gradlew stonecutterSwitchTo${{ inputs.mc_version }}
 
       # Native binaries must be present before Gradle configures the project,
       # as the vx-native module resolves them at configuration time.
