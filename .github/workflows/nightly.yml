@@ -1,14 +1,21 @@
 # Nightly Build Pipeline
 #
 # Triggered automatically on every push to the master branch, and manually via
-# workflow_dispatch. This pipeline compiles natives, assembles the mod, runs the
-# full GameTest suite, and publishes a rolling "nightly" pre-release on GitHub.
+# workflow_dispatch. This pipeline compiles natives, assembles the mod for every
+# enabled Minecraft version and loader, runs the full GameTest suite, and
+# publishes a rolling "nightly" pre-release on GitHub.
+#
+# The set of versions and loaders is read dynamically from the Stonecutter
+# configuration via the printStonecutterMatrix Gradle task, so adding a new
+# Stonecutter version to versions/ automatically includes it in the pipeline.
 #
 # Pipeline stages:
-#   1. build-natives  - Compile vx-native for all platforms in parallel.
-#   2. build-mod      - Assemble Fabric & NeoForge JARs using the compiled natives.
-#   3. gametests      - Run the automated GameTest server for both loaders.
-#   4. nightly        - Publish or overwrite the rolling "nightly" GitHub pre-release.
+#   1. setup-matrix  - Query all Stonecutter versions and their enabled loaders.
+#   2. build-natives - Compile vx-native for all host platforms in parallel.
+#   3. build-mod     - Assemble mod JARs for each MC version (all loaders).
+#   4. gametests     - Run the GameTest server for each loader of each MC version.
+#   5a. publish-maven - Publish rolling Maven snapshots for every MC version.
+#   5b. nightly      - Publish or overwrite the rolling "nightly" GitHub pre-release.
 
 name: "Nightly Build"
 
@@ -19,7 +26,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Call the reusable workflow to fetch the matrix dynamically
+  # Stage 0: Dynamically build the version+loader matrix from Stonecutter config
   setup-matrix:
     name: "Initialize Matrix"
     uses: ./.github/workflows/_reusable-matrix.yml
@@ -29,7 +36,7 @@ jobs:
     name: "Stage 1 - Build Natives"
     uses: ./.github/workflows/_reusable-build-natives.yml
 
-  # Stage 2: Mod Assembly
+  # Stage 2: Mod Assembly - one job per MC version, builds all enabled loaders
   build-mod:
     name: "Stage 2 - Build Mod (${{ matrix.mc_version }})"
     needs: [setup-matrix, build-natives]
@@ -44,7 +51,7 @@ jobs:
       natives-artifact-prefix: "velthoric-natives-${{ github.run_id }}"
       retention-days: 3
 
-  # Stage 3: Automated Tests
+  # Stage 3: Automated Tests - one job per loader per MC version
   gametests:
     name: "Stage 3 - GameTests (${{ matrix.mc_version }})"
     needs: [setup-matrix, build-mod]
@@ -57,8 +64,9 @@ jobs:
       mc_version: ${{ matrix.mc_version }}
       java_version: ${{ matrix.java_version }}
       natives-artifact-prefix: "velthoric-natives-${{ github.run_id }}"
+      loaders: ${{ toJson(matrix.loaders) }}
 
-  # Stage 4a: Publish Snapshots to Maven
+  # Stage 4a: Publish Snapshots to Maven - one job per MC version
   publish-maven:
     name: "Stage 4a - Publish Maven Snapshot (${{ matrix.mc_version }})"
     needs: [setup-matrix, gametests]
@@ -93,21 +101,23 @@ jobs:
       - name: "Grant Gradle Wrapper Execute Permission"
         run: chmod +x gradlew
 
+      # publishVelthoric automatically targets only the enabled loaders for the
+      # active MC version (fabric+forge for 1.20.1, fabric+neoforge for 1.21.1, etc.)
       - name: "Publish Snapshot to Maven"
         run: |
           VERSION=$(grep "mod_version" gradle.properties | cut -d'=' -f2 | tr -d '\r' | xargs)
-          
+
           # Only append -SNAPSHOT if it's not already present in mod_version
           if [[ ! "$VERSION" == *"-SNAPSHOT" ]]; then
             VERSION="${VERSION}-SNAPSHOT"
           fi
-          
+
           ./gradlew publishVelthoric -Pvelthoric.snapshot=true -Pmod_version="${VERSION}" -x :vx-native:cmakeBuild
         env:
           MAVEN_USER: ${{ secrets.MAVEN_USER }}
           MAVEN_TOKEN: ${{ secrets.MAVEN_TOKEN }}
 
-  # Stage 4: Nightly Release
+  # Stage 4b: Nightly Release - single job that collects all version JARs
   nightly-release:
     name: "Stage 4b - Publish Nightly Release"
     needs: gametests
@@ -119,7 +129,7 @@ jobs:
       - name: "Checkout Repository"
         uses: actions/checkout@v4
 
-      # Download the assembled mod JARs produced in Stage 2.
+      # Download all assembled mod JARs produced in Stage 2 across every MC version.
       - name: "Download Assembled JARs (All Versions)"
         uses: actions/download-artifact@v4
         with:
