@@ -67,12 +67,20 @@ jobs:
       - name: "Checkout Repository"
         uses: actions/checkout@v4
 
-      - name: "Setup Java 21 (Temurin)"
+      # Java 17 must be installed first so Gradle's toolchain resolver can find it
+      # when buildSrc (or any subproject) requests languageVersion=17 via the
+      # velthoric.base-conventions toolchain block.
+      - name: "Setup Java 17 (Temurin) - Toolchain"
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: "Setup Java 21 (Temurin) - Gradle Daemon"
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
-          architecture: ${{ (matrix.target_arch == 'aarch64' && matrix.os == 'macos-14') && 'aarch64' || 'x64' }}
           cache: 'gradle'
 
       # Install GNU cross-compilation toolchain for Linux AArch64 targets.

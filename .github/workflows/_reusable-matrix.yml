@@ -27,9 +27,14 @@ jobs:
       - name: "Grant Gradle Wrapper Execute Permission"
         run: chmod +x gradlew
 
-      # Run the custom task and extract the JSON output safely
+      # Run the custom task and extract the JSON output safely.
+      # The EOF heredoc is required because the JSON contains colons (task names
+      # like :fabric:runGameTest) and brackets that confuse the simple key=value
+      # format used by GITHUB_OUTPUT.
       - name: "Generate Matrix"
         id: set-matrix
         run: |
-          MATRIX_JSON=$(./gradlew printStonecutterMatrix -q | grep "JSON_MATRIX:" | cut -d':' -f2-)
-          echo "matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
+          MATRIX_JSON=$(./gradlew printStonecutterMatrix -q | grep "JSON_MATRIX:" | cut -d':' -f2- | tr -d '\r')
+          echo "matrix<<EOF" >> $GITHUB_OUTPUT
+          echo "$MATRIX_JSON" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
