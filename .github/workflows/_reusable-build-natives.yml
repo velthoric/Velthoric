@@ -67,19 +67,10 @@ jobs:
       - name: "Checkout Repository"
         uses: actions/checkout@v4
 
-      # Java 17 must be installed first so Gradle's toolchain resolver can find it
-      # when buildSrc (or any subproject) requests languageVersion=17 via the
-      # velthoric.base-conventions toolchain block.
-      - name: "Setup Java 17 (Temurin) - Toolchain"
+      - name: "Setup Java 25 (Temurin)"
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: "Setup Java 21 (Temurin) - Gradle Daemon"
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
+          java-version: '25'
           distribution: 'temurin'
           cache: 'gradle'
 

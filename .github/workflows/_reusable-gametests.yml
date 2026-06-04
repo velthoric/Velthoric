@@ -19,10 +19,6 @@ on:
         description: "Minecraft version target."
         type: string
         required: true
-      java_version:
-        description: "Java version needed to run tests."
-        type: string
-        required: true
       natives-artifact-prefix:
         description: "Prefix of the native library artifacts to download."
         type: string
@@ -45,19 +41,10 @@ jobs:
       - name: "Checkout Repository"
         uses: actions/checkout@v4
 
-      # Pre-install Java 17 so Gradle's toolchain resolver finds it even when
-      # the target MC version uses Java 21. Without this, testing 1.20.1 on a
-      # runner that only has Java 21 registered fails with "toolchain not found".
-      - name: "Setup Java 17 (Temurin) - Toolchain"
+      - name: "Setup Java 25 (Temurin)"
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: "Setup Java ${{ inputs.java_version }} (Temurin)"
-        uses: actions/setup-java@v4
-        with:
-          java-version: ${{ inputs.java_version }}
+          java-version: '25'
           distribution: 'temurin'
           cache: 'gradle'
 

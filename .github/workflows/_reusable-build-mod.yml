@@ -10,7 +10,6 @@
 #
 # Inputs:
 #   mc_version:              Minecraft version to build.
-#   java_version:            Java toolchain version required for this MC target.
 #   natives-artifact-prefix: Prefix of the native artifacts to download and merge.
 #   retention-days:          How long to retain the assembled JAR artifact.
 
@@ -21,10 +20,6 @@ on:
     inputs:
       mc_version:
         description: "Minecraft version target."
-        type: string
-        required: true
-      java_version:
-        description: "Java version needed to build."
         type: string
         required: true
       natives-artifact-prefix:
@@ -49,18 +44,10 @@ jobs:
       - name: "Checkout Repository"
         uses: actions/checkout@v4
 
-      # Pre-install Java 17 so Gradle's toolchain resolver finds it even when
-      # the target MC version uses Java 21.
-      - name: "Setup Java 17 (Temurin) - Toolchain"
+      - name: "Setup Java 25 (Temurin)"
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: "Setup Java ${{ inputs.java_version }} (Temurin)"
-        uses: actions/setup-java@v4
-        with:
-          java-version: ${{ inputs.java_version }}
+          java-version: '25'
           distribution: 'temurin'
           cache: 'gradle'
 
