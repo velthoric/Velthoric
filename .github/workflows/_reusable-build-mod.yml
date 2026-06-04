@@ -52,9 +52,7 @@ jobs:
           cache: 'gradle'
 
       - name: "Set Active Stonecutter Version"
-        run: |
-          mkdir -p .gradle/stonecutter
-          echo "${{ inputs.mc_version }}" > .gradle/stonecutter/active
+        run: ./gradlew stonecutterSwitchTo${{ inputs.mc_version }}
 
       # Download all per-platform native artifacts and merge them into a single
       # directory tree, matching the prebuilt-natives layout expected by vx-native.

@@ -89,9 +89,7 @@ jobs:
           cache: 'gradle'
 
       - name: "Set Active Stonecutter Version"
-        run: |
-          mkdir -p .gradle/stonecutter
-          echo "${{ matrix.mc_version }}" > .gradle/stonecutter/active
+        run: ./gradlew stonecutterSwitchTo${{ matrix.mc_version }}
 
       # Download all per-platform natives and place them in the prebuilt-natives
       # directory so the Gradle build can skip the CMake compilation step.
