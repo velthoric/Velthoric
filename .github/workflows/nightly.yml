@@ -47,7 +47,6 @@ jobs:
     uses: ./.github/workflows/_reusable-build-mod.yml
     with:
       mc_version: ${{ matrix.mc_version }}
-      java_version: ${{ matrix.java_version }}
       natives-artifact-prefix: "velthoric-natives-${{ github.run_id }}"
       retention-days: 3
 
@@ -62,7 +61,6 @@ jobs:
     uses: ./.github/workflows/_reusable-gametests.yml
     with:
       mc_version: ${{ matrix.mc_version }}
-      java_version: ${{ matrix.java_version }}
       natives-artifact-prefix: "velthoric-natives-${{ github.run_id }}"
       loaders: ${{ toJson(matrix.loaders) }}
 
@@ -79,16 +77,10 @@ jobs:
       - name: "Checkout Repository"
         uses: actions/checkout@v4
 
-      - name: "Setup Java 17 (Temurin) - Toolchain"
+      - name: "Setup Java 25 (Temurin)"
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: "Setup Java ${{ matrix.java_version }} (Temurin)"
-        uses: actions/setup-java@v4
-        with:
-          java-version: ${{ matrix.java_version }}
+          java-version: '25'
           distribution: 'temurin'
           cache: 'gradle'
 
@@ -143,10 +135,10 @@ jobs:
           path: release-artifacts
           merge-multiple: true
 
-      - name: "Setup Java 21 (Temurin)"
+      - name: "Setup Java 25 (Temurin)"
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: '25'
           distribution: 'temurin'
           cache: 'gradle'
 

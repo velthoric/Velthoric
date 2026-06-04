@@ -44,10 +44,13 @@ def targetJavaInt = Integer.parseInt(targetJavaVersion.getMajorVersion())
 java {
     withSourcesJar()
 
-    // Automatically locate and use the correct JDK toolchain version for compiling
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(targetJavaInt)
-    }
+    sourceCompatibility = targetJavaVersion
+    targetCompatibility = targetJavaVersion
+}
+
+// Ensure the compiler uses the specified release target to compile correct bytecode definitions
+tasks.withType(JavaCompile).configureEach {
+    options.release.set(targetJavaInt)
 }
 
 // Disable module metadata generation to avoid publishing issues
