@@ -8,6 +8,7 @@ out/
 # Minecraft runtime and run configurations
 **/run/
 **/run-*/
+**/run/**
 
 # Native C++ build and generated files
 vx-native/src/main/cpp/build/
