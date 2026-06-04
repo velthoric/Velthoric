@@ -79,6 +79,12 @@ jobs:
       - name: "Checkout Repository"
         uses: actions/checkout@v4
 
+      - name: "Setup Java 17 (Temurin) - Toolchain"
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
       - name: "Setup Java ${{ matrix.java_version }} (Temurin)"
         uses: actions/setup-java@v4
         with:
