@@ -50,10 +50,6 @@ java {
     }
 }
 
-tasks.withType(JavaCompile).configureEach {
-    options.compilerArgs.add('--enable-preview')
-}
-
 // Disable module metadata generation to avoid publishing issues
 tasks.withType(GenerateModuleMetadata).configureEach {
     enabled = false

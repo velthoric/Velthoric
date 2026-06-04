@@ -50,94 +50,80 @@ public final class VxShapeCodec {
      * @param shape The shape to serialize.
      */
     public static void write(VxByteBuf buf, VxCollisionShape shape) {
-        switch (shape) {
-            case VxBoxShape box -> {
-                buf.writeByte(TYPE_BOX);
-                writeVec3(buf, box.getHalfExtents());
-                buf.writeFloat(box.getConvexRadius());
+        if (shape instanceof VxBoxShape box) {
+            buf.writeByte(TYPE_BOX);
+            writeVec3(buf, box.getHalfExtents());
+            buf.writeFloat(box.getConvexRadius());
+        } else if (shape instanceof VxSphereShape sphere) {
+            buf.writeByte(TYPE_SPHERE);
+            buf.writeFloat(sphere.getRadius());
+        } else if (shape instanceof VxCapsuleShape capsule) {
+            buf.writeByte(TYPE_CAPSULE);
+            buf.writeFloat(capsule.getHalfHeight());
+            buf.writeFloat(capsule.getRadius());
+        } else if (shape instanceof VxCylinderShape cylinder) {
+            buf.writeByte(TYPE_CYLINDER);
+            buf.writeFloat(cylinder.getHalfHeight());
+            buf.writeFloat(cylinder.getRadius());
+            buf.writeFloat(cylinder.getConvexRadius());
+        } else if (shape instanceof VxConvexHullShape hull) {
+            buf.writeByte(TYPE_CONVEX_HULL);
+            float[] points = hull.getPoints();
+            buf.writeVarInt(points.length);
+            for (float p : points) buf.writeFloat(p);
+            buf.writeFloat(hull.getMaxConvexRadius());
+        } else if (shape instanceof VxEmptyShape) {
+            buf.writeByte(TYPE_EMPTY);
+        } else if (shape instanceof VxScaledShape scaled) {
+            buf.writeByte(TYPE_SCALED);
+            writeVec3(buf, scaled.getScale());
+            write(buf, scaled.getInner());
+        } else if (shape instanceof VxRotatedTranslatedShape rts) {
+            buf.writeByte(TYPE_ROTATED_TRANSLATED);
+            writeVec3(buf, rts.getOffset());
+            writeQuat(buf, rts.getRotation());
+            write(buf, rts.getInner());
+        } else if (shape instanceof VxOffsetCenterOfMassShape ocm) {
+            buf.writeByte(TYPE_OFFSET_CENTER_OF_MASS);
+            writeVec3(buf, ocm.getOffset());
+            write(buf, ocm.getInner());
+        } else if (shape instanceof VxStaticCompoundShape sc) {
+            buf.writeByte(TYPE_STATIC_COMPOUND);
+            List<VxStaticCompoundShape.ChildShape> children = sc.getChildren();
+            buf.writeVarInt(children.size());
+            for (VxStaticCompoundShape.ChildShape child : children) {
+                writeVec3(buf, child.position());
+                writeQuat(buf, child.rotation());
+                write(buf, child.shape());
             }
-            case VxSphereShape sphere -> {
-                buf.writeByte(TYPE_SPHERE);
-                buf.writeFloat(sphere.getRadius());
+        } else if (shape instanceof VxMutableCompoundShape mc) {
+            buf.writeByte(TYPE_MUTABLE_COMPOUND);
+            List<VxMutableCompoundShape.ChildShape> children = mc.getChildren();
+            buf.writeVarInt(children.size());
+            for (VxMutableCompoundShape.ChildShape child : children) {
+                writeVec3(buf, child.position());
+                writeQuat(buf, child.rotation());
+                write(buf, child.shape());
             }
-            case VxCapsuleShape capsule -> {
-                buf.writeByte(TYPE_CAPSULE);
-                buf.writeFloat(capsule.getHalfHeight());
-                buf.writeFloat(capsule.getRadius());
-            }
-            case VxCylinderShape cylinder -> {
-                buf.writeByte(TYPE_CYLINDER);
-                buf.writeFloat(cylinder.getHalfHeight());
-                buf.writeFloat(cylinder.getRadius());
-                buf.writeFloat(cylinder.getConvexRadius());
-            }
-            case VxConvexHullShape hull -> {
-                buf.writeByte(TYPE_CONVEX_HULL);
-                float[] points = hull.getPoints();
-                buf.writeVarInt(points.length);
-                for (float p : points) buf.writeFloat(p);
-                buf.writeFloat(hull.getMaxConvexRadius());
-            }
-            case VxEmptyShape empty -> {
-                buf.writeByte(TYPE_EMPTY);
-            }
-            case VxScaledShape scaled -> {
-                buf.writeByte(TYPE_SCALED);
-                writeVec3(buf, scaled.getScale());
-                write(buf, scaled.getInner());
-            }
-            case VxRotatedTranslatedShape rts -> {
-                buf.writeByte(TYPE_ROTATED_TRANSLATED);
-                writeVec3(buf, rts.getOffset());
-                writeQuat(buf, rts.getRotation());
-                write(buf, rts.getInner());
-            }
-            case VxOffsetCenterOfMassShape ocm -> {
-                buf.writeByte(TYPE_OFFSET_CENTER_OF_MASS);
-                writeVec3(buf, ocm.getOffset());
-                write(buf, ocm.getInner());
-            }
-            case VxStaticCompoundShape sc -> {
-                buf.writeByte(TYPE_STATIC_COMPOUND);
-                List<VxStaticCompoundShape.ChildShape> children = sc.getChildren();
-                buf.writeVarInt(children.size());
-                for (VxStaticCompoundShape.ChildShape child : children) {
-                    writeVec3(buf, child.position());
-                    writeQuat(buf, child.rotation());
-                    write(buf, child.shape());
-                }
-            }
-            case VxMutableCompoundShape mc -> {
-                buf.writeByte(TYPE_MUTABLE_COMPOUND);
-                List<VxMutableCompoundShape.ChildShape> children = mc.getChildren();
-                buf.writeVarInt(children.size());
-                for (VxMutableCompoundShape.ChildShape child : children) {
-                    writeVec3(buf, child.position());
-                    writeQuat(buf, child.rotation());
-                    write(buf, child.shape());
-                }
-            }
-            case VxTaperedCapsuleShape tc -> {
-                buf.writeByte(TYPE_TAPERED_CAPSULE);
-                buf.writeFloat(tc.getHalfHeight());
-                buf.writeFloat(tc.getTopRadius());
-                buf.writeFloat(tc.getBottomRadius());
-            }
-            case VxTaperedCylinderShape tcy -> {
-                buf.writeByte(TYPE_TAPERED_CYLINDER);
-                buf.writeFloat(tcy.getHalfHeight());
-                buf.writeFloat(tcy.getTopRadius());
-                buf.writeFloat(tcy.getBottomRadius());
-                buf.writeFloat(tcy.getConvexRadius());
-            }
-            case VxTriangleShape tri -> {
-                buf.writeByte(TYPE_TRIANGLE);
-                writeVec3(buf, tri.getV1());
-                writeVec3(buf, tri.getV2());
-                writeVec3(buf, tri.getV3());
-                buf.writeFloat(tri.getConvexRadius());
-            }
-            default -> throw new IllegalArgumentException("Unknown shape type: " + shape.getClass().getName());
+        } else if (shape instanceof VxTaperedCapsuleShape tc) {
+            buf.writeByte(TYPE_TAPERED_CAPSULE);
+            buf.writeFloat(tc.getHalfHeight());
+            buf.writeFloat(tc.getTopRadius());
+            buf.writeFloat(tc.getBottomRadius());
+        } else if (shape instanceof VxTaperedCylinderShape tcy) {
+            buf.writeByte(TYPE_TAPERED_CYLINDER);
+            buf.writeFloat(tcy.getHalfHeight());
+            buf.writeFloat(tcy.getTopRadius());
+            buf.writeFloat(tcy.getBottomRadius());
+            buf.writeFloat(tcy.getConvexRadius());
+        } else if (shape instanceof VxTriangleShape tri) {
+            buf.writeByte(TYPE_TRIANGLE);
+            writeVec3(buf, tri.getV1());
+            writeVec3(buf, tri.getV2());
+            writeVec3(buf, tri.getV3());
+            buf.writeFloat(tri.getConvexRadius());
+        } else {
+            throw new IllegalArgumentException("Unknown shape type: " + shape.getClass().getName());
         }
     }
 
@@ -149,29 +135,35 @@ public final class VxShapeCodec {
      */
     public static VxCollisionShape read(VxByteBuf buf) {
         byte type = buf.readByte();
-        return switch (type) {
-            case TYPE_BOX -> new VxBoxShape(readVec3(buf), buf.readFloat());
-            case TYPE_SPHERE -> new VxSphereShape(buf.readFloat());
-            case TYPE_CAPSULE -> new VxCapsuleShape(buf.readFloat(), buf.readFloat());
-            case TYPE_CYLINDER -> new VxCylinderShape(buf.readFloat(), buf.readFloat(), buf.readFloat());
-            case TYPE_CONVEX_HULL -> {
+        switch (type) {
+            case TYPE_BOX:
+                return new VxBoxShape(readVec3(buf), buf.readFloat());
+            case TYPE_SPHERE:
+                return new VxSphereShape(buf.readFloat());
+            case TYPE_CAPSULE:
+                return new VxCapsuleShape(buf.readFloat(), buf.readFloat());
+            case TYPE_CYLINDER:
+                return new VxCylinderShape(buf.readFloat(), buf.readFloat(), buf.readFloat());
+            case TYPE_CONVEX_HULL: {
                 int len = buf.readVarInt();
                 float[] points = new float[len];
                 for (int i = 0; i < len; i++) points[i] = buf.readFloat();
-                yield new VxConvexHullShape(points, buf.readFloat());
+                return new VxConvexHullShape(points, buf.readFloat());
             }
-            case TYPE_EMPTY -> VxEmptyShape.INSTANCE;
-            case TYPE_SCALED -> {
+            case TYPE_EMPTY:
+                return VxEmptyShape.INSTANCE;
+            case TYPE_SCALED: {
                 Vec3 scale = readVec3(buf);
-                yield new VxScaledShape(read(buf), scale);
+                return new VxScaledShape(read(buf), scale);
             }
-            case TYPE_ROTATED_TRANSLATED -> {
+            case TYPE_ROTATED_TRANSLATED: {
                 Vec3 offset = readVec3(buf);
                 Quat rot = readQuat(buf);
-                yield new VxRotatedTranslatedShape(offset, rot, read(buf));
+                return new VxRotatedTranslatedShape(offset, rot, read(buf));
             }
-            case TYPE_OFFSET_CENTER_OF_MASS -> new VxOffsetCenterOfMassShape(readVec3(buf), read(buf));
-            case TYPE_STATIC_COMPOUND -> {
+            case TYPE_OFFSET_CENTER_OF_MASS:
+                return new VxOffsetCenterOfMassShape(readVec3(buf), read(buf));
+            case TYPE_STATIC_COMPOUND: {
                 int count = buf.readVarInt();
                 VxStaticCompoundShape compound = new VxStaticCompoundShape();
                 for (int i = 0; i < count; i++) {
@@ -179,9 +171,9 @@ public final class VxShapeCodec {
                     Quat rot = readQuat(buf);
                     compound.addShape(read(buf), pos, rot);
                 }
-                yield compound;
+                return compound;
             }
-            case TYPE_MUTABLE_COMPOUND -> {
+            case TYPE_MUTABLE_COMPOUND: {
                 int count = buf.readVarInt();
                 VxMutableCompoundShape compound = new VxMutableCompoundShape();
                 for (int i = 0; i < count; i++) {
@@ -189,13 +181,17 @@ public final class VxShapeCodec {
                     Quat rot = readQuat(buf);
                     compound.addShape(read(buf), pos, rot);
                 }
-                yield compound;
+                return compound;
             }
-            case TYPE_TAPERED_CAPSULE -> new VxTaperedCapsuleShape(buf.readFloat(), buf.readFloat(), buf.readFloat());
-            case TYPE_TAPERED_CYLINDER -> new VxTaperedCylinderShape(buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readFloat());
-            case TYPE_TRIANGLE -> new VxTriangleShape(readVec3(buf), readVec3(buf), readVec3(buf), buf.readFloat());
-            default -> throw new IllegalArgumentException("Unknown shape type discriminator: " + type);
-        };
+            case TYPE_TAPERED_CAPSULE:
+                return new VxTaperedCapsuleShape(buf.readFloat(), buf.readFloat(), buf.readFloat());
+            case TYPE_TAPERED_CYLINDER:
+                return new VxTaperedCylinderShape(buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readFloat());
+            case TYPE_TRIANGLE:
+                return new VxTriangleShape(readVec3(buf), readVec3(buf), readVec3(buf), buf.readFloat());
+            default:
+                throw new IllegalArgumentException("Unknown shape type discriminator: " + type);
+        }
     }
 
     // --- Vec3 / Quat helpers (avoid depending on VxByteBuf's Jolt helpers for raw ByteBuf usage) ---
