@@ -30,8 +30,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class MixinClientPacketListener_VxClientPlayerNetworkEvent {
 
     /*? if <1.21.1 {*/
-    /*@Shadow @Final private Minecraft minecraft;
-    @Shadow @Final private Connection connection;
+     /*/^*
+      * Shadow reference to the Minecraft client instance for legacy versions.
+      ^/
+     @Shadow @Final private Minecraft minecraft;
+    
+     /^*
+      * Shadow reference to the connection instance for legacy versions.
+      ^/
+     @Shadow @Final private Connection connection;
     *//*?}*/
 
     @Unique

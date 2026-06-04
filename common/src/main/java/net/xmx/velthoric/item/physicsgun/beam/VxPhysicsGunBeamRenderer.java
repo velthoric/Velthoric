@@ -22,6 +22,7 @@ import net.xmx.velthoric.core.body.client.VxClientBodyDataStore;
 import net.xmx.velthoric.core.body.client.VxClientBodyInterpolator;
 import net.xmx.velthoric.core.body.client.VxClientBodyManager;
 import net.xmx.velthoric.core.body.VxBody;
+import net.xmx.velthoric.core.body.client.renderer.VxVertexConsumer;
 import org.joml.Matrix4f;
 
 import java.util.Map;
@@ -117,14 +118,20 @@ public class VxPhysicsGunBeamRenderer {
 
             Vec3 playerLookVec = getPlayerLookVector(player, partialTicks);
 
-            // Begin a new buffer for this strip
+            /*? if >=1.21.1 {*/
             BufferBuilder bufferBuilder = tesselator.begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR);
 
-            drawThickCurvedBeam(bufferBuilder, matrix, camPos, startPoint, endPoint, playerLookVec);
+            drawThickCurvedBeam(VxVertexConsumer.wrap(bufferBuilder), matrix, camPos, startPoint, endPoint, playerLookVec);
 
             // Build the mesh and upload it to the GPU
             MeshData meshData = bufferBuilder.buildOrThrow();
             BufferUploader.drawWithShader(meshData);
+            /*? } else {*/
+             /*BufferBuilder bufferBuilder = tesselator.getBuilder();
+             bufferBuilder.begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR);
+             drawThickCurvedBeam(VxVertexConsumer.wrap(bufferBuilder), matrix, camPos, startPoint, endPoint, playerLookVec);
+             tesselator.end();
+            *//*? }*/
         }
 
         // 2. Render beams for players attempting to grab (Raycast Beams)
@@ -154,14 +161,17 @@ public class VxPhysicsGunBeamRenderer {
                 endPoint = (blockHitResult.getType() == HitResult.Type.MISS) ? traceEnd : blockHitResult.getLocation();
             }
 
-            // Begin a new buffer for this strip
+            /*? if >=1.21.1 {*/
             BufferBuilder bufferBuilder = tesselator.begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR);
-
-            drawThickCurvedBeam(bufferBuilder, matrix, camPos, startPoint, endPoint, playerLookVec);
-
-            // Build the mesh and upload it to the GPU
+            drawThickCurvedBeam(VxVertexConsumer.wrap(bufferBuilder), matrix, camPos, startPoint, endPoint, playerLookVec);
             MeshData meshData = bufferBuilder.buildOrThrow();
             BufferUploader.drawWithShader(meshData);
+            /*? } else {*/
+             /*BufferBuilder bufferBuilder = tesselator.getBuilder();
+             bufferBuilder.begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR);
+             drawThickCurvedBeam(VxVertexConsumer.wrap(bufferBuilder), matrix, camPos, startPoint, endPoint, playerLookVec);
+             tesselator.end();
+            *//*? }*/
         }
 
         RenderSystem.enableCull();
@@ -213,7 +223,7 @@ public class VxPhysicsGunBeamRenderer {
     /**
      * Draws a curved beam using Bezier interpolation and adding thickness via triangle strips.
      */
-    private static void drawThickCurvedBeam(VertexConsumer bufferBuilder, Matrix4f matrix, Vec3 camPos, Vec3 start, Vec3 end, Vec3 playerLookVec) {
+    private static void drawThickCurvedBeam(VxVertexConsumer bufferBuilder, Matrix4f matrix, Vec3 camPos, Vec3 start, Vec3 end, Vec3 playerLookVec) {
         float r = 0.9725f;
         float g = 0.2863f;
         float b = 0.0117f;
@@ -245,12 +255,13 @@ public class VxPhysicsGunBeamRenderer {
 
             Vec3 side = segmentDir.cross(viewDir).normalize().scale(BEAM_WIDTH / 2.0);
 
-            // Use addVertex instead of vertex, and ensure the matrix is applied
-            bufferBuilder.addVertex(matrix, (float) (currentPos.x + side.x), (float) (currentPos.y + side.y), (float) (currentPos.z + side.z))
-                    .setColor(r, g, b, baseAlpha);
+            bufferBuilder.vertex(matrix, (float) (currentPos.x + side.x), (float) (currentPos.y + side.y), (float) (currentPos.z + side.z))
+                    .color(r, g, b, baseAlpha)
+                    .endVertex();
 
-            bufferBuilder.addVertex(matrix, (float) (currentPos.x - side.x), (float) (currentPos.y - side.y), (float) (currentPos.z - side.z))
-                    .setColor(r, g, b, baseAlpha);
+            bufferBuilder.vertex(matrix, (float) (currentPos.x - side.x), (float) (currentPos.y - side.y), (float) (currentPos.z - side.z))
+                    .color(r, g, b, baseAlpha)
+                    .endVertex();
 
             lastPos = currentPos;
         }

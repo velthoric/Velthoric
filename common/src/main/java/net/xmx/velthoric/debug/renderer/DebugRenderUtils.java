@@ -5,8 +5,8 @@
 package net.xmx.velthoric.debug.renderer;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.world.phys.Vec3;
+import net.xmx.velthoric.core.body.client.renderer.VxVertexConsumer;
 import net.xmx.velthoric.math.VxOBB;
 import org.jetbrains.annotations.NotNull;
 
@@ -29,7 +29,7 @@ public class DebugRenderUtils {
      * @param halfExtents The half-extents of the box (width/2, height/2, depth/2).
      * @param r,g,b,a     The color components.
      */
-    public static void drawBox(@NotNull VertexConsumer consumer, @NotNull PoseStack poseStack, com.github.stephengold.joltjni.Vec3 halfExtents, float r, float g, float b, float a) {
+    public static void drawBox(@NotNull VxVertexConsumer consumer, @NotNull PoseStack poseStack, com.github.stephengold.joltjni.Vec3 halfExtents, float r, float g, float b, float a) {
         float hx = halfExtents.getX();
         float hy = halfExtents.getY();
         float hz = halfExtents.getZ();
@@ -61,7 +61,7 @@ public class DebugRenderUtils {
      * @param radius    The radius of the sphere.
      * @param r,g,b,a   The color components.
      */
-    public static void drawSphere(@NotNull VertexConsumer consumer, @NotNull PoseStack poseStack, float radius, float r, float g, float b, float a) {
+    public static void drawSphere(@NotNull VxVertexConsumer consumer, @NotNull PoseStack poseStack, float radius, float r, float g, float b, float a) {
         int segments = 16;
         for (int i = 0; i < segments; i++) {
             float angle1 = (float) (i * Math.PI * 2 / segments);
@@ -90,7 +90,7 @@ public class DebugRenderUtils {
      * @param radius     The radius of the capsule.
      * @param r,g,b,a    The color components.
      */
-    public static void drawCapsule(@NotNull VertexConsumer consumer, @NotNull PoseStack poseStack, float halfHeight, float radius, float r, float g, float b, float a) {
+    public static void drawCapsule(@NotNull VxVertexConsumer consumer, @NotNull PoseStack poseStack, float halfHeight, float radius, float r, float g, float b, float a) {
         int segments = 16;
         // Drawing top and bottom circles of the cylinder
         for (int i = 0; i < segments; i++) {
@@ -131,7 +131,7 @@ public class DebugRenderUtils {
     /**
      * Draws a wireframe cylinder (represented as a tapered cylinder with equal radii).
      */
-    public static void drawCylinder(@NotNull VertexConsumer consumer, @NotNull PoseStack poseStack, float halfHeight, float radius, float r, float g, float b, float a) {
+    public static void drawCylinder(@NotNull VxVertexConsumer consumer, @NotNull PoseStack poseStack, float halfHeight, float radius, float r, float g, float b, float a) {
         drawTaperedCylinder(consumer, poseStack, halfHeight, radius, radius, r, g, b, a);
     }
 
@@ -145,7 +145,7 @@ public class DebugRenderUtils {
      * @param bottomRadius The radius at -halfHeight.
      * @param r,g,b,a      The color components.
      */
-    public static void drawTaperedCylinder(@NotNull VertexConsumer consumer, @NotNull PoseStack poseStack, float halfHeight, float topRadius, float bottomRadius, float r, float g, float b, float a) {
+    public static void drawTaperedCylinder(@NotNull VxVertexConsumer consumer, @NotNull PoseStack poseStack, float halfHeight, float topRadius, float bottomRadius, float r, float g, float b, float a) {
         int segments = 16;
         for (int i = 0; i < segments; i++) {
             float a1 = (float) (i * Math.PI * 2 / segments), a2 = (float) ((i + 1) * Math.PI * 2 / segments);
@@ -168,7 +168,7 @@ public class DebugRenderUtils {
     /**
      * Draws a wireframe tapered capsule.
      */
-    public static void drawTaperedCapsule(@NotNull VertexConsumer consumer, @NotNull PoseStack poseStack, float halfHeight, float topRadius, float bottomRadius, float r, float g, float b, float a) {
+    public static void drawTaperedCapsule(@NotNull VxVertexConsumer consumer, @NotNull PoseStack poseStack, float halfHeight, float topRadius, float bottomRadius, float r, float g, float b, float a) {
         int segments = 16;
         for (int i = 0; i < segments; i++) {
             float a1 = (float) (i * Math.PI * 2 / segments), a2 = (float) ((i + 1) * Math.PI * 2 / segments);
@@ -208,7 +208,7 @@ public class DebugRenderUtils {
      * @param cameraPos The absolute world position of the camera.
      * @param r,g,b,a   The color components.
      */
-    public static void drawOBB(@NotNull VertexConsumer consumer, @NotNull PoseStack poseStack, @NotNull VxOBB obb, @NotNull Vec3 cameraPos, float r, float g, float b, float a) {
+    public static void drawOBB(@NotNull VxVertexConsumer consumer, @NotNull PoseStack poseStack, @NotNull VxOBB obb, @NotNull Vec3 cameraPos, float r, float g, float b, float a) {
         Vec3[] corners = obb.getCorners();
 
         // Bottom face
@@ -233,17 +233,17 @@ public class DebugRenderUtils {
     /**
      * Draws a line between two points in the local coordinate system of the current PoseStack.
      */
-    public static void drawLineLocal(@NotNull VertexConsumer consumer, @NotNull PoseStack poseStack, float x1, float y1, float z1, float x2, float y2, float z2, float r, float g, float b, float a) {
+    public static void drawLineLocal(@NotNull VxVertexConsumer consumer, @NotNull PoseStack poseStack, float x1, float y1, float z1, float x2, float y2, float z2, float r, float g, float b, float a) {
         PoseStack.Pose last = poseStack.last();
-        consumer.addVertex(last.pose(), x1, y1, z1).setColor(r, g, b, a).setNormal(last, 0, 1, 0);
-        consumer.addVertex(last.pose(), x2, y2, z2).setColor(r, g, b, a).setNormal(last, 0, 1, 0);
+        consumer.vertex(last.pose(), x1, y1, z1).color(r, g, b, a).normal(last, 0, 1, 0).endVertex();
+        consumer.vertex(last.pose(), x2, y2, z2).color(r, g, b, a).normal(last, 0, 1, 0).endVertex();
     }
 
     /**
      * Draws a line between two absolute world points by subtracting the camera position.
      * This uses double precision for the subtraction to prevent jittering.
      */
-    public static void drawLine(@NotNull VertexConsumer consumer, @NotNull PoseStack poseStack, @NotNull Vec3 p1, @NotNull Vec3 p2, @NotNull Vec3 cameraPos, float r, float g, float b, float a) {
+    public static void drawLine(@NotNull VxVertexConsumer consumer, @NotNull PoseStack poseStack, @NotNull Vec3 p1, @NotNull Vec3 p2, @NotNull Vec3 cameraPos, float r, float g, float b, float a) {
         PoseStack.Pose last = poseStack.last();
         float x1 = (float) (p1.x - cameraPos.x);
         float y1 = (float) (p1.y - cameraPos.y);
@@ -251,7 +251,7 @@ public class DebugRenderUtils {
         float x2 = (float) (p2.x - cameraPos.x);
         float y2 = (float) (p2.y - cameraPos.y);
         float z2 = (float) (p2.z - cameraPos.z);
-        consumer.addVertex(last.pose(), x1, y1, z1).setColor(r, g, b, a).setNormal(last, 0, 1, 0);
-        consumer.addVertex(last.pose(), x2, y2, z2).setColor(r, g, b, a).setNormal(last, 0, 1, 0);
+        consumer.vertex(last.pose(), x1, y1, z1).color(r, g, b, a).normal(last, 0, 1, 0).endVertex();
+        consumer.vertex(last.pose(), x2, y2, z2).color(r, g, b, a).normal(last, 0, 1, 0).endVertex();
     }
 }

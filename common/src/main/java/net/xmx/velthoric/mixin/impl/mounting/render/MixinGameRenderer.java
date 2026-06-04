@@ -7,7 +7,9 @@ package net.xmx.velthoric.mixin.impl.mounting.render;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.minecraft.client.Camera;
+/*? if >=1.21.1 {*/
 import net.minecraft.client.DeltaTracker;
+/*? }*/
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.GameRenderer;
@@ -86,6 +88,7 @@ public abstract class MixinGameRenderer {
                     shift = At.Shift.BEFORE
             )
     )
+    /*? if >=1.21.1 {*/
     private void velthoric_preRender(DeltaTracker deltaTracker, boolean runTasks, CallbackInfo ci) {
         ClientLevel clientWorld = minecraft.level;
         if (clientWorld == null) return;
@@ -102,6 +105,31 @@ public abstract class MixinGameRenderer {
             }
         }
     }
+    /*? } else {*/
+     /*/^*
+      * Pre-render setup hook for executing legacy calculations before level rendering.
+      *
+      * @param partialTick The interpolation factor between ticks.
+      * @param runTasks    Whether to run pending tasks.
+      * @param ci          Callback information.
+      ^/
+     private void velthoric_preRender(float partialTick, boolean runTasks, CallbackInfo ci) {
+         ClientLevel clientWorld = minecraft.level;
+         if (clientWorld == null) return;
+     
+         velthoric_originalStates.clear();
+     
+         for (Entity entity : clientWorld.entitiesForRendering()) {
+             if (entity instanceof VxMountingEntity proxy && !proxy.getPassengers().isEmpty()) {
+                 Entity passenger = proxy.getFirstPassenger();
+                 if (passenger != null) {
+                     velthoric_adjustEntityForRender(proxy, partialTick);
+                     velthoric_adjustEntityForRender(passenger, partialTick);
+                 }
+             }
+         }
+     }
+    *//*? }*/
 
     /**
      * Calculates and applies the interpolated physics position and rotation to an entity.
@@ -157,6 +185,7 @@ public abstract class MixinGameRenderer {
      * @param ci           The callback info.
      */
     @Inject(method = "render", at = @At("RETURN"))
+    /*? if >=1.21.1 {*/
     private void velthoric_postRender(DeltaTracker deltaTracker, boolean runTasks, CallbackInfo ci) {
         ClientLevel clientWorld = minecraft.level;
         if (clientWorld == null) return;
@@ -170,6 +199,28 @@ public abstract class MixinGameRenderer {
 
         velthoric_originalStates.clear();
     }
+    /*? } else {*/
+     /*/^*
+      * Post-render cleanup hook for reverting legacy calculations after rendering has finished.
+      *
+      * @param partialTick The interpolation factor between ticks.
+      * @param runTasks    Whether pending tasks were run.
+      * @param ci          Callback information.
+      ^/
+     private void velthoric_postRender(float partialTick, boolean runTasks, CallbackInfo ci) {
+         ClientLevel clientWorld = minecraft.level;
+         if (clientWorld == null) return;
+     
+         velthoric_originalStates.forEach((id, state) -> {
+             Entity entity = clientWorld.getEntity(id);
+             if (entity != null) {
+                 state.applyTo(entity);
+             }
+         });
+     
+         velthoric_originalStates.clear();
+     }
+    *//*? }*/
 
     /**
      * Wraps the frustum preparation to adjust the camera projection when mounted.
@@ -195,7 +246,11 @@ public abstract class MixinGameRenderer {
     private void velthoric_setupCameraWithPhysicsBody(LevelRenderer instance, Vec3 cameraPos, Matrix4f viewMatrix, Matrix4f projectionMatrix, Operation<Void> original) {
         Entity player = this.minecraft.player;
         if (player != null) {
+            /*? if >=1.21.1 {*/
             final float partialTicks = this.minecraft.getTimer().getGameTimeDeltaPartialTick(true);
+            /*? } else {*/
+             /*final float partialTicks = this.minecraft.getFrameTime();
+            *//*? }*/
 
             boolean[] handled = {false};
             VxMountingRenderUtils.INSTANCE.ifMountedOnBody(player, partialTicks, physQuat -> {
@@ -318,7 +373,11 @@ public abstract class MixinGameRenderer {
      */
     @Unique
     private Optional<VxOBB> velthoric_createTargetOBB(Entity target, VxMountingEntity proxy) {
+        /*? if >=1.21.1 {*/
         float partialTicks = this.minecraft.getTimer().getGameTimeDeltaPartialTick(true);
+        /*? } else {*/
+         /*float partialTicks = this.minecraft.getFrameTime();
+        *//*? }*/
 
         return VxMountingRenderUtils.INSTANCE.getInterpolatedTransform(proxy, partialTicks, velthoric_interpolatedTransform).map(transform -> {
             Vector3f rideOffset = new Vector3f(proxy.getMountPositionOffset());

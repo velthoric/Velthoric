@@ -17,6 +17,7 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.resources.ResourceLocation;
 import net.xmx.velthoric.core.body.client.VxRenderState;
 import net.xmx.velthoric.core.body.client.renderer.VxBodyRenderer;
+import net.xmx.velthoric.core.body.client.renderer.VxVertexConsumer;
 import net.xmx.velthoric.core.body.VxBody;
 
 /**
@@ -50,7 +51,7 @@ public class RopeRenderer extends VxBodyRenderer<VxBody> {
     }
 
     private void renderSmoothRope(float[] vertexData, int numNodes, float ropeRadius, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, VxRenderState renderState) {
-        VertexConsumer buffer = bufferSource.getBuffer(RenderType.cutoutMipped());
+        VxVertexConsumer buffer = VxVertexConsumer.wrap(bufferSource.getBuffer(RenderType.cutoutMipped()));
         TextureAtlasSprite sprite = Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_BLOCKS).apply(YELLOW_WOOL_BLOCK_TEXTURE);
 
         // Get Center of Mass to convert absolute vertices to local
@@ -111,31 +112,35 @@ public class RopeRenderer extends VxBodyRenderer<VxBody> {
         }
     }
 
-    private void addQuad(VertexConsumer buffer, PoseStack poseStack, Vec3 v1, Vec3 v2, Vec3 v3, Vec3 v4, Vec3 normal, int packedLight, TextureAtlasSprite sprite) {
+    private void addQuad(VxVertexConsumer buffer, PoseStack poseStack, Vec3 v1, Vec3 v2, Vec3 v3, Vec3 v4, Vec3 normal, int packedLight, TextureAtlasSprite sprite) {
         PoseStack.Pose last = poseStack.last();
 
-        buffer.addVertex(last, v1.getX(), v1.getY(), v1.getZ())
-                .setColor(255, 255, 255, 255)
-                .setUv(sprite.getU0(), sprite.getV0())
-                .setLight(packedLight)
-                .setNormal(last, normal.getX(), normal.getY(), normal.getZ());
+        buffer.vertex(last, v1.getX(), v1.getY(), v1.getZ())
+                .color(255, 255, 255, 255)
+                .uv(sprite.getU0(), sprite.getV0())
+                .light(packedLight)
+                .normal(last, normal.getX(), normal.getY(), normal.getZ())
+                .endVertex();
 
-        buffer.addVertex(last, v2.getX(), v2.getY(), v2.getZ())
-                .setColor(255, 255, 255, 255)
-                .setUv(sprite.getU1(), sprite.getV0())
-                .setLight(packedLight)
-                .setNormal(last, normal.getX(), normal.getY(), normal.getZ());
+        buffer.vertex(last, v2.getX(), v2.getY(), v2.getZ())
+                .color(255, 255, 255, 255)
+                .uv(sprite.getU1(), sprite.getV0())
+                .light(packedLight)
+                .normal(last, normal.getX(), normal.getY(), normal.getZ())
+                .endVertex();
 
-        buffer.addVertex(last, v3.getX(), v3.getY(), v3.getZ())
-                .setColor(255, 255, 255, 255)
-                .setUv(sprite.getU1(), sprite.getV1())
-                .setLight(packedLight)
-                .setNormal(last, normal.getX(), normal.getY(), normal.getZ());
+        buffer.vertex(last, v3.getX(), v3.getY(), v3.getZ())
+                .color(255, 255, 255, 255)
+                .uv(sprite.getU1(), sprite.getV1())
+                .light(packedLight)
+                .normal(last, normal.getX(), normal.getY(), normal.getZ())
+                .endVertex();
 
-        buffer.addVertex(last, v4.getX(), v4.getY(), v4.getZ())
-                .setColor(255, 255, 255, 255)
-                .setUv(sprite.getU0(), sprite.getV1())
-                .setLight(packedLight)
-                .setNormal(last, normal.getX(), normal.getY(), normal.getZ());
+        buffer.vertex(last, v4.getX(), v4.getY(), v4.getZ())
+                .color(255, 255, 255, 255)
+                .uv(sprite.getU0(), sprite.getV1())
+                .light(packedLight)
+                .normal(last, normal.getX(), normal.getY(), normal.getZ())
+                .endVertex();
     }
 }

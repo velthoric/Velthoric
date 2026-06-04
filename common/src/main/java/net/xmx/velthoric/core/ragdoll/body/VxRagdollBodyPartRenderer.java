@@ -15,7 +15,9 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.resources.DefaultPlayerSkin;
+/*? if >=1.21.1 {*/
 import net.minecraft.client.resources.PlayerSkin;
+/*? }*/
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
 import net.xmx.velthoric.core.body.client.VxRenderState;
@@ -249,18 +251,31 @@ public class VxRagdollBodyPartRenderer extends VxBodyRenderer<VxBody> {
                 if (Minecraft.getInstance().getConnection() != null) {
                     PlayerInfo playerInfo = Minecraft.getInstance().getConnection().getPlayerInfo(playerUuid);
                     if (playerInfo != null) {
+                        /*? if >=1.21.1 {*/
                         PlayerSkin skin = playerInfo.getSkin();
                         boolean isSlim = skin.model() == PlayerSkin.Model.SLIM;
                         return new SkinData(skin.texture(), isSlim);
+                        /*? } else {*/
+                         /*ResourceLocation texture = playerInfo.getSkinLocation();
+                         String modelName = playerInfo.getModelName();
+                         boolean isSlim = "slim".equals(modelName);
+                         return new SkinData(texture, isSlim);
+                        *//*? }*/
                     }
                 }
+                /*? if <1.21.1 {*/
+                 /*return new SkinData(DefaultPlayerSkin.getDefaultSkin(playerUuid), false);
+                *//*? }*/
             } catch (IllegalArgumentException ignored) {
                 // Invalid UUID format
             }
         }
 
-        // Fallback to default Steve skin
+        /*? if >=1.21.1 {*/
         return new SkinData(DefaultPlayerSkin.getDefaultTexture(), false);
+        /*? } else {*/
+         /*return new SkinData(DefaultPlayerSkin.getDefaultSkin(UUID.randomUUID()), false);
+        *//*? }*/
     }
 
     /**

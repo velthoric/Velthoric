@@ -52,7 +52,18 @@ public abstract class MixinCamera {
     @Shadow private Vec3 position;
 
     @Shadow protected abstract void setPosition(double x, double y, double z);
+    /*? if >=1.21.1 {*/
     @Shadow protected abstract void move(float distanceOffset, float verticalOffset, float horizontalOffset);
+    /*? } else {*/
+     /*/^*
+      * Shadow method for moving the camera with double precision coordinates in legacy versions.
+      *
+      * @param distanceOffset   The distance offset to move.
+      * @param verticalOffset   The vertical offset to move.
+      * @param horizontalOffset The horizontal offset to move.
+      ^/
+     @Shadow protected abstract void move(double distanceOffset, double verticalOffset, double horizontalOffset);
+    *//*? }*/
 
     @Unique
     private static final Vector3f FORWARDS_CONST = new Vector3f(0.0F, 0.0F, -1.0F);
@@ -126,8 +137,13 @@ public abstract class MixinCamera {
                         scale = ((LivingEntity) focusedEntity).getScale();
                     }
 
+                    /*? if >=1.21.1 {*/
                     float zoomDistance = velthoric_getMaxZoom(4.0F * scale);
                     this.move(-zoomDistance, 0.0F, 0.0F);
+                    /*? } else {*/
+                     /*float zoomDistance = velthoric_getMaxZoom(4.0F * scale);
+                     this.move(-(double) zoomDistance, 0.0, 0.0);
+                    *//*? }*/
                 } else {
                     // First-person mode only requires rotation
                     velthoric_setRotationWithPhysicsTransform(yaw, pitch, physRotation);

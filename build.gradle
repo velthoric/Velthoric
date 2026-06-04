@@ -5,6 +5,41 @@ plugins {
     id 'net.xmx.velthoric.publishing'
 }
 
+// Stonecutter
+def activeVersion = null
+def stonecutterFile = rootProject.file("stonecutter.gradle")
+if (stonecutterFile.exists()) {
+    def matcher = stonecutterFile.text =~ /stonecutter\.active\s*["']([^"']+)["']/
+    if (matcher.find()) {
+        activeVersion = matcher.group(1).trim()
+    } else {
+        logger.warn("[Velthoric] Could not parse 'stonecutter.active' from stonecutter.gradle - falling back to 1.21.1")
+    }
+} else {
+    logger.warn("[Velthoric] stonecutter.gradle not found at ${stonecutterFile.absolutePath} - falling back to 1.21.1")
+}
+
+if (activeVersion == null) {
+    activeVersion = "1.21.1"
+}
+
+def activePropsFile = rootProject.file("versions/${activeVersion}/gradle.properties")
+if (activePropsFile.exists()) {
+    def activeProps = new Properties()
+    activePropsFile.withInputStream { activeProps.load(it) }
+    activeProps.each { key, val ->
+        rootProject.ext.set(key, val)
+    }
+    rootProject.ext.set("stonecutter_properties_loaded", true)
+} else {
+    logger.warn("[Velthoric] Version properties file not found: ${activePropsFile.absolutePath}")
+}
+
+rootProject.ext.isPlatformEnabled = { String platform ->
+    def platforms = rootProject.ext.has("enabled_platforms") ? rootProject.ext.get("enabled_platforms") : ""
+    return platforms.split(',').contains(platform)
+}
+
 if (project == rootProject) {
     architectury {
         minecraft = rootProject.minecraft_version

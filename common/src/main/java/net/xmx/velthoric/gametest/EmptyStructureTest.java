@@ -49,21 +49,17 @@ public class EmptyStructureTest {
         Vec3 boxAbsPos = helper.absoluteVec(new Vec3(9.5, 2.0, 9.5));
         VxTransform boxXform = new VxTransform(new RVec3(boxAbsPos.x, boxAbsPos.y, boxAbsPos.z), Quat.sIdentity());
         
-        VxBody box = manager.createBody(VxRegisteredBodies.BOX, boxXform, EMotionType.Dynamic, EActivation.Activate, b -> {
-            if (b instanceof BoxRigidBody rigid) {
-                rigid.setHalfExtents(new com.github.stephengold.joltjni.Vec3(1f, 1f, 1f));
-                rigid.setColor(BoxColor.RED);
-            }
+        VxBody box = manager.createBody(VxRegisteredBodies.BOX, boxXform, EMotionType.Dynamic, EActivation.Activate, rigid -> {
+            rigid.setHalfExtents(new com.github.stephengold.joltjni.Vec3(1f, 1f, 1f));
+            rigid.setColor(BoxColor.RED);
         });
 
         // 2. Create cloth overlay directly above
         Vec3 clothAbsPos = helper.absoluteVec(new Vec3(9.5, 5.0, 9.5));
         VxTransform clothXform = new VxTransform(new RVec3(clothAbsPos.x, clothAbsPos.y, clothAbsPos.z), Quat.sIdentity());
         
-        VxBody cloth = manager.createBody(VxRegisteredBodies.CLOTH, clothXform, EMotionType.Dynamic, EActivation.Activate, c -> {
-            if (c instanceof ClothSoftBody soft) {
-                soft.setConfiguration(25, 25, 5.0f, 5.0f, 2.0f, 0.001f);
-            }
+        VxBody cloth = manager.createBody(VxRegisteredBodies.CLOTH, clothXform, EMotionType.Dynamic, EActivation.Activate, soft -> {
+            soft.setConfiguration(25, 25, 5.0f, 5.0f, 2.0f, 0.001f);
         });
 
         helper.assertTrue(box != null && cloth != null, "Failed to spawn interaction test bodies.");

@@ -48,7 +48,8 @@ public class VxTerrainMaterialLoader extends SimpleJsonResourceReloadListener {
                 if (json.has("values")) {
                     JsonObject values = json.getAsJsonObject("values");
                     for (Map.Entry<String, JsonElement> valueEntry : values.entrySet()) {
-                        ResourceLocation blockId = ResourceLocation.parse(valueEntry.getKey());
+                        ResourceLocation blockId = ResourceLocation.tryParse(valueEntry.getKey());
+                        if (blockId == null) continue;
                         JsonObject props = valueEntry.getValue().getAsJsonObject();
                         
                         float friction = props.has("friction") ? props.get("friction").getAsFloat() : 0.75f;

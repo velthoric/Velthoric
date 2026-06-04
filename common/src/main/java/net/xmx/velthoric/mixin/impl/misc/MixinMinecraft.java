@@ -79,7 +79,11 @@ public abstract class MixinMinecraft {
      * This resets the static pause state tracker to prevent it from carrying over
      * to a new game session.
      */
+    /*? if >=1.21.1 {*/
     @Inject(method = "clearClientLevel(Lnet/minecraft/client/gui/screens/Screen;)V", at = @At("HEAD"))
+    /*? } else {*/
+     /*@Inject(method = "clearLevel(Lnet/minecraft/client/gui/screens/Screen;)V", at = @At("HEAD"))
+    *//*? }*/
     private void velthoric$onClearLevel(Screen screen, CallbackInfo ci) {
         if (velthoric$wasPaused) {
             velthoric$wasPaused = false;

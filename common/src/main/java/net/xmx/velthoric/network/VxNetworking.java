@@ -17,6 +17,9 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
+/*? if <1.21.1 {*/
+ /*import net.minecraft.network.FriendlyByteBuf;
+*//*? }*/
 
 import java.util.HashMap;
 import java.util.Map;
@@ -66,6 +69,7 @@ public class VxNetworking {
      * </p>
      */
     public static void init() {
+        /*? if >=1.21.1 {*/
         // Register the raw payload receiver for the client side (S2C)
         if (Platform.getEnv() == EnvType.CLIENT) {
             NetworkManager.registerReceiver(NetworkManager.Side.S2C, VxRawPayload.TYPE_S2C, VxRawPayload.CODEC_S2C, VxNetworking::handlePacket);
@@ -79,6 +83,20 @@ public class VxNetworking {
         if (Platform.getEnv() == EnvType.SERVER) {
             NetworkManager.registerS2CPayloadType(VxRawPayload.TYPE_S2C, VxRawPayload.CODEC_S2C);
         }
+        /*? } else {*/
+         /*if (Platform.getEnv() == EnvType.CLIENT) {
+             NetworkManager.registerReceiver(NetworkManager.Side.S2C, VxRawPayload.TYPE_S2C, (buf, context) -> {
+                 byte[] bytes = new byte[buf.readableBytes()];
+                 buf.readBytes(bytes);
+                 handlePacket(new VxRawPayload(bytes), context);
+             });
+         }
+         NetworkManager.registerReceiver(NetworkManager.Side.C2S, VxRawPayload.TYPE_C2S, (buf, context) -> {
+             byte[] bytes = new byte[buf.readableBytes()];
+             buf.readBytes(bytes);
+             handlePacket(new VxRawPayload(bytes), context);
+         });
+        *//*? }*/
     }
 
     /**
@@ -201,9 +219,15 @@ public class VxNetworking {
      */
     public static void sendToServer(IVxNetPacket packet) {
         byte[] data = createByteArray(packet);
+        /*? if >=1.21.1 {*/
         if (NetworkManager.canServerReceive(VxRawPayload.TYPE_C2S)) {
             NetworkManager.sendToServer(new VxRawPayload(data, VxRawPayload.TYPE_C2S));
         }
+        /*? } else {*/
+         /*if (NetworkManager.canServerReceive(VxRawPayload.TYPE_C2S)) {
+             NetworkManager.sendToServer(VxRawPayload.TYPE_C2S, new FriendlyByteBuf(Unpooled.wrappedBuffer(data)));
+         }
+        *//*? }*/
     }
 
     /**
@@ -214,9 +238,15 @@ public class VxNetworking {
      */
     public static void sendToPlayer(ServerPlayer player, IVxNetPacket packet) {
         byte[] data = createByteArray(packet);
+        /*? if >=1.21.1 {*/
         if (NetworkManager.canPlayerReceive(player, VxRawPayload.TYPE_S2C)) {
             NetworkManager.sendToPlayer(player, new VxRawPayload(data, VxRawPayload.TYPE_S2C));
         }
+        /*? } else {*/
+         /*if (NetworkManager.canPlayerReceive(player, VxRawPayload.TYPE_S2C)) {
+             NetworkManager.sendToPlayer(player, VxRawPayload.TYPE_S2C, new FriendlyByteBuf(Unpooled.wrappedBuffer(data)));
+         }
+        *//*? }*/
     }
 
     /**
@@ -228,10 +258,18 @@ public class VxNetworking {
         if (GameInstance.getServer() == null) return;
 
         byte[] data = createByteArray(packet);
+        /*? if >=1.21.1 {*/
         NetworkManager.sendToPlayers(
                 GameInstance.getServer().getPlayerList().getPlayers(),
                 new VxRawPayload(data, VxRawPayload.TYPE_S2C)
         );
+        /*? } else {*/
+         /*NetworkManager.sendToPlayers(
+                 GameInstance.getServer().getPlayerList().getPlayers(),
+                 VxRawPayload.TYPE_S2C,
+                 new FriendlyByteBuf(Unpooled.wrappedBuffer(data))
+         );
+        *//*? }*/
     }
 
     /**
@@ -246,7 +284,11 @@ public class VxNetworking {
         ServerLevel level = GameInstance.getServer().getLevel(dimension);
         if (level != null) {
             byte[] data = createByteArray(packet);
+            /*? if >=1.21.1 {*/
             NetworkManager.sendToPlayers(level.players(), new VxRawPayload(data, VxRawPayload.TYPE_S2C));
+            /*? } else {*/
+             /*NetworkManager.sendToPlayers(level.players(), VxRawPayload.TYPE_S2C, new FriendlyByteBuf(Unpooled.wrappedBuffer(data)));
+            *//*? }*/
         }
     }
 }

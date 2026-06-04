@@ -12,6 +12,7 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.xmx.velthoric.core.body.client.VxRenderState;
 import net.xmx.velthoric.core.body.client.renderer.VxBodyRenderer;
+import net.xmx.velthoric.core.body.client.renderer.VxVertexConsumer;
 import net.xmx.velthoric.core.body.VxBody;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
@@ -39,7 +40,7 @@ public class SphereRenderer extends VxBodyRenderer<VxBody> {
         Matrix4f poseMatrix = lastPose.pose();
         Matrix3f normalMatrix = lastPose.normal();
 
-        VertexConsumer consumer = bufferSource.getBuffer(RenderType.solid());
+        VxVertexConsumer consumer = VxVertexConsumer.wrap(bufferSource.getBuffer(RenderType.solid()));
         float radius = body.get(SphereRigidBody.DATA_RADIUS);
         int r = 200, g = 50, b = 50, a = 255;
 
@@ -74,15 +75,15 @@ public class SphereRenderer extends VxBodyRenderer<VxBody> {
         return new Vector3f(x, y, z);
     }
 
-    private void addVertex(VertexConsumer consumer, Matrix4f poseMatrix, Matrix3f normalMatrix, Vector3f pos, int r, int g, int b, int a, int packedLight) {
+    private void addVertex(VxVertexConsumer consumer, Matrix4f poseMatrix, Matrix3f normalMatrix, Vector3f pos, int r, int g, int b, int a, int packedLight) {
         Vector3f normal = new Vector3f(pos).normalize();
-        normal.mul(normalMatrix);
 
-        consumer.addVertex(poseMatrix, pos.x, pos.y, pos.z)
-                .setColor(r, g, b, a)
-                .setUv(0, 0)
-                .setOverlay(OverlayTexture.NO_OVERLAY)
-                .setLight(packedLight)
-                .setNormal(normal.x, normal.y, normal.z);
+        consumer.vertex(poseMatrix, pos.x, pos.y, pos.z)
+                .color(r, g, b, a)
+                .uv(0, 0)
+                .overlay(OverlayTexture.NO_OVERLAY)
+                .light(packedLight)
+                .normal(normalMatrix, normal.x, normal.y, normal.z)
+                .endVertex();
     }
 }
