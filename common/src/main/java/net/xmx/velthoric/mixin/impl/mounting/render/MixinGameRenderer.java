@@ -75,16 +75,16 @@ public abstract class MixinGameRenderer {
      * By applying this change in the main {@code render} method, the interpolated coordinates
      * remain active during GUI rendering, ensuring the F3 debug menu displays the correct
      * visual position relative to the frame's partial tick.
-     *
-     * @param deltaTracker The tracker providing partial tick time for interpolation.
-     * @param runTasks     Whether render tasks should be run.
-     * @param ci           The callback info.
      */
     @Inject(
             method = "render",
             at = @At(
                     value = "INVOKE",
+                    /*? if >=1.21.1 {*/
                     target = "Lnet/minecraft/client/renderer/GameRenderer;renderLevel(Lnet/minecraft/client/DeltaTracker;)V",
+                    /*? } else {*/
+                    /*target = "Lnet/minecraft/client/renderer/GameRenderer;renderLevel(FJLcom/mojang/blaze3d/vertex/PoseStack;)V",
+                    *//*? }*/
                     shift = At.Shift.BEFORE
             )
     )
@@ -110,15 +110,16 @@ public abstract class MixinGameRenderer {
       * Pre-render setup hook for executing legacy calculations before level rendering.
       *
       * @param partialTick The interpolation factor between ticks.
+      * @param limitTime   The maximum frame duration limit.
       * @param runTasks    Whether to run pending tasks.
       * @param ci          Callback information.
       ^/
-     private void velthoric_preRender(float partialTick, boolean runTasks, CallbackInfo ci) {
+     private void velthoric_preRender(float partialTick, long limitTime, boolean runTasks, CallbackInfo ci) {
          ClientLevel clientWorld = minecraft.level;
          if (clientWorld == null) return;
-     
+
          velthoric_originalStates.clear();
-     
+
          for (Entity entity : clientWorld.entitiesForRendering()) {
              if (entity instanceof VxMountingEntity proxy && !proxy.getPassengers().isEmpty()) {
                  Entity passenger = proxy.getFirstPassenger();
@@ -179,10 +180,6 @@ public abstract class MixinGameRenderer {
      * have finished rendering. This ensures that physics interpolation is purely visual and
      * does not interfere with server-side position logic or client-side tick calculations
      * occurring in the next tick.
-     *
-     * @param deltaTracker The tracker providing partial tick time.
-     * @param runTasks     Whether render tasks were run.
-     * @param ci           The callback info.
      */
     @Inject(method = "render", at = @At("RETURN"))
     /*? if >=1.21.1 {*/
@@ -204,20 +201,21 @@ public abstract class MixinGameRenderer {
       * Post-render cleanup hook for reverting legacy calculations after rendering has finished.
       *
       * @param partialTick The interpolation factor between ticks.
+      * @param limitTime   The maximum frame duration limit.
       * @param runTasks    Whether pending tasks were run.
       * @param ci          Callback information.
       ^/
-     private void velthoric_postRender(float partialTick, boolean runTasks, CallbackInfo ci) {
+     private void velthoric_postRender(float partialTick, long limitTime, boolean runTasks, CallbackInfo ci) {
          ClientLevel clientWorld = minecraft.level;
          if (clientWorld == null) return;
-     
+
          velthoric_originalStates.forEach((id, state) -> {
              Entity entity = clientWorld.getEntity(id);
              if (entity != null) {
                  state.applyTo(entity);
              }
          });
-     
+
          velthoric_originalStates.clear();
      }
     *//*? }*/
@@ -229,28 +227,23 @@ public abstract class MixinGameRenderer {
      * focuses on ensuring the Projection Matrix (FOV) is calculated correctly for the current
      * physics state. It passes the original view matrix through to avoid applying rotations
      * twice (which would invert culling).
-     *
-     * @param instance          The LevelRenderer instance.
-     * @param cameraPos         The current camera position.
-     * @param viewMatrix        The view matrix (already rotated by Camera.setup).
-     * @param projectionMatrix  The default projection matrix.
-     * @param original          The original operation.
      */
     @WrapOperation(
             method = "renderLevel",
             at = @At(
                     value = "INVOKE",
+                    /*? if >=1.21.1 {*/
                     target = "Lnet/minecraft/client/renderer/LevelRenderer;prepareCullFrustum(Lnet/minecraft/world/phys/Vec3;Lorg/joml/Matrix4f;Lorg/joml/Matrix4f;)V"
+                    /*? } else {*/
+                    /*target = "Lnet/minecraft/client/renderer/LevelRenderer;prepareCullFrustum(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/world/phys/Vec3;Lorg/joml/Matrix4f;)V"
+                    *//*? }*/
             )
     )
+    /*? if >=1.21.1 {*/
     private void velthoric_setupCameraWithPhysicsBody(LevelRenderer instance, Vec3 cameraPos, Matrix4f viewMatrix, Matrix4f projectionMatrix, Operation<Void> original) {
         Entity player = this.minecraft.player;
         if (player != null) {
-            /*? if >=1.21.1 {*/
             final float partialTicks = this.minecraft.getTimer().getGameTimeDeltaPartialTick(true);
-            /*? } else {*/
-             /*final float partialTicks = this.minecraft.getFrameTime();
-            *//*? }*/
 
             boolean[] handled = {false};
             VxMountingRenderUtils.INSTANCE.ifMountedOnBody(player, partialTicks, physQuat -> {
@@ -269,21 +262,37 @@ public abstract class MixinGameRenderer {
 
         original.call(instance, cameraPos, viewMatrix, projectionMatrix);
     }
+    /*? } else {*/
+    /*private void velthoric_setupCameraWithPhysicsBody(LevelRenderer instance, com.mojang.blaze3d.vertex.PoseStack poseStack, Vec3 cameraPos, Matrix4f projectionMatrix, Operation<Void> original) {
+        Entity player = this.minecraft.player;
+        if (player != null) {
+            final float partialTicks = this.minecraft.getFrameTime();
+
+            boolean[] handled = {false};
+            VxMountingRenderUtils.INSTANCE.ifMountedOnBody(player, partialTicks, physQuat -> {
+                double fov = this.getFov(this.mainCamera, partialTicks, true);
+                Matrix4f newProjectionMatrix = this.getProjectionMatrix(Math.max(fov, this.minecraft.options.fov().get()));
+
+                original.call(instance, poseStack, cameraPos, newProjectionMatrix);
+                handled[0] = true;
+            });
+
+            if (handled[0]) {
+                return;
+            }
+        }
+
+        original.call(instance, poseStack, cameraPos, projectionMatrix);
+    }
+    *//*? }*/
 
     /**
      * Wraps the entity picking (raycasting) method to support Oriented Bounding Boxes (OBB).
      * <p>
      * If the standard AABB pick fails, this method attempts to perform an OBB raycast
      * against mounted entities, which may be rotated relative to the world grid.
-     *
-     * @param instance     The GameRenderer instance.
-     * @param entity       The entity performing the pick.
-     * @param blockReach   The reach distance for blocks.
-     * @param entityReach  The reach distance for entities.
-     * @param partialTicks The partial tick time.
-     * @param original     The original operation.
-     * @return The result of the picking operation (block or entity).
      */
+    /*? if >=1.21.1 {*/
     @WrapOperation(
             method = "pick(F)V",
             at = @At(
@@ -309,6 +318,27 @@ public abstract class MixinGameRenderer {
 
         return vanillaResult;
     }
+    /*? } else {*/
+    /*@WrapOperation(
+            method = "pick(F)V",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/entity/projectile/ProjectileUtil;getEntityHitResult(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/AABB;Ljava/util/function/Predicate;D)Lnet/minecraft/world/phys/EntityHitResult;"
+            )
+    )
+    private EntityHitResult velthoric_wrapPick(Entity shooter, Vec3 start, Vec3 end, AABB searchBox, java.util.function.Predicate<Entity> filter, double maxDistanceSq, Operation<EntityHitResult> original) {
+        EntityHitResult vanillaResult = original.call(shooter, start, end, searchBox, filter, maxDistanceSq);
+
+        if (vanillaResult == null) {
+            EntityHitResult obbResult = velthoric_pickMountedEntities(shooter, start, end, searchBox, maxDistanceSq);
+            if (obbResult != null) {
+                return obbResult;
+            }
+        }
+
+        return vanillaResult;
+    }
+    *//*? }*/
 
     /**
      * Helper method to perform OBB raycasting against potential targets within a search box.
