@@ -56,7 +56,7 @@ import groovy.json.JsonOutput
  */
 tasks.register("printStonecutterMatrix") {
     group = "publishing"
-    description = "Generates a JSON matrix of registered Stonecutter versions and their Java versions."
+    description = "Generates a JSON matrix of registered Stonecutter versions, their Java versions, and enabled loaders."
 
     doLast {
         // Use rootDir to safely point to the absolute physical project root
@@ -68,6 +68,7 @@ tasks.register("printStonecutterMatrix") {
                 def propsFile = new File(dir, "gradle.properties")
 
                 def javaVer = "21" // default fallback
+                def loadersList = []
 
                 if (propsFile.exists()) {
                     def props = new Properties()
@@ -78,11 +79,32 @@ tasks.register("printStonecutterMatrix") {
                     } else {
                         logger.warn("Property 'java_version' is not set in ${propsFile.path}. Falling back to default Java 21 for ${dir.name}.")
                     }
+
+                    if (props.containsKey("enabled_platforms")) {
+                        def platforms = props.getProperty("enabled_platforms").split(',').collect { it.trim() }
+                        platforms.each { platform ->
+                            def taskName = ""
+                            if (platform == "fabric") {
+                                taskName = ":fabric:runGameTest"
+                            } else if (platform == "forge") {
+                                taskName = ":forge:runGameTestServer"
+                            } else if (platform == "neoforge") {
+                                taskName = ":neoforge:runGameTestServer"
+                            }
+                            if (!taskName.isEmpty()) {
+                                loadersList << [loader: platform, task: taskName]
+                            }
+                        }
+                    }
                 } else {
                     logger.warn("Missing gradle.properties in ${dir.name}. Falling back to default Java 21.")
                 }
 
-                matrixList << [mc_version: dir.name, java_version: javaVer]
+                matrixList << [
+                    mc_version: dir.name,
+                    java_version: javaVer,
+                    loaders: loadersList
+                ]
             }
         } else {
             logger.warn("Versions directory '${versionsDir.path}' does not exist. No matrix generated.")

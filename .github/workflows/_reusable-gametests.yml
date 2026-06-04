@@ -1,7 +1,13 @@
 # Reusable workflow: GameTest Suite
 #
 # Downloads compiled native binaries and executes the automated GameTest server
-# for both supported mod loaders (Fabric and NeoForge) in parallel.
+# for every loader that is enabled for the given Minecraft version.
+#
+# The set of loaders to test is passed in via the loaders input as a JSON
+# string produced by the printStonecutterMatrix Gradle task. This means that
+# adding a new Stonecutter version or toggling a loader in gradle.properties
+# automatically adjusts which tests run - no changes to this file are needed.
+#
 # This workflow is intended to gate downstream publish or release jobs.
 
 name: "Reusable - GameTests"
@@ -21,19 +27,19 @@ on:
         description: "Prefix of the native library artifacts to download."
         type: string
         required: true
+      loaders:
+        description: "JSON array of loader objects ({loader, task}) to test against."
+        type: string
+        required: true
 
 jobs:
   run-gametests:
-    name: "GameTest - ${{ matrix.loader }}"
+    name: "GameTest - ${{ matrix.loader }} (${{ inputs.mc_version }})"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
       matrix:
-        include:
-          - loader: fabric
-            task: ":fabric:runGameTest"
-          - loader: neoforge
-            task: ":neoforge:runGameTestServer"
+        include: ${{ fromJson(inputs.loaders) }}
 
     steps:
       - name: "Checkout Repository"

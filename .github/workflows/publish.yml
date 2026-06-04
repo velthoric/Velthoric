@@ -1,15 +1,21 @@
 # Release Publish Pipeline
 #
 # Triggered manually via workflow_dispatch. This pipeline builds native libraries
-# for all supported platforms, assembles the final mod JARs, runs the full GameTest
-# suite, and only if all tests pass publishes the release to CurseForge,
-# Modrinth, GitHub Releases, and the Cloudsmith Maven repository.
+# for all supported platforms, assembles the final mod JARs for every enabled
+# Minecraft version and loader, runs the full GameTest suite, and only if all
+# tests pass publishes the release to Modrinth, CurseForge, GitHub Releases,
+# and the Cloudsmith Maven repository.
+#
+# The set of versions and loaders is read dynamically from the Stonecutter
+# configuration via the printStonecutterMatrix Gradle task, so adding a new
+# Stonecutter version to versions/ automatically includes it in the pipeline.
 #
 # Pipeline stages:
-#   1. build-natives  - Compile vx-native for all platforms in parallel.
-#   2. build-mod      - Assemble Fabric & NeoForge JARs using the compiled natives.
-#   3. gametests      - Run the automated GameTest server for both loaders.
-#   4. publish        - Publish to all distribution platforms (gated on test success).
+#   1. setup-matrix  - Query all Stonecutter versions and their enabled loaders.
+#   2. build-natives - Compile vx-native for all host platforms in parallel.
+#   3. build-mod     - Assemble mod JARs for each MC version (all loaders).
+#   4. gametests     - Run the GameTest server for each loader of each MC version.
+#   5. publish       - Publish to Modrinth, CurseForge, GitHub, and Maven (gated on tests).
 
 name: "Publish Release"
 
@@ -17,7 +23,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Call the reusable workflow to fetch the matrix dynamically
+  # Stage 0: Dynamically build the version+loader matrix from Stonecutter config
   setup-matrix:
     name: "Initialize Matrix"
     uses: ./.github/workflows/_reusable-matrix.yml
@@ -27,7 +33,7 @@ jobs:
     name: "Stage 1 - Build Natives"
     uses: ./.github/workflows/_reusable-build-natives.yml
 
-  # Stage 2: Mod Assembly
+  # Stage 2: Mod Assembly - one job per MC version, builds all enabled loaders
   build-mod:
     name: "Stage 2 - Build Mod (${{ matrix.mc_version }})"
     needs: [setup-matrix, build-natives]
@@ -42,7 +48,7 @@ jobs:
       natives-artifact-prefix: "velthoric-natives-${{ github.run_id }}"
       retention-days: 3
 
-  # Stage 3: Automated Tests
+  # Stage 3: Automated Tests - one job per loader per MC version.
   # Publishing is blocked entirely if any GameTest fails.
   gametests:
     name: "Stage 3 - GameTests (${{ matrix.mc_version }})"
@@ -56,11 +62,14 @@ jobs:
       mc_version: ${{ matrix.mc_version }}
       java_version: ${{ matrix.java_version }}
       natives-artifact-prefix: "velthoric-natives-${{ github.run_id }}"
+      loaders: ${{ toJson(matrix.loaders) }}
 
-  # Stage 4: Multi-Platform Publish
-  # This job only runs after all GameTests have passed successfully.
+  # Stage 4: Multi-Platform Publish - one job per MC version.
+  # Runs after all GameTests have passed successfully.
+  # publishVelthoric automatically targets only the loaders enabled for the
+  # active MC version (fabric+forge for 1.20.1, fabric+neoforge for 1.21.1, etc.)
   publish:
-    name: "Stage 4 - Publish to All Platforms (${{ matrix.mc_version }})"
+    name: "Stage 4 - Publish (${{ matrix.mc_version }})"
     needs: [setup-matrix, gametests]
     runs-on: ubuntu-latest
     permissions:

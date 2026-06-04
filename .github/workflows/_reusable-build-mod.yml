@@ -1,9 +1,16 @@
 # Reusable workflow: Mod JAR Assembly
 #
-# Downloads all previously compiled native binaries, assembles the final Fabric
-# and NeoForge mod JARs via Gradle, and uploads them as a versioned artifact.
+# Downloads all previously compiled native binaries, assembles the mod JARs
+# for all enabled loaders of the given Minecraft version via Gradle, and
+# uploads them as a versioned artifact.
+#
+# Which loaders are built is fully dynamic: it is determined by the
+# enabled_platforms property in the version's gradle.properties, so adding
+# a new Stonecutter target requires no changes here.
 #
 # Inputs:
+#   mc_version:              Minecraft version to build.
+#   java_version:            Java toolchain version required for this MC target.
 #   natives-artifact-prefix: Prefix of the native artifacts to download and merge.
 #   retention-days:          How long to retain the assembled JAR artifact.
 
@@ -35,7 +42,7 @@ on:
 
 jobs:
   build-mod:
-    name: "Assemble Mod JARs"
+    name: "Assemble Mod JARs (${{ inputs.mc_version }})"
     runs-on: ubuntu-latest
 
     steps:
@@ -66,20 +73,20 @@ jobs:
       - name: "Grant Gradle Wrapper Execute Permission"
         run: chmod +x gradlew
 
-      # Build the mod without re-running CMake; native binaries are already present.
+      # Build all enabled loaders for this MC version in one pass.
+      # Gradle only builds the subprojects that pass the enabled_platforms guard
+      # at the top of each loader build.gradle, so no loader is hardcoded here.
       - name: "Build Mod JARs"
         run: ./gradlew build -x :vx-native:cmakeBuild
 
-      # Collect only the final remapped JARs (Fabric & NeoForge), excluding
-      # intermediate dev/shadow artifacts that are not intended for distribution.
+      # Collect all final remapped JARs for the active MC version across every
+      # enabled loader. The pattern is intentionally loader-agnostic so that
+      # adding a new loader (e.g. quilt) requires no changes to this file.
       - name: "Collect Release JARs"
         run: |
           mkdir -p release-jars
           find . -path "*/build/libs/*.jar" \
-            \( -name "velthoric-${{ inputs.mc_version }}-fabric-[0-9]*.jar" \
-            -o -name "velthoric-${{ inputs.mc_version }}-neoforge-[0-9]*.jar" \
-            -o -name "velthoric-${{ inputs.mc_version }}-fabric-*-sources.jar" \
-            -o -name "velthoric-${{ inputs.mc_version }}-neoforge-*-sources.jar" \) \
+            -name "velthoric-${{ inputs.mc_version }}-*" \
             -not -name "*-dev.jar" \
             -not -name "*-shadow.jar" \
             -not -name "*-dev-shadow.jar" \
