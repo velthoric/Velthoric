@@ -33,7 +33,11 @@ public abstract class MixinEntityRenderer {
      */
     @Inject(method = "renderNameTag", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;mulPose(Lorg/joml/Quaternionf;)V", ordinal = 0))
     private <T extends Entity> void velthoric_invertPhysicsRotationBeforeCameraOrientation(
-            T entity, Component displayName, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, float partialTick, CallbackInfo ci) {
+            T entity, Component displayName, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight,
+            /*? if >=1.21.1 {*/
+            float partialTick,
+            /*? }*/
+            CallbackInfo ci) {
 
         /*? if >=1.21.1 {*/
         float partialTicks = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(true);
