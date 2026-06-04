@@ -60,11 +60,6 @@ dependencies {
     include(mixinExtras)
 
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-
-    modLocalRuntime "curse.maven:sodium-394468:6382649"
-    modLocalRuntime "curse.maven:modmenu-308702:5810603"
-    modLocalRuntime "curse.maven:lithium-360438:7246287"
-
     modImplementation "dev.architectury:architectury-fabric:${project.architectury_api_version}"
 
     minecraftRuntimeLibraries(project(path: ":vx-native"))
