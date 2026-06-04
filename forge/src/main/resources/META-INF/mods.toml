@@ -21,21 +21,21 @@ config = "vx-events.mixins.json"
 # Dependencies for this mod
 [[dependencies."${mod_id}"]]
 modId = "forge"
-type = "required"
+mandatory = true
 versionRange = "${forge_version_range}"
 ordering = "NONE"
 side = "BOTH"
 
 [[dependencies."${mod_id}"]]
 modId = "minecraft"
-type = "required"
+mandatory = true
 versionRange = "${minecraft_version_range}"
 ordering = "NONE"
 side = "BOTH"
 
 [[dependencies."${mod_id}"]]
 modId = "architectury"
-type = "required"
-versionRange = ">=${architectury_api_version}" # Using >= for better version compatibility
+mandatory = true
+versionRange = ">=${architectury_api_version}"
 ordering = "AFTER"
 side = "BOTH"

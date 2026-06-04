@@ -56,6 +56,11 @@ configurations {
 dependencies {
     forge "net.minecraftforge:forge:${project.forge_version}"
 
+    def mixinExtras = "io.github.llamalad7:mixinextras-forge:${project.mixinextras_version}"
+    annotationProcessor(mixinExtras)
+    implementation(mixinExtras)
+    include(mixinExtras)
+
     modImplementation "dev.architectury:architectury-forge:${project.architectury_api_version}"
 
     minecraftRuntimeLibraries(project(path: ":vx-native"))
@@ -80,7 +85,8 @@ processResources {
             mod_license: project.mod_license,
             mod_version: project.mod_version,
             mod_authors: project.mod_authors,
-            mod_description: project.mod_description
+            mod_description: project.mod_description,
+            architectury_api_version: project.architectury_api_version
     ]
 
     inputs.properties replaceProperties
