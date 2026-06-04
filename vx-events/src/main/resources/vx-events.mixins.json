@@ -2,7 +2,7 @@
   "required": true,
   "minVersion": "0.8",
   "package": "net.xmx.velthoric.event.mixin.impl",
-  "compatibilityLevel": "JAVA_21",
+  "compatibilityLevel": "JAVA_17",
   "mixins": [
     "event.level.MixinMinecraftServer_VxLevelEvent",
     "event.level.MixinServerLevel_VxLevelEvent",
