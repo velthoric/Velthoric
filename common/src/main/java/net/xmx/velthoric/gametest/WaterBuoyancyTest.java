@@ -53,11 +53,9 @@ public class WaterBuoyancyTest {
                 transform, 
                 EMotionType.Dynamic,
                 EActivation.Activate,
-                b -> {
-                    if (b instanceof BoxRigidBody box) {
-                        box.setHalfExtents(new com.github.stephengold.joltjni.Vec3(0.5f, 0.5f, 0.5f));
-                        box.setColor(BoxColor.BLUE);
-                    }
+                box -> {
+                    box.setHalfExtents(new com.github.stephengold.joltjni.Vec3(0.5f, 0.5f, 0.5f));
+                    box.setColor(BoxColor.BLUE);
                 }
         );
 

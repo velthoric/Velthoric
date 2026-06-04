@@ -66,11 +66,9 @@ public class PegsDensityTest {
                         transform, 
                         EMotionType.Dynamic,
                         EActivation.Activate,
-                        b -> {
-                            if (b instanceof BoxRigidBody box) {
-                                box.setHalfExtents(new com.github.stephengold.joltjni.Vec3(halfExtent, halfExtent, halfExtent));
-                                box.setColor(BoxColor.ORANGE);
-                            }
+                        box -> {
+                            box.setHalfExtents(new com.github.stephengold.joltjni.Vec3(halfExtent, halfExtent, halfExtent));
+                            box.setColor(BoxColor.ORANGE);
                         }
                 );
 

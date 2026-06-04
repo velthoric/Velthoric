@@ -19,7 +19,7 @@ remapJar {
 }
 
 tasks.named("sourcesJar") {
-    def commonSources = project(":common").sourceSets.main.allSource
+    def commonSources = project(":common:${project.minecraft_version}").sourceSets.main.allSource
     from commonSources
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }

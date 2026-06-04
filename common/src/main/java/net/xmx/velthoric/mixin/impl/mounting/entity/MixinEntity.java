@@ -123,7 +123,11 @@ public abstract class MixinEntity {
     @Unique
     @Environment(EnvType.CLIENT)
     private Optional<Quaterniond> velthoric_getInterpolatedRotationClient(VxMountingEntity proxy) {
+        /*? if >=1.21.1 {*/
         float partialTicks = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(true);
+        /*? } else {*/
+         /*float partialTicks = Minecraft.getInstance().getFrameTime();
+        *//*? }*/
         return VxMountingRenderUtils.INSTANCE.getInterpolatedRotation(proxy, partialTicks)
                 .map(q -> new Quaterniond(q.getX(), q.getY(), q.getZ(), q.getW()));
     }

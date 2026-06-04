@@ -4,11 +4,13 @@
  */
 package net.xmx.velthoric.network;
 
-import io.netty.buffer.ByteBuf;
+/*? if >=1.21.1 {*/
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+/*? }*/
 import net.minecraft.resources.ResourceLocation;
+import java.util.Objects;
 
 /**
  * A raw container payload that transports direct Netty ByteBufs through the Minecraft networking system.
@@ -18,13 +20,14 @@ import net.minecraft.resources.ResourceLocation;
  * </p>
  *
  * @param data The raw byte array containing the packet ID and payload.
- * @param identifier The specific payload type identifier (C2S or S2C).
  * @author xI-Mx-Ix
  */
-public record VxRawPayload(byte[] data, Type<VxRawPayload> identifier) implements CustomPacketPayload {
+public record VxRawPayload(byte[] data/*? if >=1.21.1 {*/, Type<VxRawPayload> identifier/*? }*/)
+        /*? if >=1.21.1 {*/implements CustomPacketPayload/*? }*/ {
 
-    public static final Type<VxRawPayload> TYPE_C2S = new Type<>(ResourceLocation.fromNamespaceAndPath("velthoric", "c2s"));
-    public static final Type<VxRawPayload> TYPE_S2C = new Type<>(ResourceLocation.fromNamespaceAndPath("velthoric", "s2c"));
+    /*? if >=1.21.1 {*/
+    public static final Type<VxRawPayload> TYPE_C2S = new Type<>(Objects.requireNonNull(ResourceLocation.tryBuild("velthoric", "c2s")));
+    public static final Type<VxRawPayload> TYPE_S2C = new Type<>(Objects.requireNonNull(ResourceLocation.tryBuild("velthoric", "s2c")));
 
     /**
      * A zero-copy StreamCodec that slices the buffer instead of copying it.
@@ -66,4 +69,15 @@ public record VxRawPayload(byte[] data, Type<VxRawPayload> identifier) implement
     public Type<? extends CustomPacketPayload> type() {
         return identifier;
     }
+    /*? } else {*/
+     /*/^*
+      * The resource location identifier for client-to-server payloads.
+      ^/
+     public static final ResourceLocation TYPE_C2S = Objects.requireNonNull(ResourceLocation.tryBuild("velthoric", "c2s"));
+    
+     /^*
+      * The resource location identifier for server-to-client payloads.
+      ^/
+     public static final ResourceLocation TYPE_S2C = Objects.requireNonNull(ResourceLocation.tryBuild("velthoric", "s2c"));
+    *//*? }*/
 }

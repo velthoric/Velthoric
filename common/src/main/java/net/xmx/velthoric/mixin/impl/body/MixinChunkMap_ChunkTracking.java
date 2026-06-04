@@ -8,9 +8,18 @@ import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
+/*? if >=1.21.1 {*/
 import net.xmx.velthoric.core.body.server.VxServerBodyManager;
 import net.xmx.velthoric.core.network.internal.VxNetworkDispatcher;
 import net.xmx.velthoric.core.physics.world.VxPhysicsWorld;
+/*? } else {*/
+ /*import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
+ import net.minecraft.world.level.chunk.LevelChunk;
+ import net.xmx.velthoric.core.body.server.VxServerBodyManager;
+ import net.xmx.velthoric.core.network.internal.VxNetworkDispatcher;
+ import net.xmx.velthoric.core.physics.world.VxPhysicsWorld;
+ import org.apache.commons.lang3.mutable.MutableObject;
+*//*? }*/
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -57,6 +66,7 @@ public abstract class MixinChunkMap_ChunkTracking {
      * @param chunkPos The position of the chunk being marked.
      * @param ci Callback info.
      */
+    /*? if >=1.21.1 {*/
     @Inject(method = "markChunkPendingToSend", at = @At("TAIL"))
     private void velthoric$onMarkChunkPendingToSend(ServerPlayer player, ChunkPos chunkPos, CallbackInfo ci) {
         VxNetworkDispatcher dispatcher = velthoric$getDispatcher();
@@ -88,6 +98,27 @@ public abstract class MixinChunkMap_ChunkTracking {
             }
         }
     }
+    /*? } else {*/
+     /*/^*
+      * Legacy hook to track chunk tracking changes and untrack physics bodies for players when chunks are unloaded.
+      ^/
+     @Inject(method = "updateChunkTracking", at = @At("HEAD"))
+     private void velthoric$onUpdateChunkTracking(ServerPlayer player, ChunkPos chunkPos, MutableObject<ClientboundLevelChunkWithLightPacket> packetCache, boolean wasVisible, boolean isVisible, CallbackInfo ci) {
+         if (isVisible == wasVisible) return;
+         VxNetworkDispatcher dispatcher = velthoric$getDispatcher();
+         if (dispatcher == null) return;
+         if (!isVisible) dispatcher.untrackBodiesInChunkForPlayer(player, chunkPos);
+     }
+    
+     /^*
+      * Legacy hook to track physics bodies for players when a chunk gets loaded.
+      ^/
+     @Inject(method = "playerLoadedChunk", at = @At("TAIL"))
+     private void velthoric$onPlayerLoadedChunk(ServerPlayer serverPlayer, MutableObject<ClientboundLevelChunkWithLightPacket> mutableObject, LevelChunk levelChunk, CallbackInfo ci) {
+         VxNetworkDispatcher dispatcher = velthoric$getDispatcher();
+         if (dispatcher != null) dispatcher.trackBodiesInChunkForPlayer(serverPlayer, levelChunk.getPos());
+     }
+    *//*? }*/
 
     /**
      * Injects into the player status update logic to detect when a player disconnects.

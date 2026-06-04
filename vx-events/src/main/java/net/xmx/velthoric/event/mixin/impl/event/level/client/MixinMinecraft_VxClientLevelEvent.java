@@ -36,7 +36,10 @@ public abstract class MixinMinecraft_VxClientLevelEvent {
     /*? if >=1.21.1 {*/
     private void velthoric$onSetLevelUnload(ClientLevel level, ReceivingLevelScreen.Reason reason, CallbackInfo ci) {
     /*?} else {*/
-    /*private void velthoric$onSetLevelUnload(ClientLevel newClientLevel, CallbackInfo ci) {
+     /*/^*
+      * Legacy hook to fire the Unload event for the old level before it is replaced.
+      ^/
+     private void velthoric$onSetLevelUnload(ClientLevel newClientLevel, CallbackInfo ci) {
     *//*?}*/
         if (this.level != null) {
             VxClientLevelEvent.Unload.EVENT.invoker().onLevelUnload(new VxClientLevelEvent.Unload(this.level));
@@ -53,10 +56,13 @@ public abstract class MixinMinecraft_VxClientLevelEvent {
             VxClientLevelEvent.Load.EVENT.invoker().onLevelLoad(new VxClientLevelEvent.Load(level));
         }
     /*?} else {*/
-    /*private void velthoric$onSetLevelLoad(ClientLevel newClientLevel, CallbackInfo ci) {
-        if (newClientLevel != null) {
-            VxClientLevelEvent.Load.EVENT.invoker().onLevelLoad(new VxClientLevelEvent.Load(newClientLevel));
-        }
+     /*/^*
+      * Legacy hook to fire the Load event for the new level after it has been set.
+      ^/
+     private void velthoric$onSetLevelLoad(ClientLevel newClientLevel, CallbackInfo ci) {
+         if (newClientLevel != null) {
+             VxClientLevelEvent.Load.EVENT.invoker().onLevelLoad(new VxClientLevelEvent.Load(newClientLevel));
+         }
     *//*?}*/
     }
 

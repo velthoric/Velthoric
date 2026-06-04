@@ -7,12 +7,12 @@ package net.xmx.velthoric.debug.renderer;
 import com.github.stephengold.joltjni.Quat;
 import com.github.stephengold.joltjni.RVec3;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.world.phys.Vec3;
 import net.xmx.velthoric.core.body.VxBody;
 import net.xmx.velthoric.core.body.client.VxRenderState;
+import net.xmx.velthoric.core.body.client.renderer.VxVertexConsumer;
 import net.xmx.velthoric.core.body.shape.*;
 import net.xmx.velthoric.math.VxOBB;
 import org.jetbrains.annotations.NotNull;
@@ -54,7 +54,7 @@ public class DebugBodyShapeRenderer {
         // 1. Calculate the interpolated transform for the current frame.
         body.calculateRenderState(partialTicks, this.renderState, this.interpolatedPosition, this.interpolatedRotation);
 
-        VertexConsumer consumer = bufferSource.getBuffer(RenderType.lines());
+        VxVertexConsumer consumer = VxVertexConsumer.wrap(bufferSource.getBuffer(RenderType.lines()));
         poseStack.pushPose();
 
         // 2. Move to camera-relative position in world space.
@@ -83,7 +83,7 @@ public class DebugBodyShapeRenderer {
      * @param shape     The shape to render.
      * @param r,g,b,a   Color components.
      */
-    private void renderShapeRecursive(VertexConsumer consumer, PoseStack poseStack, VxCollisionShape shape, float r, float g, float b, float a) {
+    private void renderShapeRecursive(VxVertexConsumer consumer, PoseStack poseStack, VxCollisionShape shape, float r, float g, float b, float a) {
         // Primitive Shapes
         // These are the leaf nodes of the shape tree. They are drawn directly using utility methods.
         if (shape instanceof VxBoxShape box) {
@@ -172,7 +172,7 @@ public class DebugBodyShapeRenderer {
      * Renders an Oriented Bounding Box (OBB).
      */
     public void renderOBB(@NotNull VxOBB obb, @NotNull PoseStack poseStack, @NotNull MultiBufferSource bufferSource, @NotNull Vec3 cameraPos, float r, float g, float b, float a) {
-        VertexConsumer consumer = bufferSource.getBuffer(RenderType.lines());
+        VxVertexConsumer consumer = VxVertexConsumer.wrap(bufferSource.getBuffer(RenderType.lines()));
         DebugRenderUtils.drawOBB(consumer, poseStack, obb, cameraPos, r, g, b, a);
     }
 

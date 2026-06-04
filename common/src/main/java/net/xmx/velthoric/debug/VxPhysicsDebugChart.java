@@ -4,11 +4,11 @@
  */
 package net.xmx.velthoric.debug;
 
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.util.Mth;
+import net.xmx.velthoric.core.body.client.renderer.VxVertexConsumer;
 import net.xmx.velthoric.util.VxFrameTimer;
 import org.joml.Matrix4f;
 
@@ -74,7 +74,7 @@ public class VxPhysicsDebugChart {
 
             // Access the transformation matrix and vertex consumer via the buffer source to enable batch rendering.
             Matrix4f matrix = guiGraphics.pose().last().pose();
-            VertexConsumer consumer = guiGraphics.bufferSource().getBuffer(RenderType.guiOverlay());
+            VxVertexConsumer consumer = VxVertexConsumer.wrap(guiGraphics.bufferSource().getBuffer(RenderType.guiOverlay()));
 
             // Second Pass: Render the Bars
             // Bars are drawn from right to left using manual vertex construction for efficiency.
@@ -98,10 +98,10 @@ public class VxPhysicsDebugChart {
                 float y2 = (float) baseY;
 
                 // Build the vertices for a filled quad representing the data bar.
-                consumer.addVertex(matrix, x1, y1, 0.0F).setColor(color);
-                consumer.addVertex(matrix, x1, y2, 0.0F).setColor(color);
-                consumer.addVertex(matrix, x2, y2, 0.0F).setColor(color);
-                consumer.addVertex(matrix, x2, y1, 0.0F).setColor(color);
+                consumer.vertex(matrix, x1, y1, 0.0F).color(color).endVertex();
+                consumer.vertex(matrix, x1, y2, 0.0F).color(color).endVertex();
+                consumer.vertex(matrix, x2, y2, 0.0F).color(color).endVertex();
+                consumer.vertex(matrix, x2, y1, 0.0F).color(color).endVertex();
             }
         }
 

@@ -31,12 +31,12 @@ import java.util.function.ToIntFunction;
 @Mixin(DebugScreenOverlay.class)
 public abstract class MixinDebugScreenOverlay {
 
-    @Shadow
-    @Final
-    private Minecraft minecraft;
+    @Shadow @Final private Minecraft minecraft;
 
+    /*? if >=1.21.1 {*/
     @Shadow
     private boolean renderFpsCharts;
+    /*? }*/
 
     /**
      * Injects the physics chart rendering at the end of the debug overlay render cycle.
@@ -48,7 +48,11 @@ public abstract class MixinDebugScreenOverlay {
      */
     @Inject(method = "render", at = @At("RETURN"))
     private void velthoric_renderPhysicsChart(GuiGraphics guiGraphics, CallbackInfo ci) {
+        /*? if >=1.21.1 {*/
         if (this.renderFpsCharts && this.minecraft.level != null) {
+        /*? } else {*/
+         /*if (this.minecraft.options.renderFpsChart && this.minecraft.level != null) {
+        *//*? }*/
 
             // Retrieve the specific physics world for the current dimension.
             VxPhysicsWorld physicsWorld = VxPhysicsWorld.get(this.minecraft.level.dimension());

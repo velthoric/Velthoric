@@ -14,6 +14,7 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.resources.ResourceLocation;
 import net.xmx.velthoric.core.body.client.VxRenderState;
 import net.xmx.velthoric.core.body.client.renderer.VxBodyRenderer;
+import net.xmx.velthoric.core.body.client.renderer.VxVertexConsumer;
 import net.xmx.velthoric.core.body.VxBody;
 import org.joml.Vector3f;
 
@@ -43,7 +44,7 @@ public class ClothRenderer extends VxBodyRenderer<VxBody> {
         double comZ = renderState.transform.getTranslation().z();
 
         int numVerticesX = widthSegments + 1;
-        VertexConsumer buffer = bufferSource.getBuffer(RenderType.translucent());
+        VxVertexConsumer buffer = VxVertexConsumer.wrap(bufferSource.getBuffer(RenderType.translucent()));
         TextureAtlasSprite sprite = Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_BLOCKS).apply(BLUE_WOOL_TEXTURE);
 
         float minU = sprite.getU0();
@@ -97,11 +98,12 @@ public class ClothRenderer extends VxBodyRenderer<VxBody> {
         }
     }
 
-    private void addVertex(VertexConsumer buffer, PoseStack poseStack, Vector3f pos, float u, float v, Vector3f normal, int packedLight) {
-        buffer.addVertex(poseStack.last(), pos.x(), pos.y(), pos.z())
-                .setColor(255, 255, 255, 255)
-                .setUv(u, v)
-                .setLight(packedLight)
-                .setNormal(poseStack.last(), normal.x(), normal.y(), normal.z());
+    private void addVertex(VxVertexConsumer buffer, PoseStack poseStack, Vector3f pos, float u, float v, Vector3f normal, int packedLight) {
+        buffer.vertex(poseStack.last(), pos.x(), pos.y(), pos.z())
+                .color(255, 255, 255, 255)
+                .uv(u, v)
+                .light(packedLight)
+                .normal(poseStack.last(), normal.x(), normal.y(), normal.z())
+                .endVertex();
     }
 }

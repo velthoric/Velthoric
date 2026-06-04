@@ -267,10 +267,20 @@ public class VxMountingEntity extends Entity {
      * Registers the synced data fields for physics and seat ID.
      */
     @Override
+    /*? if >=1.21.1 {*/
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         builder.define(PHYSICS_ID, Optional.empty());
         builder.define(SEAT_ID, Optional.empty());
     }
+    /*? } else {*/
+     /*/^*
+      * Registers the synced data fields for physics and seat ID in legacy versions.
+      ^/
+     protected void defineSynchedData() {
+         this.entityData.define(PHYSICS_ID, Optional.empty());
+         this.entityData.define(SEAT_ID, Optional.empty());
+     }
+    *//*? }*/
 
     /**
      * Retrieves the unique identifier of the target physics body.

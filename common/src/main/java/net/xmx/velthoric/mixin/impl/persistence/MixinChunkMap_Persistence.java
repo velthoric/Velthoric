@@ -58,7 +58,11 @@ public class MixinChunkMap_Persistence {
 
         if (world != null) {
             for (ChunkHolder holder : this.visibleChunkMap.values()) {
+                /*? if >=1.21.1 {*/
                 ChunkAccess chunk = holder.getLatestChunk();
+                /*? } else {*/
+                 /*ChunkAccess chunk = holder.getLastAvailable();
+                *//*? }*/
 
                 if (chunk != null && !chunk.isUnsaved()) {
                     world.saveChunkData(holder.getPos());

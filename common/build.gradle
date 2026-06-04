@@ -28,7 +28,7 @@ dependencies {
 }
 
 loom {
-    accessWidenerPath = file("src/main/resources/velthoric.accesswidener")
+    accessWidenerPath = project(":common").file("src/main/resources/velthoric.accesswidener")
 }
 
 afterEvaluate {

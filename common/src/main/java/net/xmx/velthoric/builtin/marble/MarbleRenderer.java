@@ -17,6 +17,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.xmx.velthoric.core.body.client.VxRenderState;
 import net.xmx.velthoric.core.body.client.renderer.VxBodyRenderer;
+import net.xmx.velthoric.core.body.client.renderer.VxVertexConsumer;
 import net.xmx.velthoric.core.body.VxBody;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
@@ -40,7 +41,7 @@ public class MarbleRenderer extends VxBodyRenderer<VxBody> {
         BakedModel itemModel = Minecraft.getInstance().getItemRenderer().getItemModelShaper().getItemModel(MARBLE_ITEM_STACK);
         TextureAtlasSprite sprite = itemModel.getParticleIcon();
 
-        VertexConsumer vertexConsumer = bufferSource.getBuffer(RenderType.entityTranslucent(InventoryMenu.BLOCK_ATLAS));
+        VxVertexConsumer vertexConsumer = VxVertexConsumer.wrap(bufferSource.getBuffer(RenderType.entityTranslucent(InventoryMenu.BLOCK_ATLAS)));
         Matrix4f matrix4f = poseStack.last().pose();
         Matrix3f matrix3f = poseStack.last().normal();
 
@@ -52,16 +53,13 @@ public class MarbleRenderer extends VxBodyRenderer<VxBody> {
         poseStack.popPose();
     }
 
-    private void addVertex(VertexConsumer consumer, Matrix4f pose, Matrix3f normalMatrix, float x, float y, float u, float v, int packedLight) {
-        float nx = normalMatrix.m10;
-        float ny = normalMatrix.m11;
-        float nz = normalMatrix.m12;
-
-        consumer.addVertex(pose, x, y, 0.0f)
-                .setColor(255, 255, 255, 255)
-                .setUv(u, v)
-                .setOverlay(OverlayTexture.NO_OVERLAY)
-                .setLight(packedLight)
-                .setNormal(nx, ny, nz);
+    private void addVertex(VxVertexConsumer consumer, Matrix4f pose, Matrix3f normalMatrix, float x, float y, float u, float v, int packedLight) {
+        consumer.vertex(pose, x, y, 0.0f)
+                .color(255, 255, 255, 255)
+                .uv(u, v)
+                .overlay(OverlayTexture.NO_OVERLAY)
+                .light(packedLight)
+                .normal(normalMatrix, 0, 1, 0)
+                .endVertex();
     }
 }

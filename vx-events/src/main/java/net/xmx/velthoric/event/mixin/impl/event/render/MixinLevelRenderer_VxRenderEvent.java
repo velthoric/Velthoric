@@ -38,7 +38,10 @@ public class MixinLevelRenderer_VxRenderEvent {
         PoseStack poseStack = new PoseStack();
         float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
     /*?} else {*/
-    /*private void velthoric_fireRenderStageAfterSky(PoseStack poseStack, float partialTick, long finishTimeNano, boolean renderBlockOutline, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f projectionMatrix, CallbackInfo ci) {
+     /*/^*
+      * Fires the render stage event after sky rendering for legacy versions.
+      ^/
+     private void velthoric_fireRenderStageAfterSky(PoseStack poseStack, float partialTick, long finishTimeNano, boolean renderBlockOutline, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f projectionMatrix, CallbackInfo ci) {
     *//*?}*/
         VxRenderEvent.ClientRenderLevelStageEvent.EVENT.invoker().onRenderLevelStage(
                 new VxRenderEvent.ClientRenderLevelStageEvent(VxRenderEvent.ClientRenderLevelStageEvent.Stage.AFTER_SKY, (LevelRenderer)(Object)this, poseStack, partialTick, lightTexture, projectionMatrix)
@@ -63,7 +66,10 @@ public class MixinLevelRenderer_VxRenderEvent {
         PoseStack poseStack = new PoseStack();
         float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
     /*?} else {*/
-    /*private void velthoric_fireRenderStageAfterEntities(PoseStack poseStack, float partialTick, long finishTimeNano, boolean renderBlockOutline, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f projectionMatrix, CallbackInfo ci) {
+     /*/^*
+      * Fires the render stage event after entities rendering for legacy versions.
+      ^/
+     private void velthoric_fireRenderStageAfterEntities(PoseStack poseStack, float partialTick, long finishTimeNano, boolean renderBlockOutline, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f projectionMatrix, CallbackInfo ci) {
     *//*?}*/
         VxRenderEvent.ClientRenderLevelStageEvent.EVENT.invoker().onRenderLevelStage(
                 new VxRenderEvent.ClientRenderLevelStageEvent(VxRenderEvent.ClientRenderLevelStageEvent.Stage.AFTER_ENTITIES, (LevelRenderer)(Object)this, poseStack, partialTick, lightTexture, projectionMatrix)
@@ -83,7 +89,10 @@ public class MixinLevelRenderer_VxRenderEvent {
         PoseStack poseStack = new PoseStack();
         float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
     /*?} else {*/
-    /*private void velthoric_fireRenderStageAfterBlockEntities(PoseStack poseStack, float partialTick, long finishTimeNano, boolean renderBlockOutline, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f projectionMatrix, CallbackInfo ci) {
+     /*/^*
+      * Fires the render stage event after block entities rendering for legacy versions.
+      ^/
+     private void velthoric_fireRenderStageAfterBlockEntities(PoseStack poseStack, float partialTick, long finishTimeNano, boolean renderBlockOutline, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f projectionMatrix, CallbackInfo ci) {
     *//*?}*/
         VxRenderEvent.ClientRenderLevelStageEvent.EVENT.invoker().onRenderLevelStage(
                 new VxRenderEvent.ClientRenderLevelStageEvent(VxRenderEvent.ClientRenderLevelStageEvent.Stage.AFTER_BLOCK_ENTITIES, (LevelRenderer)(Object)this, poseStack, partialTick, lightTexture, projectionMatrix)
@@ -103,7 +112,10 @@ public class MixinLevelRenderer_VxRenderEvent {
         PoseStack poseStack = new PoseStack();
         float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
     /*?} else {*/
-    /*private void velthoric_fireRenderStageAfterParticles(PoseStack poseStack, float partialTick, long finishTimeNano, boolean renderBlockOutline, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f projectionMatrix, CallbackInfo ci) {
+     /*/^*
+      * Fires the render stage event after particles rendering for legacy versions.
+      ^/
+     private void velthoric_fireRenderStageAfterParticles(PoseStack poseStack, float partialTick, long finishTimeNano, boolean renderBlockOutline, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f projectionMatrix, CallbackInfo ci) {
     *//*?}*/
         VxRenderEvent.ClientRenderLevelStageEvent.EVENT.invoker().onRenderLevelStage(
                 new VxRenderEvent.ClientRenderLevelStageEvent(VxRenderEvent.ClientRenderLevelStageEvent.Stage.AFTER_PARTICLES, (LevelRenderer)(Object)this, poseStack, partialTick, lightTexture, projectionMatrix)
@@ -123,7 +135,10 @@ public class MixinLevelRenderer_VxRenderEvent {
         PoseStack poseStack = new PoseStack();
         float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
     /*?} else {*/
-    /*private void velthoric_fireRenderStageAfterWeather(PoseStack poseStack, float partialTick, long finishTimeNano, boolean renderBlockOutline, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f projectionMatrix, CallbackInfo ci) {
+     /*/^*
+      * Fires the render stage event after weather rendering for legacy versions.
+      ^/
+     private void velthoric_fireRenderStageAfterWeather(PoseStack poseStack, float partialTick, long finishTimeNano, boolean renderBlockOutline, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f projectionMatrix, CallbackInfo ci) {
     *//*?}*/
         VxRenderEvent.ClientRenderLevelStageEvent.EVENT.invoker().onRenderLevelStage(
                 new VxRenderEvent.ClientRenderLevelStageEvent(VxRenderEvent.ClientRenderLevelStageEvent.Stage.AFTER_WEATHER, (LevelRenderer)(Object)this, poseStack, partialTick, lightTexture, projectionMatrix)
@@ -139,7 +154,10 @@ public class MixinLevelRenderer_VxRenderEvent {
         PoseStack poseStack = new PoseStack();
         float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
     /*?} else {*/
-    /*private void velthoric_fireRenderStageLevelLast(PoseStack poseStack, float partialTick, long finishTimeNano, boolean renderBlockOutline, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f projectionMatrix, CallbackInfo ci) {
+     /*/^*
+      * Fires the level last render stage event for legacy versions.
+      ^/
+     private void velthoric_fireRenderStageLevelLast(PoseStack poseStack, float partialTick, long finishTimeNano, boolean renderBlockOutline, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f projectionMatrix, CallbackInfo ci) {
     *//*?}*/
         VxRenderEvent.ClientRenderLevelStageEvent.EVENT.invoker().onRenderLevelStage(
                 new VxRenderEvent.ClientRenderLevelStageEvent(VxRenderEvent.ClientRenderLevelStageEvent.Stage.LEVEL_LAST, (LevelRenderer)(Object)this, poseStack, partialTick, lightTexture, projectionMatrix)

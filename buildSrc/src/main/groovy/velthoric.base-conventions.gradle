@@ -3,43 +3,12 @@ plugins {
     id 'maven-publish'
 }
 
-// Load Stonecutter properties
+// Properties must be loaded by root build.gradle before any convention plugin runs.
 if (!rootProject.ext.has("stonecutter_properties_loaded")) {
-    rootProject.ext.set("stonecutter_properties_loaded", true)
-
-    def activeVersion = null
-    def stonecutterFile = rootProject.file("stonecutter.gradle")
-    if (stonecutterFile.exists()) {
-        def matcher = stonecutterFile.text =~ /stonecutter\.active\s*["']([^"']+)["']/
-        if (matcher.find()) {
-            activeVersion = matcher.group(1).trim()
-        }
-    }
-
-    if (activeVersion == null) {
-        logger.warn("Failed to find active version in stonecutter.gradle. Falling back to default version '1.21.1'.")
-        activeVersion = "1.21.1"
-    }
-
-    def activePropsFile = rootProject.file("versions/${activeVersion}/gradle.properties")
-
-    if (activePropsFile.exists()) {
-        def activeProps = new Properties()
-        activePropsFile.withInputStream { activeProps.load(it) }
-        activeProps.each { key, val ->
-            rootProject.ext.set(key, val)
-        }
-    } else {
-        logger.warn("Stonecutter properties file not found at: ${activePropsFile.absolutePath}")
-    }
-
-    rootProject.ext.isPlatformEnabled = { String platform ->
-        def platforms = rootProject.ext.has("enabled_platforms") ? rootProject.ext.get("enabled_platforms") : ""
-        return platforms.split(',').contains(platform)
-    }
+    throw new GradleException("[Velthoric] Root project properties missing - was build.gradle evaluated?")
 }
 
-// Load project-specific properties if it's a versioned project or Stonecutter node
+// Load the version-specific gradle.properties for subprojects.
 def currentVersion = null
 if (project.projectDir.parentFile?.name == "versions") {
     currentVersion = project.name

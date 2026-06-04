@@ -1,4 +1,4 @@
-if (!rootProject.isPlatformEnabled("fabric")) return
+if (!rootProject.ext.has("enabled_platforms") || !rootProject.ext.enabled_platforms.split(',').contains("fabric")) return
 
 apply plugin: 'velthoric.minecraft-conventions'
 apply plugin: 'velthoric.shadow-conventions'
@@ -33,7 +33,7 @@ loom {
         }
     }
 
-    accessWidenerPath = project(":common").loom.accessWidenerPath
+    accessWidenerPath = project(":common").file("src/main/resources/velthoric.accesswidener")
 }
 
 configurations {
@@ -73,8 +73,8 @@ dependencies {
     common(project(path: ":vx-events:${project.minecraft_version}", configuration: "namedElements")) { transitive false }
     shadowBundle project(path: ":vx-events:${project.minecraft_version}", configuration: "transformProductionFabric")
 
-    common(project(path: ':common', configuration: 'namedElements')) { transitive false }
-    shadowBundle project(path: ':common', configuration: 'transformProductionFabric')
+    common(project(path: ":common:${project.minecraft_version}", configuration: 'namedElements')) { transitive false }
+    shadowBundle project(path: ":common:${project.minecraft_version}", configuration: 'transformProductionFabric')
 }
 
 processResources {

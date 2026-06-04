@@ -35,7 +35,11 @@ public abstract class MixinEntityRenderer {
     private <T extends Entity> void velthoric_invertPhysicsRotationBeforeCameraOrientation(
             T entity, Component displayName, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, float partialTick, CallbackInfo ci) {
 
+        /*? if >=1.21.1 {*/
         float partialTicks = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(true);
+        /*? } else {*/
+         /*float partialTicks = Minecraft.getInstance().getFrameTime();
+        *//*? }*/
         VxMountingRenderUtils.INSTANCE.ifMountedOnBody(entity, partialTicks, physQuat -> {
             Quaternionf physRotation = VxConversions.toJoml(physQuat, new Quaternionf());
             physRotation.conjugate(); // Invert the rotation
