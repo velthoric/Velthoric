@@ -2,7 +2,7 @@
  * This file is part of Velthoric.
  * Licensed under LGPL 3.0.
  */
-package net.xmx.velthoric.event.mixin.impl.event.debug;
+package net.xmx.velthoric.event.mixin.impl.debug;
 
 import net.minecraft.client.gui.components.DebugScreenOverlay;
 import net.xmx.velthoric.event.api.VxF3ScreenAdditionEvent;
@@ -13,13 +13,20 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.util.List;
 
 /**
+ * Mixin to intercept gathering information for the client side debug F3 overlay screen.
+ *
  * @author xI-Mx-Ix
  */
 @Mixin(DebugScreenOverlay.class)
-public class MixinDebugScreenOverlay_VxF3ScreenAdditionEvent {
+public class MixinDebugScreenOverlay {
 
+    /**
+     * Intercepts the return of getGameInformation to invoke the F3 addition event.
+     *
+     * @param cir the return callback containing the list of active debug info lines
+     */
     @Inject(method = "getGameInformation", at = @At("RETURN"))
-    private void velthoric_fireAddDebugInfoEvent(CallbackInfoReturnable<List<String>> cir) {
+    private void velthoric$onGetGameInformation(CallbackInfoReturnable<List<String>> cir) {
         List<String> gameInfo = cir.getReturnValue();
         VxF3ScreenAdditionEvent.AddDebugInfo.EVENT.invoker().onAddDebugInfo(new VxF3ScreenAdditionEvent.AddDebugInfo(gameInfo));
     }

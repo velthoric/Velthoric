@@ -46,15 +46,19 @@ public class VxPhysicsGunBeamRenderer {
     private static final RVec3 INTERPOLATED_POSITION = new RVec3();
     private static final Quat INTERPOLATED_ROTATION = new Quat();
 
+    /**
+     * Registers the render event listeners.
+     */
     public static void registerEvents() {
-        VxRenderEvent.ClientRenderLevelStageEvent.EVENT.register(VxPhysicsGunBeamRenderer::onRenderLevelStage);
+        VxRenderEvent.EVENT.register(VxPhysicsGunBeamRenderer::onRenderLevel);
     }
 
     /**
      * Main render callback. Handles drawing beams for all active grabs and attempting grabs.
+     *
+     * @param event The render level event.
      */
-    public static void onRenderLevelStage(VxRenderEvent.ClientRenderLevelStageEvent event) {
-        if (event.getStage() != VxRenderEvent.ClientRenderLevelStageEvent.Stage.AFTER_ENTITIES) return;
+    public static void onRenderLevel(VxRenderEvent event) {
         Minecraft mc = Minecraft.getInstance();
         Player localPlayer = mc.player;
         if (localPlayer == null || mc.level == null) return;

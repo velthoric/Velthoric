@@ -57,18 +57,16 @@ public class VxPhysicsRenderDispatcher {
      * Registers the render event listeners.
      */
     public static void registerEvents() {
-        VxRenderEvent.ClientRenderLevelStageEvent.EVENT.register(VxPhysicsRenderDispatcher::onRenderLevelStage);
+        VxRenderEvent.EVENT.register(VxPhysicsRenderDispatcher::onRenderLevel);
     }
 
     /**
      * Main event hook called by the rendering pipeline.
      * Prepares the render context and iterates over all physics bodies.
      *
-     * @param event The render level stage event.
+     * @param event The render level event.
      */
-    private static void onRenderLevelStage(VxRenderEvent.ClientRenderLevelStageEvent event) {
-        if (event.getStage() != VxRenderEvent.ClientRenderLevelStageEvent.Stage.AFTER_ENTITIES) return;
-
+    private static void onRenderLevel(VxRenderEvent event) {
         Minecraft mc = Minecraft.getInstance();
         Level level = mc.level;
         if (level == null || mc.getCameraEntity() == null) return;
