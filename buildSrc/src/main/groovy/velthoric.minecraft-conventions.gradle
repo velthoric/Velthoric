@@ -31,3 +31,14 @@ dependencies {
         parchment("org.parchmentmc.data:parchment-${project.minecraft_version}:${project.parchment_version}@zip")
     }
 }
+
+processResources {
+    inputs.property "target_minecraft_version", stonecutter.current.version
+
+    // Rename structure to structures for targets older than 1.21
+    filesMatching("data/minecraft/structure/**") { fcd ->
+        if (stonecutter.eval(stonecutter.current.version, "<1.21")) {
+            fcd.path = fcd.path.replace("data/minecraft/structure/", "data/minecraft/structures/")
+        }
+    }
+}
