@@ -7,105 +7,120 @@ package net.xmx.velthoric.event.api;
 import com.mojang.blaze3d.vertex.PoseStack;
 import dev.architectury.event.Event;
 import dev.architectury.event.EventFactory;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.LightTexture;
 import org.joml.Matrix4f;
 
 /**
- * Central registry for client-side rendering events.
+ * Event fired during the 3D level rendering process on the client side.
+ * This event triggers specifically after rendering entities, allowing custom world-space rendering.
  *
  * @author xI-Mx-Ix
  */
 public class VxRenderEvent {
 
     /**
-     * Fired when the 2D HUD (GUI) is rendered.
-     * This allows rendering overlays like speedometers or other custom UI elements.
+     * The single global event instance.
      */
-    public static class ClientRenderHudEvent {
-        public static final Event<Listener> EVENT = EventFactory.createLoop();
+    public static final Event<Listener> EVENT = EventFactory.createLoop();
 
-        private final GuiGraphics guiGraphics;
-        private final float partialTick;
+    /**
+     * The LevelRenderer instance responsible for rendering the world.
+     */
+    private final LevelRenderer levelRenderer;
 
-        public ClientRenderHudEvent(GuiGraphics guiGraphics, float partialTick) {
-            this.guiGraphics = guiGraphics;
-            this.partialTick = partialTick;
-        }
+    /**
+     * The PoseStack instance containing current rendering transformations.
+     */
+    private final PoseStack poseStack;
 
-        public GuiGraphics getGuiGraphics() {
-            return guiGraphics;
-        }
+    /**
+     * The partial ticks interpolation factor.
+     */
+    private final float partialTick;
 
-        public float getPartialTick() {
-            return partialTick;
-        }
+    /**
+     * The current projection matrix.
+     */
+    private final Matrix4f projectionMatrix;
 
-        @FunctionalInterface
-        public interface Listener {
-            void onRenderHud(ClientRenderHudEvent event);
-        }
+    /**
+     * The light texture currently bound and used for rendering.
+     */
+    private final LightTexture lightTexture;
+
+    /**
+     * Constructs a new VxRenderEvent instance.
+     *
+     * @param levelRenderer    the level renderer
+     * @param poseStack        the current pose stack
+     * @param partialTick      the partial ticks interpolation factor
+     * @param lightTexture     the active light texture
+     * @param projectionMatrix the projection matrix
+     */
+    public VxRenderEvent(LevelRenderer levelRenderer, PoseStack poseStack, float partialTick, LightTexture lightTexture, Matrix4f projectionMatrix) {
+        this.levelRenderer = levelRenderer;
+        this.poseStack = poseStack;
+        this.partialTick = partialTick;
+        this.lightTexture = lightTexture;
+        this.projectionMatrix = projectionMatrix;
     }
 
     /**
-     * Fired at different stages of the level rendering process on the client (3D World).
+     * Gets the LevelRenderer instance.
+     *
+     * @return the level renderer
      */
-    public static class ClientRenderLevelStageEvent {
-        public static final Event<Listener> EVENT = EventFactory.createLoop();
+    public LevelRenderer getLevelRenderer() {
+        return levelRenderer;
+    }
 
-        private final Stage stage;
-        private final LevelRenderer levelRenderer;
-        private final PoseStack poseStack;
-        private final float partialTick;
-        private final Matrix4f projectionMatrix;
-        private final LightTexture lightTexture;
+    /**
+     * Gets the current PoseStack.
+     *
+     * @return the pose stack
+     */
+    public PoseStack getPoseStack() {
+        return poseStack;
+    }
 
-        public ClientRenderLevelStageEvent(Stage stage, LevelRenderer levelRenderer, PoseStack poseStack, float partialTick, LightTexture lightTexture, Matrix4f projectionMatrix) {
-            this.stage = stage;
-            this.levelRenderer = levelRenderer;
-            this.poseStack = poseStack;
-            this.partialTick = partialTick;
-            this.lightTexture = lightTexture;
-            this.projectionMatrix = projectionMatrix;
-        }
+    /**
+     * Gets the partial tick interpolation factor.
+     *
+     * @return the partial tick
+     */
+    public float getPartialTick() {
+        return partialTick;
+    }
 
-        public Stage getStage() {
-            return stage;
-        }
+    /**
+     * Gets the projection matrix.
+     *
+     * @return the projection matrix
+     */
+    public Matrix4f getProjectionMatrix() {
+        return projectionMatrix;
+    }
 
-        public LevelRenderer getLevelRenderer() {
-            return levelRenderer;
-        }
+    /**
+     * Gets the light texture.
+     *
+     * @return the light texture
+     */
+    public LightTexture getLightTexture() {
+        return lightTexture;
+    }
 
-        public PoseStack getPoseStack() {
-            return poseStack;
-        }
-
-        public float getPartialTick() {
-            return partialTick;
-        }
-
-        public Matrix4f getProjectionMatrix() {
-            return projectionMatrix;
-        }
-
-        public LightTexture getLightTexture() {
-            return lightTexture;
-        }
-
-        public enum Stage {
-            AFTER_SKY,
-            AFTER_ENTITIES,
-            AFTER_BLOCK_ENTITIES,
-            AFTER_PARTICLES,
-            AFTER_WEATHER,
-            LEVEL_LAST
-        }
-
-        @FunctionalInterface
-        public interface Listener {
-            void onRenderLevelStage(ClientRenderLevelStageEvent event);
-        }
+    /**
+     * Listener interface for handling VxRenderEvent.
+     */
+    @FunctionalInterface
+    public interface Listener {
+        /**
+         * Called when the level rendering process reaches the post-entity stage.
+         *
+         * @param event the render event details
+         */
+        void onRenderLevel(VxRenderEvent event);
     }
 }
