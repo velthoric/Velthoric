@@ -61,6 +61,7 @@ jobs:
     uses: ./.github/workflows/_reusable-gametests.yml
     with:
       mc_version: ${{ matrix.mc_version }}
+      java_version: ${{ matrix.java_version }}
       natives-artifact-prefix: "velthoric-natives-${{ github.run_id }}"
       loaders: ${{ toJson(matrix.loaders) }}
 
