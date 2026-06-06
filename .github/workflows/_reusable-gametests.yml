@@ -19,10 +19,6 @@ on:
         description: "Minecraft version target."
         type: string
         required: true
-      java_version:
-        description: "Java version to use."
-        type: string
-        required: true
       natives-artifact-prefix:
         description: "Prefix of the native library artifacts to download."
         type: string
@@ -45,11 +41,15 @@ jobs:
       - name: "Checkout Repository"
         uses: actions/checkout@v4
 
-      - name: "Setup Java ${{ inputs.java_version }} (Temurin)"
+      # Setup Java toolchains to allow building and executing with the correct target Java versions
+      - name: "Setup Java JDKs"
         uses: actions/setup-java@v4
         with:
-          java-version: "${{ inputs.java_version }}"
           distribution: 'temurin'
+          java-version: |
+            17
+            21
+            25
           cache: 'gradle'
 
       - name: "Grant Gradle Wrapper Execute Permission"

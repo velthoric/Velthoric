@@ -44,8 +44,10 @@ def targetJavaInt = Integer.parseInt(targetJavaVersion.getMajorVersion())
 java {
     withSourcesJar()
 
-    sourceCompatibility = targetJavaVersion
-    targetCompatibility = targetJavaVersion
+    // Configure Java Toolchain dynamically
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(targetJavaInt))
+    }
 }
 
 // Ensure the compiler uses the specified release target to compile correct bytecode definitions
