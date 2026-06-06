@@ -17,11 +17,15 @@ jobs:
       - name: "Checkout Repository"
         uses: actions/checkout@v4
 
-      - name: "Setup Java 25 (Temurin)"
+      # Setup Java toolchains to allow building and executing with the correct target Java versions
+      - name: "Setup Java JDKs"
         uses: actions/setup-java@v4
         with:
-          java-version: '25'
           distribution: 'temurin'
+          java-version: |
+            17
+            21
+            25
           cache: 'gradle'
 
       - name: "Grant Gradle Wrapper Execute Permission"
