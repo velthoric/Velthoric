@@ -10,7 +10,7 @@
 #
 # Inputs:
 #   mc_version:              Minecraft version to build.
-#   natives-artifact-prefix: Prefix of the native artifacts to download and merge.
+#   natives-artifact-prefix: Prefix of the native library artifacts to download.
 #   retention-days:          How long to retain the assembled JAR artifact.
 
 name: "Reusable - Build Mod"
@@ -66,28 +66,14 @@ jobs:
           path: vx-native/prebuilt-natives
           merge-multiple: true
 
-      # Build all enabled loaders for this MC version in one pass.
-      # Gradle only builds the subprojects that pass the enabled_platforms guard
-      # at the top of each loader build.gradle, so no loader is hardcoded here.
-      - name: "Build Mod JARs"
-        run: ./gradlew build -x :vx-native:cmakeBuild
-
-      # Collect all final remapped JARs for the active MC version across every
-      # enabled loader. The pattern is intentionally loader-agnostic so that
-      # adding a new loader (e.g. quilt) requires no changes to this file.
-      - name: "Collect Release JARs"
-        run: |
-          mkdir -p release-jars
-          find . -path "*/build/libs/*.jar" \
-            -name "velthoric-${{ inputs.mc_version }}-*" \
-            -not -name "*-dev.jar" \
-            -not -name "*-shadow.jar" \
-            -not -name "*-dev-shadow.jar" \
-            -exec cp {} release-jars/ \;
+      # Build and collect only the configured release artifacts (e.g., fabric and neoforge jars).
+      # This dynamically executes the correct remapJar tasks and copies their outputs.
+      - name: "Build and Collect Mod JARs"
+        run: ./gradlew collectReleaseArtifacts -x :vx-native:cmakeBuild
 
       - name: "Upload Assembled JARs"
         uses: actions/upload-artifact@v4
         with:
           name: "velthoric-jars-${{ inputs.mc_version }}-${{ github.run_id }}"
-          path: release-jars/*.jar
+          path: build/release-jars/*.jar
           retention-days: ${{ inputs.retention-days }}

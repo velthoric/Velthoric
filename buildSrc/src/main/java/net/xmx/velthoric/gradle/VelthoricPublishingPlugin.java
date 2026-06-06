@@ -10,6 +10,7 @@ import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.tasks.TaskProvider;
+import org.gradle.api.tasks.Copy;
 
 /**
  * The primary entry point for the Velthoric Publishing Plugin.
@@ -108,6 +109,12 @@ public class VelthoricPublishingPlugin implements Plugin<Project> {
             // Completion phase
             task.doLast(t -> project.getLogger().lifecycle("Velthoric Release Pipeline: Completed successfully."));
         });
+
+        // Register global lifecycle task to collect all subproject release artifacts dynamically
+        project.getTasks().register("collectReleaseArtifacts", task -> {
+            task.setGroup("publishing");
+            task.setDescription("Collects all configured subproject release artifacts into the root build/release-jars directory.");
+        });
     }
 
     /**
@@ -192,6 +199,24 @@ public class VelthoricPublishingPlugin implements Plugin<Project> {
                 String details = (hasArtifact ? (isSnapshot ? "Maven Snapshot" : "Platforms + Maven") : "") + (!isSnapshot && isGitHubLead ? (hasArtifact ? " + " : "") + "GitHub Only" : "");
                 project.getLogger().lifecycle("Velthoric: Registered module '{}' for publication ({}).", project.getName(), details);
             });
+
+            // Register task to copy configured artifacts to the root project's build directory
+            if (hasArtifact) {
+                String copyTaskName = "copyReleaseArtifactToRoot";
+                p.getTasks().register(copyTaskName, Copy.class, copyTask -> {
+                    // Copy primary artifact
+                    copyTask.from(extension.getArtifact());
+                    // Copy sources artifact
+                    copyTask.from(p.getTasks().named("sourcesJar"));
+
+                    copyTask.into(p.getRootProject().getLayout().getBuildDirectory().dir("release-jars"));
+                });
+
+                // Link the copy task to the root's collectReleaseArtifacts task
+                p.getRootProject().getTasks().named("collectReleaseArtifacts", rootTask -> {
+                    rootTask.dependsOn(p.getTasks().named(copyTaskName));
+                });
+            }
         });
     }
 }
