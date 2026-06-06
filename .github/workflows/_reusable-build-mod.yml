@@ -51,6 +51,9 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
+      - name: "Grant Gradle Wrapper Execute Permission"
+        run: chmod +x gradlew
+
       - name: "Set Active Stonecutter Version"
         run: ./gradlew stonecutterSwitchTo${{ inputs.mc_version }}
 
@@ -62,9 +65,6 @@ jobs:
           pattern: "${{ inputs.natives-artifact-prefix }}-*"
           path: vx-native/prebuilt-natives
           merge-multiple: true
-
-      - name: "Grant Gradle Wrapper Execute Permission"
-        run: chmod +x gradlew
 
       # Build all enabled loaders for this MC version in one pass.
       # Gradle only builds the subprojects that pass the enabled_platforms guard

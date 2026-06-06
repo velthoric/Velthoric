@@ -88,6 +88,9 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
+      - name: "Grant Gradle Wrapper Execute Permission"
+        run: chmod +x gradlew
+
       - name: "Set Active Stonecutter Version"
         run: ./gradlew stonecutterSwitchTo${{ matrix.mc_version }}
 
@@ -99,9 +102,6 @@ jobs:
           pattern: "velthoric-natives-${{ github.run_id }}-*"
           path: vx-native/prebuilt-natives
           merge-multiple: true
-
-      - name: "Grant Gradle Wrapper Execute Permission"
-        run: chmod +x gradlew
 
       # Runs the full Velthoric publishing pipeline via the custom buildSrc plugin.
       # The plugin automatically configures CurseForge, Modrinth, GitHub Releases,

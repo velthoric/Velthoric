@@ -84,6 +84,9 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
+      - name: "Grant Gradle Wrapper Execute Permission"
+        run: chmod +x gradlew
+
       - name: "Set Active Stonecutter Version"
         run: ./gradlew stonecutterSwitchTo${{ matrix.mc_version }}
 
@@ -93,9 +96,6 @@ jobs:
           pattern: "velthoric-natives-${{ github.run_id }}-*"
           path: vx-native/prebuilt-natives
           merge-multiple: true
-
-      - name: "Grant Gradle Wrapper Execute Permission"
-        run: chmod +x gradlew
 
       # publishVelthoric automatically targets only the enabled loaders for the
       # active MC version (fabric+forge for 1.20.1, fabric+neoforge for 1.21.1, etc.)

@@ -48,6 +48,9 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
+      - name: "Grant Gradle Wrapper Execute Permission"
+        run: chmod +x gradlew
+
       - name: "Set Active Stonecutter Version"
         run: ./gradlew stonecutterSwitchTo${{ inputs.mc_version }}
 
@@ -59,9 +62,6 @@ jobs:
           pattern: "${{ inputs.natives-artifact-prefix }}-*"
           path: vx-native/prebuilt-natives
           merge-multiple: true
-
-      - name: "Grant Gradle Wrapper Execute Permission"
-        run: chmod +x gradlew
 
       - name: "Run GameTest Server"
         run: ./gradlew ${{ matrix.task }} -x :vx-native:cmakeBuild
