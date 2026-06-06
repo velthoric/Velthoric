@@ -1,6 +1,8 @@
-plugins {
-    id 'velthoric.minecraft-conventions'
+if (!stonecutter.current.isActive) {
+    return
 }
+
+apply plugin: 'velthoric.minecraft-conventions'
 
 group = 'net.xmx.vxevents'
 version = '0.0.1'
@@ -15,8 +17,8 @@ architectury {
 
 dependencies {
     // Use Fabric @Environment only; do not use other Fabric Loader classes.
-    modImplementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
-    modImplementation "dev.architectury:architectury:${project.architectury_api_version}"
+    vxImplementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
+    vxImplementation "dev.architectury:architectury:${project.architectury_api_version}"
 
     def mixinExtras = "io.github.llamalad7:mixinextras-fabric:${project.mixinextras_version}"
     annotationProcessor(mixinExtras)

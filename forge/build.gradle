@@ -29,8 +29,6 @@ loom {
             programArgs '--username', 'dev'
         }
     }
-
-    accessWidenerPath = project(":common").file("src/main/resources/velthoric.accesswidener")
 }
 
 architectury {
@@ -61,16 +59,16 @@ dependencies {
     implementation(mixinExtras)
     include(mixinExtras)
 
-    modImplementation "dev.architectury:architectury-forge:${project.architectury_api_version}"
+    vxImplementation "dev.architectury:architectury-forge:${project.architectury_api_version}"
 
     minecraftRuntimeLibraries(project(path: ":vx-native"))
     shadowBundle project(path: ":vx-native")
 
-    common(project(path: ":vx-events:${project.minecraft_version}", configuration: "namedElements")) { transitive false }
-    shadowBundle project(path: ":vx-events:${project.minecraft_version}", configuration: "transformProductionForge")
+    common(vxProject(":vx-events:${project.minecraft_version}", "namedElements")) { transitive false }
+    shadowBundle vxProject(":vx-events:${project.minecraft_version}", "transformProductionForge")
 
-    common(project(path: ":common:${project.minecraft_version}", configuration: 'namedElements')) { transitive false }
-    shadowBundle project(path: ":common:${project.minecraft_version}", configuration: 'transformProductionForge')
+    common(vxProject(":common:${project.minecraft_version}", "namedElements")) { transitive false }
+    shadowBundle vxProject(":common:${project.minecraft_version}", "transformProductionForge")
 }
 
 processResources {

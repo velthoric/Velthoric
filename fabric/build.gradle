@@ -32,8 +32,6 @@ loom {
             vmArg "-XX:+DebugNonSafepoints"
         }
     }
-
-    accessWidenerPath = project(":common").file("src/main/resources/velthoric.accesswidener")
 }
 
 configurations {
@@ -52,24 +50,24 @@ configurations {
 }
 
 dependencies {
-    modImplementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
+    vxImplementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
 
     def mixinExtras = "io.github.llamalad7:mixinextras-fabric:${project.mixinextras_version}"
     annotationProcessor(mixinExtras)
     implementation(mixinExtras)
     include(mixinExtras)
 
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-    modImplementation "dev.architectury:architectury-fabric:${project.architectury_api_version}"
+    vxImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    vxImplementation "dev.architectury:architectury-fabric:${project.architectury_api_version}"
 
     minecraftRuntimeLibraries(project(path: ":vx-native"))
     shadowBundle project(path: ":vx-native")
 
-    common(project(path: ":vx-events:${project.minecraft_version}", configuration: "namedElements")) { transitive false }
-    shadowBundle project(path: ":vx-events:${project.minecraft_version}", configuration: "transformProductionFabric")
+    common(vxProject(":vx-events:${project.minecraft_version}", "namedElements")) { transitive false }
+    shadowBundle vxProject(":vx-events:${project.minecraft_version}", "transformProductionFabric")
 
-    common(project(path: ":common:${project.minecraft_version}", configuration: 'namedElements')) { transitive false }
-    shadowBundle project(path: ":common:${project.minecraft_version}", configuration: 'transformProductionFabric')
+    common(vxProject(":common:${project.minecraft_version}", "namedElements")) { transitive false }
+    shadowBundle vxProject(":common:${project.minecraft_version}", "transformProductionFabric")
 }
 
 processResources {
@@ -123,5 +121,5 @@ afterEvaluate {
 velthoricPublishing {
     loader = "fabric"
     displayName = "Fabric"
-    artifact = tasks.named("remapJar")
+    artifact = project.mainArchiveTask
 }

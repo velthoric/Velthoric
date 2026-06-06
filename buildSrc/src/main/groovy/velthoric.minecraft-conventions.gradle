@@ -1,14 +1,60 @@
 plugins {
     id 'velthoric.base-conventions'
-    id 'dev.architectury.loom'
     id 'architectury-plugin'
+}
+
+def isModern = stonecutter.eval(stonecutter.current.version, ">=26.1")
+
+// Apply the correct Loom plugin
+if (isModern) {
+    plugins.apply 'dev.architectury.loom-no-remap'
+} else {
+    plugins.apply 'dev.architectury.loom'
+}
+
+// Dynamically reference the correct main archive task provider for publishing
+project.ext.mainArchiveTask = tasks.named(isModern ? "jar" : "remapJar")
+
+// Register custom vxImplementation helper
+dependencies.metaClass.vxImplementation = { Object dependencyNotation, Closure configureClosure = null ->
+    def targetConfig = isModern ? "implementation" : "modImplementation"
+    if (configureClosure != null) {
+        delegate."$targetConfig"(dependencyNotation, configureClosure)
+    } else {
+        delegate."$targetConfig"(dependencyNotation)
+    }
+}
+
+// Register custom vxProject helper to dynamically apply legacy configurations
+project.ext.vxProject = { String projectPath, String legacyConfig = null ->
+    def dep = project.dependencies.project(path: projectPath)
+    if (!isModern && legacyConfig != null) {
+        dep.targetConfiguration = legacyConfig
+    }
+    return dep
 }
 
 loom {
     silentMojangMappingsLicense()
 
-    mixin {
-        useLegacyMixinAp = true
+    if (!isModern) {
+        mixin {
+            useLegacyMixinAp = (project.name in ["fabric", "forge", "neoforge"])
+        }
+    }
+
+    // Dynamic, version-specific access widener injection
+    def awFile = rootProject.file("versions/${project.minecraft_version}/velthoric.accesswidener")
+    if (awFile.exists()) {
+        // Set compile-time path
+        accessWidenerPath = awFile
+
+        // Dynamically inject this specific file into the final jar and rename it
+        project.tasks.named("processResources") {
+            from(awFile) {
+                rename { "velthoric.accesswidener" }
+            }
+        }
     }
 
     def refmaps = [
@@ -26,9 +72,11 @@ loom {
 dependencies {
     minecraft "net.minecraft:minecraft:${project.minecraft_version}"
 
-    mappings loom.layered {
-        officialMojangMappings()
-        parchment("org.parchmentmc.data:parchment-${project.minecraft_version}:${project.parchment_version}@zip")
+    if (!isModern) {
+        mappings loom.layered {
+            officialMojangMappings()
+            parchment("org.parchmentmc.data:parchment-${project.minecraft_version}:${project.parchment_version}@zip")
+        }
     }
 }
 

@@ -1,7 +1,9 @@
-plugins {
-    id 'velthoric.minecraft-conventions'
-    id 'net.xmx.velthoric.publishing'
+if (!stonecutter.current.isActive) {
+    return
 }
+
+apply plugin: 'velthoric.minecraft-conventions'
+apply plugin: 'net.xmx.velthoric.publishing'
 
 base {
     archivesName = "velthoric-${project.minecraft_version}-common"
@@ -16,19 +18,15 @@ dependencies {
     // We depend on Fabric Loader here to use the Fabric @Environment annotations,
     // which get remapped to the correct annotations on each platform.
     // Do NOT use other classes from Fabric Loader.
-    modImplementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
-    modImplementation "dev.architectury:architectury:${project.architectury_api_version}"
+    vxImplementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
+    vxImplementation "dev.architectury:architectury:${project.architectury_api_version}"
 
-    implementation project(path: ":vx-events:${project.minecraft_version}", configuration: "namedElements")
+    implementation vxProject(":vx-events:${project.minecraft_version}", "namedElements")
     implementation project(path: ":vx-native")
 
     def mixinExtras = "io.github.llamalad7:mixinextras-fabric:${project.mixinextras_version}"
     annotationProcessor(mixinExtras)
     implementation(mixinExtras)
-}
-
-loom {
-    accessWidenerPath = project(":common").file("src/main/resources/velthoric.accesswidener")
 }
 
 velthoricPublishing {

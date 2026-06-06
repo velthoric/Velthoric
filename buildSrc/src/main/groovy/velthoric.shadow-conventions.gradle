@@ -14,8 +14,19 @@ shadowJar {
     exclude 'win/**'
 }
 
-remapJar {
-    inputFile.set shadowJar.archiveFile
+def isModern = stonecutter.eval(stonecutter.current.version, ">=26.1")
+
+// Dynamically handle shadowing without referencing remapJar on 26.1+
+if (isModern) {
+    tasks.named("jar") {
+        dependsOn shadowJar
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+        from(zipTree(shadowJar.archiveFile))
+    }
+} else {
+    remapJar {
+        inputFile.set shadowJar.archiveFile
+    }
 }
 
 tasks.named("sourcesJar") {
