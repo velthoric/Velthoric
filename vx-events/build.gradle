@@ -24,3 +24,9 @@ dependencies {
     annotationProcessor(mixinExtras)
     implementation(mixinExtras)
 }
+
+loom {
+    mixin {
+        defaultRefmapName = "vx-events-refmap.json"
+    }
+}

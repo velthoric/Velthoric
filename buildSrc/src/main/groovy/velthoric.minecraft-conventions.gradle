@@ -39,7 +39,7 @@ loom {
 
     if (!isModern) {
         mixin {
-            useLegacyMixinAp = (project.name in ["fabric", "forge", "neoforge"])
+            useLegacyMixinAp = true
         }
     }
 
@@ -54,17 +54,6 @@ loom {
             from(awFile) {
                 rename { "velthoric.accesswidener" }
             }
-        }
-    }
-
-    def refmaps = [
-            'vx-events': 'vx-events-refmap.json',
-            'common'   : 'velthoric-refmap.json'
-    ]
-
-    refmaps.each { proj, refmap ->
-        if (project.name == proj) {
-            mixin.defaultRefmapName.set(refmap)
         }
     }
 }

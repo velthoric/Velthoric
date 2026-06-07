@@ -29,6 +29,12 @@ dependencies {
     implementation(mixinExtras)
 }
 
+loom {
+    mixin {
+        defaultRefmapName = "velthoric-common-refmap.json"
+    }
+}
+
 velthoricPublishing {
     loader = "common"
     publishGitHub = true
