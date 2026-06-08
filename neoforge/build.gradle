@@ -12,16 +12,18 @@ loom {
     runs {
         server {
             runDir "run/${project.minecraft_version}/server"
+            name "${project.minecraft_version} Server NeoForge"
         }
         gameTestServer {
             server()
-            name "GameTest Server"
+            name "${project.minecraft_version} GameTest Server NeoForge"
             runDir "run/${project.minecraft_version}/gametest"
             property "neoforge.enableGameTest", "true"
             property "neoforge.gameTestServer", "true"
         }
         client {
             runDir "run/${project.minecraft_version}/client"
+            name "${project.minecraft_version} Client NeoForge"
             programArgs '--username', 'dev'
         }
     }

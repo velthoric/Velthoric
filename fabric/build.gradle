@@ -17,17 +17,18 @@ loom {
     runs {
         server {
             runDir "run/${project.minecraft_version}/server"
+            name "${project.minecraft_version} Server Fabric"
         }
         gameTest {
             server()
-            name "GameTest Server"
+            name "${project.minecraft_version} GameTest Server Fabric"
             runDir "run/${project.minecraft_version}/gametest"
             property "fabric-api.gametest", "true"
         }
         client {
             runDir "run/${project.minecraft_version}/client"
+            name "${project.minecraft_version} Client Fabric"
             programArgs '--username', 'dev'
-
             vmArg "-XX:+UnlockDiagnosticVMOptions"
             vmArg "-XX:+DebugNonSafepoints"
         }

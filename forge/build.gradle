@@ -16,16 +16,18 @@ loom {
     runs {
         server {
             runDir "run/${project.minecraft_version}/server"
+            name "${project.minecraft_version} Server Forge"
         }
         gameTestServer {
             server()
-            name "GameTest Server"
+            name "${project.minecraft_version} GameTest Server Forge"
             runDir "run/${project.minecraft_version}/gametest"
             property "forge.enableGameTest", "true"
             property "forge.gameTestServer", "true"
         }
         client {
             runDir "run/${project.minecraft_version}/client"
+            name "${project.minecraft_version} Client Forge"
             programArgs '--username', 'dev'
         }
     }
