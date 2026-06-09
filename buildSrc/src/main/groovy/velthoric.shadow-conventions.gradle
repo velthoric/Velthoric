@@ -14,7 +14,7 @@ shadowJar {
     exclude 'win/**'
 }
 
-def isModern = stonecutter.eval(stonecutter.current.version, ">=26.1")
+def isModern = stonecutter.eval(project.minecraft_version, ">=26.1")
 
 // Dynamically handle shadowing without referencing remapJar on 26.1+
 if (isModern) {

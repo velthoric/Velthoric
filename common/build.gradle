@@ -1,7 +1,3 @@
-if (!stonecutter.current.isActive) {
-    return
-}
-
 apply plugin: 'velthoric.minecraft-conventions'
 apply plugin: 'net.xmx.velthoric.publishing'
 
@@ -10,8 +6,7 @@ base {
 }
 
 architectury {
-    def platforms = rootProject.ext.has("enabled_platforms") ? rootProject.ext.get("enabled_platforms") : (project.findProperty("enabled_platforms") ?: "")
-    common platforms.split(',')
+    common project.enabled_platforms.split(',')
 }
 
 dependencies {

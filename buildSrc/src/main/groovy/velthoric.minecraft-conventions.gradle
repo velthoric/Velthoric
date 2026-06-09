@@ -3,7 +3,11 @@ plugins {
     id 'architectury-plugin'
 }
 
-def isModern = stonecutter.eval(stonecutter.current.version, ">=26.1")
+architectury {
+    minecraft = project.minecraft_version
+}
+
+def isModern = stonecutter.eval(project.minecraft_version, ">=26.1")
 
 // Apply the correct Loom plugin
 if (isModern) {
@@ -70,11 +74,11 @@ dependencies {
 }
 
 processResources {
-    inputs.property "target_minecraft_version", stonecutter.current.version
+    inputs.property "target_minecraft_version", project.minecraft_version
 
     // Rename structure to structures for targets older than 1.21
     filesMatching("data/minecraft/structure/**") { fcd ->
-        if (stonecutter.eval(stonecutter.current.version, "<1.21")) {
+        if (stonecutter.eval(project.minecraft_version, "<1.21")) {
             fcd.path = fcd.path.replace("data/minecraft/structure/", "data/minecraft/structures/")
         }
     }

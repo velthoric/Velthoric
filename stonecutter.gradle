@@ -2,3 +2,77 @@ plugins {
     id "dev.kikugie.stonecutter"
 }
 stonecutter.active "1.21.1"
+
+import groovy.json.JsonOutput
+
+/**
+ * Dynamically queries all configured Stonecutter target versions in the project.
+ *
+ * The task outputs a structured JSON matrix format prefixed with "JSON_MATRIX:"
+ * which can be reliably extracted and parsed by GitHub Actions CI pipelines.
+ */
+tasks.register("printStonecutterMatrix") {
+    group = "publishing"
+    description = "Generates a JSON matrix of registered Stonecutter versions, their Java versions, and enabled loaders."
+
+    doLast {
+        def sc = project.extensions.findByName("stonecutter")
+        if (sc == null) {
+            logger.error("Stonecutter extension was not found on the root project.")
+            return
+        }
+
+        def matrixList = []
+
+        // Retrieve all registered Minecraft versions
+        def versionsList = sc.versions.collect { it.version }.unique()
+
+        versionsList.each { version ->
+            def dir = new File(rootDir, "versions/${version}")
+            def propsFile = new File(dir, "gradle.properties")
+
+            def javaVer = "21" // default fallback
+            def loadersList = []
+
+            if (propsFile.exists()) {
+                def props = new Properties()
+                propsFile.withInputStream { props.load(it) }
+
+                if (props.containsKey("java_version")) {
+                    javaVer = props.getProperty("java_version").trim()
+                } else {
+                    logger.warn("Property 'java_version' is not set in ${propsFile.path}. Falling back to default Java 21 for ${version}.")
+                }
+
+                // Retrieve and parse enabled loaders from the gradle.properties of this version
+                if (props.containsKey("enabled_platforms")) {
+                    def platforms = props.getProperty("enabled_platforms").split(',').collect { it.trim() }
+                    platforms.each { platform ->
+                        def taskName = ""
+                        if (platform == "fabric") {
+                            taskName = ":fabric:${version}:runGameTest"
+                        } else if (platform == "forge") {
+                            taskName = ":forge:${version}:runGameTestServer"
+                        } else if (platform == "neoforge") {
+                            taskName = ":neoforge:${version}:runGameTestServer"
+                        }
+                        if (!taskName.isEmpty()) {
+                            loadersList << [loader: platform, task: taskName]
+                        }
+                    }
+                }
+            } else {
+                logger.warn("Missing gradle.properties for registered version ${version}. Falling back to default Java 21.")
+            }
+
+            matrixList << [
+                    mc_version: version,
+                    java_version: javaVer,
+                    loaders: loadersList
+            ]
+        }
+
+        // Output with the prefix expected by the CI pipeline
+        println "JSON_MATRIX:" + JsonOutput.toJson(matrixList)
+    }
+}

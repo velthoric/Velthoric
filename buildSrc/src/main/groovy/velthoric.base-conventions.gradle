@@ -3,30 +3,27 @@ plugins {
     id 'maven-publish'
 }
 
-// Properties must be loaded by root build.gradle before any convention plugin runs.
-if (!rootProject.ext.has("stonecutter_properties_loaded")) {
-    throw new GradleException("[Velthoric] Root project properties missing - was build.gradle evaluated?")
+// Stonecutter creates subprojects with identical names across branches.
+// We append the parent branch name to the group ID to prevent circular dependencies.
+if (project.parent != null && project.parent != rootProject) {
+    group = "${project.maven_group}.${project.parent.name}"
+} else {
+    group = project.maven_group
 }
+version = project.mod_version
 
-// Load the version-specific gradle.properties for subprojects.
-def currentVersion = null
-if (project.projectDir.parentFile?.name == "versions") {
-    currentVersion = project.name
-}
-
-if (currentVersion != null) {
-    def versionPropsFile = rootProject.file("versions/${currentVersion}/gradle.properties")
-    if (versionPropsFile.exists()) {
-        def versionProps = new Properties()
-        versionPropsFile.withInputStream { versionProps.load(it) }
-        versionProps.each { key, val ->
-            project.ext.set(key, val)
-        }
+// Stonecutter’s default templates assume a shared root configuration where properties are inherited automatically.
+// In this dedicated common branch, that inheritance does not apply.
+// Therefore, this step explicitly loads the properties into the subproject scope.
+// ... took me ~4 hours to find out (>.<)
+def versionPropsFile = rootProject.file("versions/${project.name}/gradle.properties")
+if (versionPropsFile.exists()) {
+    def versionProps = new Properties()
+    versionPropsFile.withInputStream { versionProps.load(it) }
+    versionProps.each { key, val ->
+        project.ext.set(key, val)
     }
 }
-
-group = project.maven_group
-version = project.mod_version
 
 // Resolve target Java version dynamically from the project properties
 def targetJava = project.hasProperty("java_version")

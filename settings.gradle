@@ -15,12 +15,7 @@ plugins {
 
 rootProject.name = 'Velthoric'
 
-include 'common'
-include 'fabric'
-include 'neoforge'
-include 'forge'
 include 'vx-native'
-include 'vx-events'
 
 stonecutter {
     kotlinController = false
@@ -29,7 +24,14 @@ stonecutter {
     create(rootProject) {
         versions "1.20.1", "1.21.1"
         vcsVersion = "1.21.1"
-        branch("vx-events")
         branch("common")
+        branch("vx-events")
+        branch("fabric")
+        branch("forge") {
+            versions "1.20.1"
+        }
+        branch("neoforge") {
+            versions "1.21.1"
+        }
     }
 }

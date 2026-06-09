@@ -1,5 +1,3 @@
-if (!rootProject.ext.has("enabled_platforms") || !rootProject.ext.enabled_platforms.split(',').contains("fabric")) return
-
 apply plugin: 'velthoric.minecraft-conventions'
 apply plugin: 'velthoric.shadow-conventions'
 apply plugin: 'net.xmx.velthoric.publishing'
@@ -102,6 +100,7 @@ afterEvaluate {
     publishing {
         publications {
             mavenJava(MavenPublication) {
+                groupId = project.maven_group
                 artifactId = base.archivesName.get()
                 from components.java
 
