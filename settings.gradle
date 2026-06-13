@@ -17,21 +17,44 @@ rootProject.name = 'Velthoric'
 
 include 'vx-native'
 
+// Helper function to read comma-separated properties safely
+def getListProp = { name ->
+    def val = providers.gradleProperty(name).getOrNull() ?: ""
+    return val.toString().split(',').collect { it.trim() }.findAll { !it.isEmpty() }
+}
+
+def commonVersions = getListProp("stonecutter_enabled_common_versions")
+def fabricVersions = getListProp("stonecutter_enabled_fabric_versions")
+def forgeVersions = getListProp("stonecutter_enabled_forge_versions")
+def neoforgeVersions = getListProp("stonecutter_enabled_neoforge_versions")
+
 stonecutter {
     kotlinController = false
     centralScript = "build.gradle"
 
     create(rootProject) {
-        versions "1.20.1", "1.21.1"
-        vcsVersion = "1.21.1"
+        if (!commonVersions.isEmpty()) {
+            versions(commonVersions as String[])
+            vcsVersion = commonVersions.last()
+        }
+
         branch("common")
         branch("vx-events")
-        branch("fabric")
-        branch("forge") {
-            versions "1.20.1"
+
+        if (!fabricVersions.isEmpty()) {
+            branch("fabric") {
+                versions(fabricVersions as String[])
+            }
         }
-        branch("neoforge") {
-            versions "1.21.1"
+        if (!forgeVersions.isEmpty()) {
+            branch("forge") {
+                versions(forgeVersions as String[])
+            }
+        }
+        if (!neoforgeVersions.isEmpty()) {
+            branch("neoforge") {
+                versions(neoforgeVersions as String[])
+            }
         }
     }
 }
