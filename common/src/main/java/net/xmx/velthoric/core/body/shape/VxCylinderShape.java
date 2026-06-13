@@ -41,6 +41,7 @@ public class VxCylinderShape extends VxCollisionShape {
         this.halfHeight = halfHeight;
         this.radius = radius;
         this.convexRadius = convexRadius;
+        compile();
     }
 
     @Override

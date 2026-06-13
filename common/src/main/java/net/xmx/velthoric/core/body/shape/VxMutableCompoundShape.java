@@ -38,16 +38,9 @@ public class VxMutableCompoundShape extends VxCollisionShape {
         return addShape(shape, position, Quat.sIdentity());
     }
 
-    /**
-     * Adds a child shape at the specified local position and rotation.
-     *
-     * @param shape    The child collision shape.
-     * @param position The local position of the child shape.
-     * @param rotation The local rotation of the child shape.
-     * @return This instance for chaining.
-     */
     public VxMutableCompoundShape addShape(VxCollisionShape shape, Vec3 position, Quat rotation) {
         children.add(new ChildShape(shape, position, rotation));
+        resetCachedShape();
         return this;
     }
 
@@ -55,9 +48,8 @@ public class VxMutableCompoundShape extends VxCollisionShape {
     protected ShapeSettings createSettings() {
         MutableCompoundShapeSettings settings = new MutableCompoundShapeSettings();
         for (ChildShape child : children) {
-            try (ShapeSettings childSettings = child.shape.createSettings()) {
-                settings.addShape(child.position, child.rotation, childSettings);
-            }
+            ShapeSettings childSettings = child.shape.createSettings();
+            settings.addShape(child.position, child.rotation, childSettings);
         }
         return settings;
     }

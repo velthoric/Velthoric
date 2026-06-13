@@ -24,6 +24,18 @@ import com.github.stephengold.joltjni.readonly.ConstShape;
  */
 public abstract class VxCollisionShape {
 
+    private ShapeRefC cachedShapeRef;
+
+    /**
+     * Wraps raw Jolt-JNI {@link ShapeSettings} into a collision shape.
+     *
+     * @param rawSettings The raw Jolt-JNI settings.
+     * @return A new VxCollisionShape wrapping the settings.
+     */
+    public static VxCollisionShape of(ShapeSettings rawSettings) {
+        return new VxRawSettingsShape(rawSettings);
+    }
+
     /**
      * Creates the Jolt-specific shape settings for this collision shape.
      * <p>
@@ -36,42 +48,62 @@ public abstract class VxCollisionShape {
     protected abstract ShapeSettings createSettings();
 
     /**
+     * Returns the cached native shape reference, initializing it if necessary.
+     * Lock-free for maximum performance.
+     *
+     * @return The cached ShapeRefC.
+     */
+    public ShapeRefC getShapeRef() {
+        if (cachedShapeRef == null) {
+            try (ShapeSettings settings = createSettings();
+                 ShapeResult result = settings.create()) {
+                if (result.hasError()) {
+                    throw new IllegalStateException("Shape creation failed: " + result.getError());
+                }
+                cachedShapeRef = result.get();
+            }
+        }
+        return cachedShapeRef;
+    }
+
+    /**
+     * Eagerly compiles and caches the native Jolt shape.
+     */
+    protected void compile() {
+        getShapeRef();
+    }
+
+    /**
      * Creates a reference-counted shape from this collision shape's settings.
      * <p>
-     * This method handles the full Jolt shape creation pipeline:
-     * <ol>
-     *     <li>Creates the {@link ShapeSettings} via {@link #createSettings()}</li>
-     *     <li>Invokes {@link ShapeSettings#create()} to produce a {@link ShapeResult}</li>
-     *     <li>Validates the result and extracts the {@link ShapeRefC}</li>
-     * </ol>
      * The returned {@link ShapeRefC} must be closed by the caller when no longer needed.
      *
      * @return A valid {@link ShapeRefC} for use in body creation.
      * @throws IllegalStateException If the shape creation fails (e.g. invalid parameters).
      */
     public ShapeRefC createShapeRef() {
-        try (ShapeSettings settings = createSettings();
-             ShapeResult result = settings.create()) {
-            if (result.hasError()) {
-                throw new IllegalStateException("Shape creation failed: " + result.getError());
-            }
-            return result.get();
-        }
+        return getShapeRef().toRefC();
     }
 
     /**
-     * Creates the underlying {@link ConstShape} instance from this collision shape's settings.
+     * Creates/retrieves the underlying {@link ConstShape} instance from this collision shape's settings.
      * <p>
-     * This is a convenience method that extracts the {@link ConstShape} pointer from the
-     * reference-counted wrapper. Note that the returned shape is only valid as long as
-     * the {@link ShapeRefC} from {@link #createShapeRef()} is alive.
+     * The returned shape is valid as long as this VxCollisionShape instance is alive.
      *
      * @return The {@link ConstShape} instance.
      * @throws IllegalStateException If the shape creation fails.
      */
     public ConstShape createShape() {
-        try (ShapeRefC ref = createShapeRef()) {
-            return ref.getPtr();
+        return getShapeRef().getPtr();
+    }
+
+    /**
+     * Resets the cached shape reference, closing the native reference if it exists.
+     */
+    protected void resetCachedShape() {
+        if (cachedShapeRef != null) {
+            cachedShapeRef.close();
+            cachedShapeRef = null;
         }
     }
 }

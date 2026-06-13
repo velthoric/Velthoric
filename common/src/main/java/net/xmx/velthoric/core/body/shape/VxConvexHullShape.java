@@ -42,6 +42,7 @@ public class VxConvexHullShape extends VxCollisionShape {
     public VxConvexHullShape(float[] points, float maxConvexRadius) {
         this.points = points;
         this.maxConvexRadius = maxConvexRadius;
+        compile();
     }
 
     /**

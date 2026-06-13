@@ -39,6 +39,7 @@ public class VxBoxShape extends VxCollisionShape {
     public VxBoxShape(Vec3 halfExtents, float convexRadius) {
         this.halfExtents = halfExtents;
         this.convexRadius = convexRadius;
+        compile();
     }
 
     @Override

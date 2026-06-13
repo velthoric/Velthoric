@@ -23,6 +23,7 @@ public class VxSphereShape extends VxCollisionShape {
      */
     public VxSphereShape(float radius) {
         this.radius = radius;
+        compile();
     }
 
     @Override

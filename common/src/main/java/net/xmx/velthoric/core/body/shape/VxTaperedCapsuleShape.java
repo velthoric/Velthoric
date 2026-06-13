@@ -32,6 +32,7 @@ public class VxTaperedCapsuleShape extends VxCollisionShape {
         this.halfHeight = halfHeight;
         this.topRadius = topRadius;
         this.bottomRadius = bottomRadius;
+        compile();
     }
 
     @Override

@@ -119,6 +119,7 @@ add_library(vxnative SHARED
     src/Velthoric/Terrain/Contact/TerrainContactHandler.cpp
     src/Velthoric/BodyPairIgnore/BodyPairIgnoreHandler.cpp
     src/Velthoric/JNI/ClassLoaderUtil.cpp
+    src/Velthoric/JNI/ShapeBridge.cpp
 )
 
 target_include_directories(vxnative PRIVATE

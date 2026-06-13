@@ -28,6 +28,7 @@ public class VxCapsuleShape extends VxCollisionShape {
     public VxCapsuleShape(float halfHeight, float radius) {
         this.halfHeight = halfHeight;
         this.radius = radius;
+        compile();
     }
 
     @Override

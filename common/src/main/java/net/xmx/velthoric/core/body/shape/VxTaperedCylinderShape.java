@@ -47,6 +47,7 @@ public class VxTaperedCylinderShape extends VxCollisionShape {
         this.topRadius = topRadius;
         this.bottomRadius = bottomRadius;
         this.convexRadius = convexRadius;
+        compile();
     }
 
     @Override

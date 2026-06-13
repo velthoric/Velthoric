@@ -47,6 +47,7 @@ public class VxTriangleShape extends VxCollisionShape {
         this.v2 = v2;
         this.v3 = v3;
         this.convexRadius = convexRadius;
+        compile();
     }
 
     @Override

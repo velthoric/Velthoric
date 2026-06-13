@@ -6,6 +6,8 @@ package net.xmx.velthoric.debug.renderer;
 
 import com.github.stephengold.joltjni.Quat;
 import com.github.stephengold.joltjni.RVec3;
+import com.github.stephengold.joltjni.ShapeRefC;
+import com.github.stephengold.joltjni.readonly.ConstShape;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -14,6 +16,7 @@ import net.minecraft.world.phys.Vec3;
 import net.xmx.velthoric.core.body.VxBody;
 import net.xmx.velthoric.core.body.client.VxRenderState;
 import net.xmx.velthoric.core.body.shape.*;
+import net.xmx.velthoric.jni.VxShapeBridge;
 import net.xmx.velthoric.math.VxOBB;
 import org.jetbrains.annotations.NotNull;
 
@@ -156,14 +159,26 @@ public class DebugBodyShapeRenderer {
         } else if (shape instanceof VxTaperedCylinderShape taperedCylinder) {
             DebugRenderUtils.drawTaperedCylinder(consumer, poseStack, taperedCylinder.getHalfHeight(), taperedCylinder.getTopRadius(), taperedCylinder.getBottomRadius(), r, g, b, a);
         } else if (shape instanceof VxConvexHullShape hull) {
-            // Wireframing a full hull is computationally expensive; we draw crosshairs at the vertices for visibility.
-            float[] pts = hull.getPoints();
-            for (int i = 0; i < pts.length; i += 3) {
-                float px = pts[i], py = pts[i + 1], pz = pts[i + 2];
-                float s = 0.05f; 
-                DebugRenderUtils.drawLineLocal(consumer, poseStack, px - s, py, pz, px + s, py, pz, r, g, b, a);
-                DebugRenderUtils.drawLineLocal(consumer, poseStack, px, py - s, pz, px, py + s, pz, r, g, b, a);
-                DebugRenderUtils.drawLineLocal(consumer, poseStack, px, py, pz - s, px, py, pz + s, r, g, b, a);
+            try (ShapeRefC ref = hull.createShapeRef()) {
+                ConstShape joltShape = ref.getPtr();
+                float[] triangles = VxShapeBridge.nGetShapeTriangles(joltShape.targetVa());
+                if (triangles != null && triangles.length > 0) {
+                    for (int i = 0; i < triangles.length; i += 9) {
+                        float x1 = triangles[i];
+                        float y1 = triangles[i + 1];
+                        float z1 = triangles[i + 2];
+                        float x2 = triangles[i + 3];
+                        float y2 = triangles[i + 4];
+                        float z2 = triangles[i + 5];
+                        float x3 = triangles[i + 6];
+                        float y3 = triangles[i + 7];
+                        float z3 = triangles[i + 8];
+
+                        DebugRenderUtils.drawLineLocal(consumer, poseStack, x1, y1, z1, x2, y2, z2, r, g, b, a);
+                        DebugRenderUtils.drawLineLocal(consumer, poseStack, x2, y2, z2, x3, y3, z3, r, g, b, a);
+                        DebugRenderUtils.drawLineLocal(consumer, poseStack, x3, y3, z3, x1, y1, z1, r, g, b, a);
+                    }
+                }
             }
         }
     }
