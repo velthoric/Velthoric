@@ -9,20 +9,22 @@ base {
 loom {
     runs {
         server {
-            name "NeoForge Server ${project.minecraft_version}"
+            name "Server ${project.minecraft_version} NeoForge"
             preferGradleTask = true
             runDir "run/${project.minecraft_version}/server"
         }
+
         gameTestServer {
             server()
-            name "NeoForge GameTest ${project.minecraft_version}"
+            name "GameTest ${project.minecraft_version} NeoForge"
             preferGradleTask = true
             runDir "run/${project.minecraft_version}/gametest"
             property "neoforge.enableGameTest", "true"
             property "neoforge.gameTestServer", "true"
         }
+
         client {
-            name "NeoForge Client ${project.minecraft_version}"
+            name "Client ${project.minecraft_version} NeoForge"
             preferGradleTask = true
             runDir "run/${project.minecraft_version}/client"
             programArgs '--username', 'dev'
