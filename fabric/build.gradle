@@ -15,16 +15,19 @@ loom {
     runs {
         server {
             name "Fabric Server ${project.minecraft_version}"
+            preferGradleTask = true
             runDir "run/${project.minecraft_version}/server"
         }
         gameTest {
             server()
             name "Fabric GameTest ${project.minecraft_version}"
+            preferGradleTask = true
             runDir "run/${project.minecraft_version}/gametest"
             property "fabric-api.gametest", "true"
         }
         client {
             name "Fabric Client ${project.minecraft_version}"
+            preferGradleTask = true
             runDir "run/${project.minecraft_version}/client"
             programArgs '--username', 'dev'
 
