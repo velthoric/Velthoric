@@ -108,7 +108,7 @@ public class VxPhysicsRenderDispatcher {
         if (!body.isInitialized()) {
             return false;
         }
-        AABB cullingBox = body.getCullingAABB(CULLING_BOUNDS_INFLATION);
+        AABB cullingBox = body.getCullingAABB();
         return frustum.isVisible(cullingBox);
     }
 

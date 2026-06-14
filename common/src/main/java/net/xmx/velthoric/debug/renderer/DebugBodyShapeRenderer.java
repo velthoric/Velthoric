@@ -16,7 +16,7 @@ import net.xmx.velthoric.core.body.VxBody;
 import net.xmx.velthoric.core.body.client.VxRenderState;
 import net.xmx.velthoric.core.body.client.renderer.VxVertexConsumer;
 import net.xmx.velthoric.core.body.shape.*;
-import net.xmx.velthoric.jni.VxShapeBridge;
+import net.xmx.velthoric.jni.ShapeBridge;
 import net.xmx.velthoric.math.VxOBB;
 import org.jetbrains.annotations.NotNull;
 
@@ -161,7 +161,7 @@ public class DebugBodyShapeRenderer {
         } else if (shape instanceof VxConvexHullShape hull) {
             try (ShapeRefC ref = hull.createShapeRef()) {
                 ConstShape joltShape = ref.getPtr();
-                float[] triangles = VxShapeBridge.nGetShapeTriangles(joltShape.targetVa());
+                float[] triangles = ShapeBridge.nGetShapeTriangles(joltShape.targetVa());
                 if (triangles != null && triangles.length > 0) {
                     for (int i = 0; i < triangles.length; i += 9) {
                         float x1 = triangles[i];

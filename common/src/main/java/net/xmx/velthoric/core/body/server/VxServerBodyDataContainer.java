@@ -11,7 +11,6 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
 import net.xmx.velthoric.core.body.VxBodyDataContainer;
 import java.nio.ByteBuffer;
-import java.nio.FloatBuffer;
 import java.nio.LongBuffer;
 import java.nio.IntBuffer;
 import java.nio.ByteOrder;
@@ -22,31 +21,6 @@ import java.nio.ByteOrder;
  * @author xI-Mx-Ix
  */
 public class VxServerBodyDataContainer extends VxBodyDataContainer {
-    /**
-     * Minimum X-coordinate of the world-space Axis-Aligned Bounding Box (AABB).
-     */
-    public final FloatBuffer aabbMinX;
-    /**
-     * Minimum Y-coordinate of the world-space Axis-Aligned Bounding Box (AABB).
-     */
-    public final FloatBuffer aabbMinY;
-    /**
-     * Minimum Z-coordinate of the world-space Axis-Aligned Bounding Box (AABB).
-     */
-    public final FloatBuffer aabbMinZ;
-
-    /**
-     * Maximum X-coordinate of the world-space Axis-Aligned Bounding Box (AABB).
-     */
-    public final FloatBuffer aabbMaxX;
-    /**
-     * Maximum Y-coordinate of the world-space Axis-Aligned Bounding Box (AABB).
-     */
-    public final FloatBuffer aabbMaxY;
-    /**
-     * Maximum Z-coordinate of the world-space Axis-Aligned Bounding Box (AABB).
-     */
-    public final FloatBuffer aabbMaxZ;
 
     /**
      * The Jolt physics body type (e.g. Rigid, Soft, Fluid).
@@ -102,12 +76,6 @@ public class VxServerBodyDataContainer extends VxBodyDataContainer {
      */
     public VxServerBodyDataContainer(int capacity) {
         super(capacity);
-        this.aabbMinX = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
-        this.aabbMinY = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
-        this.aabbMinZ = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
-        this.aabbMaxX = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
-        this.aabbMaxY = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
-        this.aabbMaxZ = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
         this.bodyType = new EBodyType[capacity];
         this.motionType = new EMotionType[capacity];
         this.activation = new EActivation[capacity];
@@ -141,12 +109,6 @@ public class VxServerBodyDataContainer extends VxBodyDataContainer {
         super.copyTo(other);
         if (other instanceof VxServerBodyDataContainer next) {
             int len = Math.min(this.capacity, next.capacity);
-            copyFloatBuffer(this.aabbMinX, next.aabbMinX, len);
-            copyFloatBuffer(this.aabbMinY, next.aabbMinY, len);
-            copyFloatBuffer(this.aabbMinZ, next.aabbMinZ, len);
-            copyFloatBuffer(this.aabbMaxX, next.aabbMaxX, len);
-            copyFloatBuffer(this.aabbMaxY, next.aabbMaxY, len);
-            copyFloatBuffer(this.aabbMaxZ, next.aabbMaxZ, len);
             System.arraycopy(this.bodyType, 0, next.bodyType, 0, len);
             System.arraycopy(this.motionType, 0, next.motionType, 0, len);
             System.arraycopy(this.activation, 0, next.activation, 0, len);
@@ -171,12 +133,6 @@ public class VxServerBodyDataContainer extends VxBodyDataContainer {
     @Override
     public void reset(int index) {
         super.reset(index);
-        this.aabbMinX.put(index, 0f);
-        this.aabbMinY.put(index, 0f);
-        this.aabbMinZ.put(index, 0f);
-        this.aabbMaxX.put(index, 0f);
-        this.aabbMaxY.put(index, 0f);
-        this.aabbMaxZ.put(index, 0f);
         this.bodyType[index] = null;
         this.chunkKey.put(index, Long.MAX_VALUE);
         this.networkId.put(index, -1);

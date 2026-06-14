@@ -9,6 +9,7 @@ import com.github.stephengold.joltjni.RVec3;
 import net.minecraft.util.Mth;
 import net.xmx.velthoric.math.VxOperations;
 import org.jetbrains.annotations.Nullable;
+import net.xmx.velthoric.jni.ShapeBridge;
 
 /**
  * Handles the interpolation and extrapolation of physics body states for smooth rendering.
@@ -188,6 +189,17 @@ public class VxClientBodyInterpolator {
             // 3. Calculate the new target state
             calculateInterpolatedState(c, i, renderTimestamp);
         }
+
+        // 4. Batch calculate AABBs using shape pointer and interpolated position/rotation
+        ShapeBridge.nCalculateAABBs(
+                capacity,
+                c.shapeAddress,
+                c.posX, c.posY, c.posZ,
+                c.rotX, c.rotY, c.rotZ, c.rotW,
+                c.aabbMinX, c.aabbMinY, c.aabbMinZ,
+                c.aabbMaxX, c.aabbMaxY, c.aabbMaxZ,
+                c.render_isInitialized
+        );
     }
 
     /**

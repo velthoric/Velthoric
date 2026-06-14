@@ -87,6 +87,37 @@ public class VxBodyDataContainer {
     public final VxCollisionShape[] shape;
 
     /**
+     * The native virtual addresses of the collision shapes.
+     */
+    public final LongBuffer shapeAddress;
+
+    /**
+     * Minimum X-coordinate of the world-space Axis-Aligned Bounding Box (AABB).
+     */
+    public final FloatBuffer aabbMinX;
+    /**
+     * Minimum Y-coordinate of the world-space Axis-Aligned Bounding Box (AABB).
+     */
+    public final FloatBuffer aabbMinY;
+    /**
+     * Minimum Z-coordinate of the world-space Axis-Aligned Bounding Box (AABB).
+     */
+    public final FloatBuffer aabbMinZ;
+
+    /**
+     * Maximum X-coordinate of the world-space Axis-Aligned Bounding Box (AABB).
+     */
+    public final FloatBuffer aabbMaxX;
+    /**
+     * Maximum Y-coordinate of the world-space Axis-Aligned Bounding Box (AABB).
+     */
+    public final FloatBuffer aabbMaxY;
+    /**
+     * Maximum Z-coordinate of the world-space Axis-Aligned Bounding Box (AABB).
+     */
+    public final FloatBuffer aabbMaxZ;
+
+    /**
      * Whether the body is currently active and ticking in the physics simulation.
      */
     public final ByteBuffer isActive;
@@ -126,6 +157,13 @@ public class VxBodyDataContainer {
         this.angVelZ = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
         this.vertexData = new float[capacity][];
         this.shape = new VxCollisionShape[capacity];
+        this.shapeAddress = ByteBuffer.allocateDirect(capacity * Long.BYTES).order(ByteOrder.nativeOrder()).asLongBuffer();
+        this.aabbMinX = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.aabbMinY = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.aabbMinZ = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.aabbMaxX = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.aabbMaxY = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        this.aabbMaxZ = ByteBuffer.allocateDirect(capacity * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
         this.isActive = ByteBuffer.allocateDirect(capacity).order(ByteOrder.nativeOrder());
         this.behaviorBits = ByteBuffer.allocateDirect(capacity * Long.BYTES).order(ByteOrder.nativeOrder()).asLongBuffer();
         this.bodies = new VxBody[capacity];
@@ -157,6 +195,13 @@ public class VxBodyDataContainer {
         copyFloatBuffer(this.angVelZ, other.angVelZ, copyLength);
         System.arraycopy(this.vertexData, 0, other.vertexData, 0, copyLength);
         System.arraycopy(this.shape, 0, other.shape, 0, copyLength);
+        copyLongBuffer(this.shapeAddress, other.shapeAddress, copyLength);
+        copyFloatBuffer(this.aabbMinX, other.aabbMinX, copyLength);
+        copyFloatBuffer(this.aabbMinY, other.aabbMinY, copyLength);
+        copyFloatBuffer(this.aabbMinZ, other.aabbMinZ, copyLength);
+        copyFloatBuffer(this.aabbMaxX, other.aabbMaxX, copyLength);
+        copyFloatBuffer(this.aabbMaxY, other.aabbMaxY, copyLength);
+        copyFloatBuffer(this.aabbMaxZ, other.aabbMaxZ, copyLength);
         copyByteBuffer(this.isActive, other.isActive, copyLength);
         copyLongBuffer(this.behaviorBits, other.behaviorBits, copyLength);
         System.arraycopy(this.bodies, 0, other.bodies, 0, copyLength);
@@ -277,6 +322,13 @@ public class VxBodyDataContainer {
         this.angVelZ.put(index, 0f);
         this.vertexData[index] = null;
         this.shape[index] = null;
+        this.shapeAddress.put(index, 0L);
+        this.aabbMinX.put(index, 0f);
+        this.aabbMinY.put(index, 0f);
+        this.aabbMinZ.put(index, 0f);
+        this.aabbMaxX.put(index, 0f);
+        this.aabbMaxY.put(index, 0f);
+        this.aabbMaxZ.put(index, 0f);
         this.isActive.put(index, (byte) 0);
         this.behaviorBits.put(index, 0L);
     }

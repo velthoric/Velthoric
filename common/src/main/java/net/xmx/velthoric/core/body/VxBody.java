@@ -334,12 +334,11 @@ public class VxBody {
      * @return An Axis-Aligned Bounding Box used for frustum culling.
      */
     @Environment(EnvType.CLIENT)
-    public AABB getCullingAABB(float inflation) {
+    public AABB getCullingAABB() {
         VxClientBodyDataContainer c = VxClientBodyManager.getInstance().getStore().clientCurrent();
-        RVec3 lastPos = c.lastKnownPosition[dataStoreIndex];
         return new AABB(
-                lastPos.xx() - inflation, lastPos.yy() - inflation, lastPos.zz() - inflation,
-                lastPos.xx() + inflation, lastPos.yy() + inflation, lastPos.zz() + inflation
+                c.aabbMinX.get(dataStoreIndex), c.aabbMinY.get(dataStoreIndex), c.aabbMinZ.get(dataStoreIndex),
+                c.aabbMaxX.get(dataStoreIndex), c.aabbMaxY.get(dataStoreIndex), c.aabbMaxZ.get(dataStoreIndex)
         );
     }
 
@@ -461,6 +460,7 @@ public class VxBody {
 
         VxBodyDataContainer c = store.current();
         c.shape[this.dataStoreIndex] = shape;
+        c.shapeAddress.put(this.dataStoreIndex, shape != null ? shape.getShapeRef().targetVa() : 0L);
 
         if (this.physicsWorld != null) { // Server-side specific dirty flagging
             VxServerBodyDataContainer sc = (VxServerBodyDataContainer) c;
