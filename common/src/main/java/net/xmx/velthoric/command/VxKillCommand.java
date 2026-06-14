@@ -24,7 +24,13 @@ public class VxKillCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("vxkill")
-                .requires(source -> source.hasPermission(2))
+                .requires(
+                        //? if >= 26.1 {
+                        /*Commands.hasPermission(Commands.LEVEL_GAMEMASTERS)
+                        *///? } else {
+                        source -> source.hasPermission(2)
+                        //? }
+                )
                 .then(Commands.argument("selector", VxBodyArgument.instance())
                         .executes(context -> {
                             List<VxBody> bodiesToRemove = VxBodyArgument.getBodies(context, "selector");

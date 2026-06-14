@@ -16,6 +16,7 @@ import net.xmx.velthoric.core.persistence.region.VxRegionFile;
 import net.xmx.velthoric.core.persistence.region.VxRegionFileCache;
 import net.xmx.velthoric.init.VxMainClass;
 import net.xmx.velthoric.network.VxByteBuf;
+import net.xmx.velthoric.util.VxChunkPosUtil;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -81,7 +82,7 @@ public abstract class VxChunkBasedStorage<T, D> {
      * @return A future containing the list of deserialized data objects.
      */
     public CompletableFuture<List<D>> loadChunk(ChunkPos pos) {
-        long key = pos.toLong();
+        long key = VxChunkPosUtil.packLong(pos);
 
         // Check the pending writes map on the calling thread to capture the latest state.
         ByteBuf pendingBuf = pendingWrites.get(key);
@@ -149,7 +150,7 @@ public abstract class VxChunkBasedStorage<T, D> {
      * @param objects The objects to save.
      */
     public void saveChunk(ChunkPos pos, Collection<T> objects) {
-        long key = pos.toLong();
+        long key = VxChunkPosUtil.packLong(pos);
         ByteBuf newBuffer;
 
         if (objects.isEmpty()) {
@@ -230,7 +231,7 @@ public abstract class VxChunkBasedStorage<T, D> {
                 }
             }
 
-            ChunkPos pos = new ChunkPos(chunkKey);
+            ChunkPos pos = VxChunkPosUtil.unpackLong(chunkKey);
 
             try {
                 CompletableFuture<Void> writeTask = CompletableFuture.runAsync(() -> {

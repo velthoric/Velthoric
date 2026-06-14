@@ -7,6 +7,7 @@ package net.xmx.velthoric.builtin.sphere;
 import com.github.stephengold.joltjni.Quat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.OverlayTexture;
@@ -30,7 +31,7 @@ public class SphereRenderer extends VxBodyRenderer<VxBody> {
     private static final int SECTORS = 32;
 
     @Override
-    public void render(VxBody body, PoseStack poseStack, MultiBufferSource bufferSource, float partialTicks, int packedLight, VxRenderState renderState) {
+    public void render(VxBody body, LevelRenderer levelRenderer, PoseStack poseStack, MultiBufferSource bufferSource, float partialTicks, int packedLight, VxRenderState renderState) {
         poseStack.pushPose();
 
         Quat renderRotation = renderState.transform.getRotation();
@@ -40,7 +41,10 @@ public class SphereRenderer extends VxBodyRenderer<VxBody> {
         Matrix4f poseMatrix = lastPose.pose();
         Matrix3f normalMatrix = lastPose.normal();
 
-        VxVertexConsumer consumer = VxVertexConsumer.wrap(bufferSource.getBuffer(RenderType.solid()));
+        VxVertexConsumer consumer = VxVertexConsumer.wrap(bufferSource.getBuffer(RenderType
+                //$ if >=26.1 '.solidMovingBlock()' else '.solid()'
+                .solid()
+        ));
         float radius = body.get(SphereRigidBody.DATA_RADIUS);
         int r = 200, g = 50, b = 50, a = 255;
 

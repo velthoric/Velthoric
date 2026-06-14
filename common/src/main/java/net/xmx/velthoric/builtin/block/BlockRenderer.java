@@ -4,16 +4,27 @@
  */
 package net.xmx.velthoric.builtin.block;
 
+//~ !render_types
 import com.github.stephengold.joltjni.Quat;
 import com.github.stephengold.joltjni.RVec3;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderDispatcher;
+//? if >=26.1 {
+/*import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.world.level.CardinalLighting;
+import net.minecraft.client.renderer.block.MovingBlockRenderState;
+import net.minecraft.client.renderer.state.level.LevelRenderState;
+import net.xmx.velthoric.mixin.impl.render.LevelRendererAccessor;
+import java.util.Objects;
+*///? } else {
 import net.minecraft.client.color.block.BlockColors;
 import net.minecraft.client.renderer.ItemBlockRenderTypes;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.block.BlockRenderDispatcher;
-import net.minecraft.client.renderer.blockentity.BlockEntityRenderDispatcher;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+//? }
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -30,6 +41,7 @@ import org.joml.Quaternionf;
  * Renderer for the {@link BlockRigidBody}.
  *
  * @author xI-Mx-Ix
+ * @author timtaran
  */
 public class BlockRenderer extends VxBodyRenderer<VxBody> {
 
@@ -37,7 +49,7 @@ public class BlockRenderer extends VxBodyRenderer<VxBody> {
     private BlockState lastBlockState;
 
     @Override
-    public void render(VxBody body, PoseStack poseStack, MultiBufferSource bufferSource, float partialTicks, int packedLight, VxRenderState renderState) {
+    public void render(VxBody body, LevelRenderer levelRenderer, PoseStack poseStack, MultiBufferSource bufferSource, float partialTicks, int packedLight, VxRenderState renderState) {
         int blockStateId = body.get(BlockRigidBody.DATA_BLOCK_STATE_ID);
         BlockState blockStateToRender = Block.stateById(blockStateId);
 
@@ -50,26 +62,46 @@ public class BlockRenderer extends VxBodyRenderer<VxBody> {
         Quat renderRotation = renderState.transform.getRotation();
         poseStack.mulPose(new Quaternionf(renderRotation.getX(), renderRotation.getY(), renderRotation.getZ(), renderRotation.getW()));
 
-        RenderShape shape = blockStateToRender.getRenderShape();
-        if (shape == RenderShape.MODEL || shape == RenderShape.ENTITYBLOCK_ANIMATED) {
-            BlockRenderDispatcher dispatcher = Minecraft.getInstance().getBlockRenderer();
+        //? if >=26.1 {
+        /*LevelRenderState levelRenderState = ((LevelRendererAccessor) levelRenderer).velthoric$getLevelRenderState();
+        SubmitNodeCollector queue = ((LevelRendererAccessor) levelRenderer).velthoric$getSubmitNodeStorage();
+        *///? }
 
-            BlockColors blockColors = Minecraft.getInstance().getBlockColors();
+        RenderShape shape = blockStateToRender.getRenderShape();
+        if (
+                shape == RenderShape.MODEL
+                        //? if <=1.21.1 {
+                         || shape == RenderShape.ENTITYBLOCK_ANIMATED
+                        //?}
+        ) {
             Level level = Minecraft.getInstance().level;
 
             RVec3 renderPosition = renderState.transform.getTranslation();
             BlockPos currentPos = BlockPos.containing(renderPosition.x(), renderPosition.y(), renderPosition.z());
 
+            poseStack.pushPose();
+            // Center the block model (0..1) around the physics pivot (center of mass).
+            poseStack.translate(-0.5, -0.5, -0.5);
+
+            //? if >=26.1 {
+            /*MovingBlockRenderState movingBlock = new MovingBlockRenderState();
+            movingBlock.blockState = blockStateToRender;
+            movingBlock.blockPos = currentPos;
+            movingBlock.randomSeedPos = currentPos;
+            movingBlock.lightEngine = level.getLightEngine();
+            movingBlock.biome = level.getBiome(currentPos);
+            movingBlock.cardinalLighting = CardinalLighting.DEFAULT;
+
+            queue.submitMovingBlock(poseStack, movingBlock);
+            *///? } else {
+            BlockColors blockColors = Minecraft.getInstance().getBlockColors();
             int color = blockColors.getColor(blockStateToRender, level, currentPos, 0);
 
             float r = (color >> 16 & 255) / 255.0f;
             float g = (color >> 8 & 255) / 255.0f;
             float b = (color & 255) / 255.0f;
 
-            poseStack.pushPose();
-            // Center the block model (0..1) around the physics pivot (center of mass).
-            poseStack.translate(-0.5, -0.5, -0.5);
-
+            BlockRenderDispatcher dispatcher = Minecraft.getInstance().getBlockRenderer();
             dispatcher.getModelRenderer().renderModel(
                     poseStack.last(),
                     bufferSource.getBuffer(ItemBlockRenderTypes.getRenderType(blockStateToRender, false)),
@@ -79,6 +111,7 @@ public class BlockRenderer extends VxBodyRenderer<VxBody> {
                     packedLight,
                     OverlayTexture.NO_OVERLAY
             );
+            //? }
             poseStack.popPose();
         }
 
@@ -100,7 +133,20 @@ public class BlockRenderer extends VxBodyRenderer<VxBody> {
                     poseStack.pushPose();
                     // Center the block entity render around the physics pivot.
                     poseStack.translate(-0.5, -0.5, -0.5);
+                    //? if >=26.1 {
+                    /*renderer.submit(
+                            Objects.requireNonNull(beDispatcher.tryExtractRenderState(
+                                    this.cachedBlockEntity,
+                                    partialTicks,
+                                    null
+                            )),
+                            poseStack,
+                            queue,
+                            levelRenderState.cameraRenderState
+                    );
+                    *///? } else {
                     renderer.render(this.cachedBlockEntity, partialTicks, poseStack, bufferSource, packedLight, OverlayTexture.NO_OVERLAY);
+                    //? }
                     poseStack.popPose();
                 }
             }

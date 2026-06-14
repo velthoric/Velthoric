@@ -5,12 +5,17 @@
 package net.xmx.velthoric.builtin.cloth;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+//? if >=26.1 {
+/*import net.minecraft.client.resources.model.sprite.SpriteId;
+import net.minecraft.data.AtlasIds;
+*///? } else {
+import net.minecraft.client.renderer.texture.TextureAtlas;
+//? }
 import net.minecraft.resources.ResourceLocation;
 import net.xmx.velthoric.core.body.client.VxRenderState;
 import net.xmx.velthoric.core.body.client.renderer.VxBodyRenderer;
@@ -26,11 +31,10 @@ import java.util.function.BiFunction;
  * @author xI-Mx-Ix
  */
 public class ClothRenderer extends VxBodyRenderer<VxBody> {
-
     private static final ResourceLocation BLUE_WOOL_TEXTURE = ResourceLocation.tryParse("minecraft:block/blue_wool");
 
     @Override
-    public void render(VxBody body, PoseStack poseStack, MultiBufferSource bufferSource, float partialTicks, int packedLight, VxRenderState renderState) {
+    public void render(VxBody body, LevelRenderer levelRenderer, PoseStack poseStack, MultiBufferSource bufferSource, float partialTicks, int packedLight, VxRenderState renderState) {
         float[] renderVertexData = renderState.vertexData;
         int widthSegments = body.get(ClothSoftBody.DATA_WIDTH_SEGMENTS);
         int heightSegments = body.get(ClothSoftBody.DATA_HEIGHT_SEGMENTS);
@@ -44,8 +48,15 @@ public class ClothRenderer extends VxBodyRenderer<VxBody> {
         double comZ = renderState.transform.getTranslation().z();
 
         int numVerticesX = widthSegments + 1;
-        VxVertexConsumer buffer = VxVertexConsumer.wrap(bufferSource.getBuffer(RenderType.translucent()));
+        VxVertexConsumer buffer = VxVertexConsumer.wrap(bufferSource.getBuffer(RenderType
+                //$ if >=26.1 '.translucentMovingBlock()' else '.translucent()'
+                                .translucent()
+        ));
+        //? if >=26.1 {
+        /*TextureAtlasSprite sprite = Minecraft.getInstance().getAtlasManager().get(new SpriteId(AtlasIds.BLOCKS, BLUE_WOOL_TEXTURE));
+        *///? } else {
         TextureAtlasSprite sprite = Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_BLOCKS).apply(BLUE_WOOL_TEXTURE);
+        //? }
 
         float minU = sprite.getU0();
         float maxU = sprite.getU1();

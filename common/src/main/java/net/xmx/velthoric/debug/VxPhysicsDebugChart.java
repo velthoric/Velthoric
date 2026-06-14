@@ -45,7 +45,11 @@ public class VxPhysicsDebugChart {
         final int chartHeight = 60;
 
         // Draw the semi-transparent dark background rect for the entire chart area.
-        guiGraphics.fill(RenderType.guiOverlay(), x, baseY - chartHeight, x + width, baseY, -1873784752);
+        guiGraphics.fill(
+                //? if <=1.21.1 {
+                RenderType.guiOverlay(),
+                //? }
+                x, baseY - chartHeight, x + width, baseY, -1873784752);
 
         int recordedFrames = frameTimer.getFrameCount();
         long totalTime = 0L;
@@ -80,8 +84,8 @@ public class VxPhysicsDebugChart {
             // Bars are drawn from right to left using manual vertex construction for efficiency.
             for (int i = 0; i < barsToDisplay; ++i) {
                 // Determine the X position.
-                // The rightmost bar is located at (x + width - 2).
-                // The leftmost possible bar is at (x + 1).
+                // The rightmost bar is located at `x + width - 2`
+                // The leftmost possible bar is at `x + 1`
                 int currentX = x + width - 2 - i;
 
                 int logIndex = frameTimer.wrapIndex(logEnd - 1 - i);
@@ -106,12 +110,28 @@ public class VxPhysicsDebugChart {
         }
 
         // Horizontal lines (Top and Bottom)
-        guiGraphics.hLine(RenderType.guiOverlay(), x, x + width - 1, baseY - chartHeight, -1);
-        guiGraphics.hLine(RenderType.guiOverlay(), x, x + width - 1, baseY - 1, -1);
+        guiGraphics.hLine(
+                //? if <=1.21.1 {
+                RenderType.guiOverlay(),
+                //? }
+                x, x + width - 1, baseY - chartHeight, -1);
+        guiGraphics.hLine(
+                //? if <=1.21.1 {
+                RenderType.guiOverlay(),
+                //? }
+                x, x + width - 1, baseY - 1, -1);
 
         // Vertical lines (Left and Right)
-        guiGraphics.vLine(RenderType.guiOverlay(), x, baseY - chartHeight, baseY, -1);
-        guiGraphics.vLine(RenderType.guiOverlay(), x + width - 1, baseY - chartHeight, baseY, -1);
+        guiGraphics.vLine(
+                //? if <=1.21.1 {
+                RenderType.guiOverlay(),
+                //? }
+                x, baseY - chartHeight, baseY, -1);
+        guiGraphics.vLine(
+                //? if <=1.21.1 {
+                RenderType.guiOverlay(),
+                //? }
+                x + width - 1, baseY - chartHeight, baseY, -1);
 
         // Render Text Labels
         guiGraphics.drawString(font, "Physics", x + 2, baseY - chartHeight + 2, 14737632, false);

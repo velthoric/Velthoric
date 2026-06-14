@@ -4,7 +4,11 @@
  */
 package net.xmx.velthoric.mixin.impl.mounting.input;
 
+//? if >=26.1 {
+/*import net.minecraft.world.entity.player.Input;
+*///? } else {
 import net.minecraft.client.player.Input;
+//? }
 import net.minecraft.client.player.LocalPlayer;
 import net.xmx.velthoric.core.mounting.entity.VxMountingEntity;
 import net.xmx.velthoric.core.mounting.input.C2SMountInputPacket;
@@ -26,8 +30,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(LocalPlayer.class)
 public abstract class MixinLocalPlayer {
 
+    //? if >=26.1 {
+    /*@Shadow
+    private Input lastSentInput;
+    *///? } else {
     @Shadow
     public Input input;
+    //?}
     @Unique
     private VxMountInput velthoric_lastRideInput = null;
 
@@ -36,22 +45,29 @@ public abstract class MixinLocalPlayer {
         LocalPlayer player = (LocalPlayer) (Object) this;
 
         if (player.getVehicle() instanceof VxMountingEntity) {
-            // 1. Calculate Analog Axis (Forward/Backward)
-            // W = Forward (+1.0), S = Backward (-1.0)
+            // Backward (-1.0), Forward (+1.0)
             float forward = 0.0f;
+
+            // Left (-1.0), Right (+1.0)
+            float right = 0.0f;
+
+            // Action Flags Bitmask
+            int flags = 0;
+            // Handbrake = Jump
+
+            //? if >=26.1 {
+            /*if (lastSentInput.backward()) forward -= 1.0f;
+            if (lastSentInput.forward()) forward += 1.0f;
+            if (lastSentInput.left()) right -= 1.0f;
+            if (lastSentInput.right()) right += 1.0f;
+            if (lastSentInput.jump()) flags |= VxMountInput.FLAG_HANDBRAKE;
+            *///? } else {
             if (input.up) forward += 1.0f;
             if (input.down) forward -= 1.0f;
-
-            // 2. Calculate Analog Axis (Left/Right)
-            // A = Left (-1.0), D = Right (+1.0)
-            float right = 0.0f;
             if (input.left) right -= 1.0f;
             if (input.right) right += 1.0f;
-
-            // 3. Calculate Action Flags Bitmask
-            int flags = 0;
-            // Handbrake = Space
             if (input.jumping) flags |= VxMountInput.FLAG_HANDBRAKE;
+            //?}
 
             VxMountInput currentInput = new VxMountInput(forward, right, flags);
 

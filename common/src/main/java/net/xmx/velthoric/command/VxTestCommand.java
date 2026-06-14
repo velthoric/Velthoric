@@ -60,7 +60,13 @@ public final class VxTestCommand {
      */
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         LiteralArgumentBuilder<CommandSourceStack> mainNode = Commands.literal("vxtest")
-                .requires(source -> source.hasPermission(2));
+                .requires(
+                        //? if >= 26.1 {
+                        /*Commands.hasPermission(Commands.LEVEL_GAMEMASTERS)
+                        *///? } else {
+                        source -> source.hasPermission(2)
+                         //? }
+                );
 
         // Iterate through all registered tests and append them as subcommands
         for (IVxTestCommand test : TESTS.values()) {

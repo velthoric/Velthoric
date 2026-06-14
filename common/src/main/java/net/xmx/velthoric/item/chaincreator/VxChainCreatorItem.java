@@ -5,10 +5,14 @@
 package net.xmx.velthoric.item.chaincreator;
 
 import net.minecraft.world.InteractionHand;
+//? if >=26.1 {
+/*import net.minecraft.world.InteractionResult;
+*///? } else {
 import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.item.ItemStack;
+//? }
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
 import net.minecraft.world.level.Level;
 
@@ -30,7 +34,13 @@ public class VxChainCreatorItem extends Item {
      * without interference from vanilla item usage logic.
      */
     @Override
+    //? if >=26.1 {
+    /*public InteractionResult use(final Level level, final Player player, final InteractionHand hand) {
+        return InteractionResult.PASS;
+    }
+    *///? } else {
     public InteractionResultHolder<ItemStack> use(Level pLevel, Player pPlayer, InteractionHand pUsedHand) {
         return InteractionResultHolder.pass(pPlayer.getItemInHand(pUsedHand));
     }
+    //? }
 }
