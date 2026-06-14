@@ -7,7 +7,9 @@ package net.xmx.velthoric.mixin.impl.entity.dragging;
 import com.github.stephengold.joltjni.Quat;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
+/*? if >=1.21.1 {*/
 import net.minecraft.client.DeltaTracker;
+ /*? }*/
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.GameRenderer;
@@ -62,14 +64,23 @@ public class MixinGameRenderer {
 
     /**
      * Intercepts render ticks to evaluate angular changes of the underlying physics structure.
-     * Subtracts the previous absolute orientation from current values to determine the necessary yaw shift.
-     *
-     * @param deltaTracker Provides active tick interpolation offsets.
-     * @param runTasks     Flag indicating active game rendering loop task status.
-     * @param ci           Callback pipeline control object.
      */
     @Inject(method = "render", at = @At("HEAD"))
+    /*? if >=1.21.1 {*/
     private void adjustPlayerRotationOnMovingBodies(DeltaTracker deltaTracker, boolean runTasks, CallbackInfo ci) {
+        this.velthoric$adjustPlayerRotation(deltaTracker.getGameTimeDeltaPartialTick(true));
+    }
+    /*? } else {*/
+    /*private void adjustPlayerRotationOnMovingBodies(float partialTicks, long limitTime, boolean runTasks, CallbackInfo ci) {
+        this.velthoric$adjustPlayerRotation(partialTicks);
+    }
+    *//*? }*/
+
+    /**
+     * The core logic, kept free of preprocessor-specific duplicates.
+     */
+    @Unique
+    private void velthoric$adjustPlayerRotation(float partialTicks) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null || mc.isPaused()) {
             this.velthoric$activeBodyIndex = null;
@@ -102,7 +113,6 @@ public class MixinGameRenderer {
         }
 
         // Retrieve the interpolated body orientation for the current rendering frame
-        float partialTicks = deltaTracker.getGameTimeDeltaPartialTick(true);
         Quat bodyRot = TEMP_JOLT_ROT.get();
         manager.getInterpolator().interpolateRotation(manager.getStore(), groundIdx, partialTicks, bodyRot);
 

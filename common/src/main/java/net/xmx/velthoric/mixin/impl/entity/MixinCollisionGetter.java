@@ -34,10 +34,13 @@ public interface MixinCollisionGetter {
     private void velthoric_noCollision(Entity entity, AABB collisionBox, CallbackInfoReturnable<Boolean> cir) {
         // Only perform additional checks if Minecraft already thinks there is no collision
         if (cir.getReturnValue() && entity != null) {
-            // Check against Velthoric physics bodies via the collision manager
-            if (VxEntityCollisionManager.isColliding(entity.level(), collisionBox)) {
-                // If a physics body is hit, the space is not free
-                cir.setReturnValue(false);
+            int collidingBodyId = VxEntityCollisionManager.getCollidingBodyId(entity.level(), collisionBox);
+            if (collidingBodyId >= 0) {
+                int groundSlotIdx = VxEntityCollisionManager.getGroundSlotIdx(entity);
+                // Ignore collision with the body the entity is currently standing on
+                if (collidingBodyId != groundSlotIdx) {
+                    cir.setReturnValue(false);
+                }
             }
         }
     }
