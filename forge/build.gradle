@@ -1,6 +1,5 @@
 apply plugin: 'velthoric.minecraft-conventions'
 apply plugin: 'velthoric.shadow-conventions'
-apply plugin: 'net.xmx.velthoric.publishing'
 
 base {
     archivesName = "velthoric-${project.minecraft_version}-forge"
@@ -119,13 +118,4 @@ afterEvaluate {
             }
         }
     }
-}
-
-/**
- * Configure Velthoric Publishing for Forge.
- */
-velthoricPublishing {
-    loader = "forge"
-    displayName = "Forge"
-    artifact = tasks.named("remapJar")
 }

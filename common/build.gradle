@@ -1,5 +1,4 @@
 apply plugin: 'velthoric.minecraft-conventions'
-apply plugin: 'net.xmx.velthoric.publishing'
 
 base {
     archivesName = "velthoric-${project.minecraft_version}-common"
@@ -28,9 +27,4 @@ loom {
     mixin {
         defaultRefmapName = "velthoric-common-refmap.json"
     }
-}
-
-velthoricPublishing {
-    loader = "common"
-    publishGitHub = true
 }

@@ -24,12 +24,3 @@ sourceSets {
         groovy { srcDirs = ['src/main/groovy'] }
     }
 }
-
-gradlePlugin {
-    plugins {
-        velthoricPublishing {
-            id = 'net.xmx.velthoric.publishing'
-            implementationClass = 'net.xmx.velthoric.gradle.VelthoricPublishingPlugin'
-        }
-    }
-}

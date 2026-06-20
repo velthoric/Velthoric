@@ -1,6 +1,5 @@
 apply plugin: 'velthoric.minecraft-conventions'
 apply plugin: 'velthoric.shadow-conventions'
-apply plugin: 'net.xmx.velthoric.publishing'
 
 base {
     archivesName = "velthoric-${project.minecraft_version}-fabric"
@@ -116,13 +115,4 @@ afterEvaluate {
             }
         }
     }
-}
-
-/**
- * Configure Velthoric Publishing for Fabric.
- */
-velthoricPublishing {
-    loader = "fabric"
-    displayName = "Fabric"
-    artifact = project.mainArchiveTask
 }

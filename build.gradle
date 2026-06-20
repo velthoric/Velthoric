@@ -1,6 +1,0 @@
-plugins {
-    id 'dev.architectury.loom' apply false
-    id 'architectury-plugin' apply false
-    id 'com.gradleup.shadow' apply false
-    id 'net.xmx.velthoric.publishing' apply false
-}

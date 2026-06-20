@@ -1,6 +1,5 @@
 apply plugin: 'velthoric.minecraft-conventions'
 apply plugin: 'velthoric.shadow-conventions'
-apply plugin: 'net.xmx.velthoric.publishing'
 
 base {
     archivesName = "velthoric-${project.minecraft_version}-neoforge"
@@ -118,13 +117,4 @@ afterEvaluate {
             }
         }
     }
-}
-
-/**
- * Configure Velthoric Publishing for NeoForge.
- */
-velthoricPublishing {
-    loader = "neoforge"
-    displayName = "NeoForge"
-    artifact = project.mainArchiveTask
 }

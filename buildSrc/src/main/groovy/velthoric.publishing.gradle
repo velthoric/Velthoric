@@ -1,0 +1,522 @@
+// Only apply core publishing logic if running from the root project context
+if (project != rootProject) {
+    return
+}
+
+// Register centralized configuration DSL
+def extension = extensions.create("velthoricPublishing", VelthoricExtension, project)
+
+// Master lifecycle task to coordinate publishing runs
+tasks.register("publishVelthoric") { task ->
+    task.group = "publishing"
+    task.description = "Orchestrates the release pipeline, validating credentials and publishing all modules."
+
+    task.doFirst {
+        def modVersion = project.findProperty("mod_version") as String
+
+        boolean isSnapshot = false
+        if (extension.snapshot != null) {
+            isSnapshot = extension.snapshot
+        } else {
+            isSnapshot = modVersion.endsWith("-SNAPSHOT") || extension.isSnapshotDefault(project)
+        }
+
+        boolean isRealRelease = !extension.dryRun
+
+        if (isRealRelease) {
+            validateCredentials(project, isSnapshot)
+            project.logger.lifecycle("Velthoric Release Pipeline: Credentials verified. Completing upload...")
+        } else {
+            project.logger.lifecycle("Velthoric Release Pipeline: No active release detected (Dry Run or no artifacts). Skipping credential validation.")
+        }
+    }
+
+    task.doLast {
+        project.logger.lifecycle("Velthoric Release Pipeline: Completed successfully.")
+    }
+}
+
+// Global lifecycle task to collect artifacts from all publishing subprojects
+tasks.register("collectReleaseArtifacts") { task ->
+    task.group = "publishing"
+    task.description = "Collects all configured subproject release artifacts into the root build/release-jars directory."
+}
+
+// Centralized dynamic configuration of active Stonecutter subprojects
+afterEvaluate { root ->
+    // Query the currently active Stonecutter project version
+    def stonecutter = root.extensions.findByName("stonecutter")
+
+    def activeVersion = null
+    if (stonecutter != null) {
+        def currentProject = stonecutter.current
+        if (currentProject != null) {
+            activeVersion = currentProject.version
+        }
+    }
+
+    // Resolve the highest semantic Minecraft version dynamically
+    def leaderVersion = extension.gitHubReleaseLeader
+    if (leaderVersion == null || leaderVersion.isEmpty()) {
+        if (stonecutter != null) {
+            def maxProject = stonecutter.versions.max { a, b -> stonecutter.compare(a.version, b.version) }
+            if (maxProject != null) {
+                leaderVersion = maxProject.version
+            } else {
+                leaderVersion = ""
+            }
+        } else {
+            leaderVersion = ""
+        }
+    }
+
+    root.subprojects.each { sub ->
+        // Only configure and publish the subprojects belonging to the currently active Stonecutter version
+        if (activeVersion == null || sub.name == activeVersion) {
+            // Delay configuration until the subproject itself is fully evaluated
+            sub.afterEvaluate {
+                configureSubproject(sub, extension, leaderVersion)
+            }
+        }
+    }
+}
+
+// Helper Methods
+
+/**
+ * Filters and configures publication requirements on subprojects based on their Stonecutter branch.
+ *
+ * @param subproject The subproject instance being configured.
+ * @param extension The configuration extension defined on the root project.
+ * @param leaderVersion The target Minecraft version designated for the GitHub release.
+ */
+def configureSubproject(Project subproject, VelthoricExtension extension, String leaderVersion) {
+    def root = subproject.rootProject
+
+    def parentName = ""
+    if (subproject.parent != null) {
+        parentName = subproject.parent.name
+    }
+
+    // Mapped platform configuration metadata
+    def loaders = [
+            fabric: [
+                    prettyName: "Fabric",
+                    curseTags: ["fabric", "quilt"],
+                    modrinthTags: ["fabric", "quilt"],
+                    dependencies: ["architectury-api", "fabric-api"]
+            ],
+            forge: [
+                    prettyName: "Forge",
+                    curseTags: ["forge"],
+                    modrinthTags: ["forge"],
+                    dependencies: ["architectury-api"]
+            ],
+            neoforge: [
+                    prettyName: "NeoForge",
+                    curseTags: ["neoforge"],
+                    modrinthTags: ["neoforge"],
+                    dependencies: ["architectury-api"]
+            ]
+    ]
+
+    def loaderConfig = loaders[parentName]
+    boolean isGitHubLead = (parentName == "common") && subproject.name == leaderVersion
+    boolean hasArtifact = (loaderConfig != null)
+
+    if (!hasArtifact && !isGitHubLead) {
+        return
+    }
+
+    subproject.plugins.apply("me.modmuss50.mod-publish-plugin")
+    subproject.plugins.apply("maven-publish")
+
+    def modVersion = root.findProperty("mod_version") as String
+
+    boolean isSnapshot = false
+    if (extension.snapshot != null) {
+        isSnapshot = extension.snapshot
+    } else {
+        isSnapshot = modVersion.endsWith("-SNAPSHOT") || extension.isSnapshotDefault(root)
+    }
+
+    def mrToken = getCredential(subproject, "MODRINTH_TOKEN")
+    def cfToken = getCredential(subproject, "CURSEFORGE_TOKEN")
+    def ghToken = getCredential(subproject, "GITHUB_TOKEN")
+    def mavenUser = getCredential(subproject, "MAVEN_USER")
+    def mavenToken = getCredential(subproject, "MAVEN_TOKEN")
+
+    if (mavenUser == null || mavenToken == null || (!isSnapshot && (mrToken == null || cfToken == null || (isGitHubLead && ghToken == null)))) {
+        extension.dryRun = true
+    }
+
+    configurePublishingPlatform(subproject, extension, parentName, loaderConfig, isGitHubLead, isSnapshot, modVersion)
+
+    root.tasks.named("publishVelthoric") { rootTask ->
+        if (!isSnapshot) {
+            def subTask = subproject.tasks.named("publishMods")
+            rootTask.dependsOn(subTask)
+        }
+
+        if (hasArtifact) {
+            def repoName = subproject.findProperty("maven_repo_name") as String
+            def taskName = "publishMavenJavaPublicationTo${repoName}Repository"
+            def mavenTask = subproject.tasks.named(taskName)
+            rootTask.dependsOn(subproject.provider {
+                if (extension.dryRun) {
+                    return []
+                } else {
+                    return [mavenTask]
+                }
+            })
+        }
+
+        def details = ""
+        if (hasArtifact) {
+            if (isSnapshot) {
+                details = "Maven Snapshot"
+            } else {
+                details = "Platforms + Maven"
+            }
+        }
+        if (!isSnapshot && isGitHubLead) {
+            if (hasArtifact) {
+                details = details + " + GitHub Only"
+            } else {
+                details = "GitHub Only"
+            }
+        }
+
+        root.logger.lifecycle("Velthoric: Registered module '${parentName}:${subproject.name}' for publication (${details}).")
+    }
+
+    if (hasArtifact) {
+        def copyTaskName = "copyReleaseArtifactToRoot"
+        subproject.tasks.register(copyTaskName, Copy) { copyTask ->
+            def artifactObj = null
+            if (subproject.ext.has("mainArchiveTask")) {
+                artifactObj = subproject.ext.get("mainArchiveTask")
+            } else {
+                artifactObj = subproject.tasks.named("remapJar")
+            }
+
+            copyTask.from(artifactObj)
+            copyTask.from(subproject.tasks.named("sourcesJar"))
+            copyTask.into(root.layout.buildDirectory.dir("release-jars"))
+        }
+
+        root.tasks.named("collectReleaseArtifacts") { rootTask ->
+            rootTask.dependsOn(subproject.tasks.named(copyTaskName))
+        }
+    }
+}
+
+/**
+ * Sets up platform-specific (Modrinth, CurseForge, GitHub, Maven) publishing.
+ *
+ * @param subproject The subproject instance being configured.
+ * @param extension The configuration extension defined on the root project.
+ * @param parentName The name of the parent project.
+ * @param loaderConfig The loader metadata configuration map.
+ * @param isGitHubLead Whether this subproject handles the GitHub release.
+ * @param isSnapshot Whether the current build target is a snapshot.
+ * @param modVersion The current version of the mod.
+ */
+def configurePublishingPlatform(Project subproject, VelthoricExtension extension, String parentName, Map loaderConfig, boolean isGitHubLead, boolean isSnapshot, String modVersion) {
+    def mcVersion = subproject.ext.get("minecraft_version") as String
+    def changelog = resolveChangelog(subproject.rootProject, modVersion)
+
+    def platformName = "Common"
+    if (loaderConfig != null) {
+        platformName = loaderConfig.prettyName
+    }
+
+    def finalTitle = "Velthoric ${modVersion} for ${platformName} ${mcVersion}"
+
+    // Dynamically retrieve the ModPublishExtension by its registered name
+    def publishExt = subproject.extensions.findByName("publishMods")
+    publishExt.dryRun.set(extension.dryRun)
+    publishExt.changelog.set(changelog)
+    publishExt.version.set(modVersion)
+    publishExt.displayName.set(finalTitle)
+
+    boolean hasArtifact = (loaderConfig != null)
+    if (hasArtifact) {
+        def artifactObj = null
+        if (subproject.ext.has("mainArchiveTask")) {
+            artifactObj = subproject.ext.get("mainArchiveTask")
+        } else {
+            artifactObj = subproject.tasks.named("remapJar")
+        }
+
+        def artifactFile = normalizeArtifact(subproject, artifactObj)
+        publishExt.file.set(artifactFile)
+
+        if (!isSnapshot) {
+            configureCurseForge(subproject, publishExt, extension, loaderConfig, mcVersion)
+            configureModrinth(subproject, publishExt, extension, loaderConfig, mcVersion)
+        }
+        configureMaven(subproject, extension, artifactFile)
+    }
+
+    if (isGitHubLead && !isSnapshot) {
+        configureGitHub(subproject, publishExt, modVersion, changelog)
+    }
+}
+
+/**
+ * Configures the CurseForge publication block on the subproject.
+ *
+ * @param project The subproject instance.
+ * @param ext The target ModPublishExtension instance.
+ * @param velthoric The configuration extension on the root project.
+ * @param loaderConfig The loader metadata configuration map.
+ * @param mcVersion The targeted Minecraft version.
+ */
+def configureCurseForge(Project project, def ext, VelthoricExtension velthoric, Map loaderConfig, String mcVersion) {
+    if (velthoric.curseProjectId == null || velthoric.curseProjectId.isEmpty()) {
+        project.logger.error("Velthoric: 'curse_project_id' is missing from gradle.properties!")
+        throw new GradleException("Velthoric publishing failed: 'curse_project_id' is required for CurseForge.")
+    }
+
+    // Dynamically load the ReleaseType enum to avoid static compilation errors in the IDE
+    def releaseTypeClass = Class.forName("me.modmuss50.mpp.ReleaseType")
+
+    ext.curseforge { cf ->
+        cf.accessToken.set(getCredential(project, "CURSEFORGE_TOKEN"))
+        cf.projectId.set(velthoric.curseProjectId)
+        cf.type.set(Enum.valueOf(releaseTypeClass, "STABLE"))
+        cf.minecraftVersions.add(mcVersion)
+        cf.modLoaders.addAll(loaderConfig.curseTags)
+        cf.clientRequired.set(true)
+        cf.serverRequired.set(true)
+
+        if (!loaderConfig.dependencies.isEmpty()) {
+            cf.requires(loaderConfig.dependencies as String[])
+        }
+    }
+}
+
+/**
+ * Configures the Modrinth publication block on the subproject.
+ *
+ * @param project The subproject instance.
+ * @param ext The target ModPublishExtension instance.
+ * @param velthoric The configuration extension on the root project.
+ * @param loaderConfig The loader metadata configuration map.
+ * @param mcVersion The targeted Minecraft version.
+ */
+def configureModrinth(Project project, def ext, VelthoricExtension velthoric, Map loaderConfig, String mcVersion) {
+    if (velthoric.modrinthProjectId == null || velthoric.modrinthProjectId.isEmpty()) {
+        project.logger.error("Velthoric: 'modrinth_project_id' is missing from gradle.properties!")
+        throw new GradleException("Velthoric publishing failed: 'modrinth_project_id' is required for Modrinth.")
+    }
+
+    // Dynamically load the ReleaseType enum to avoid static compilation errors in the IDE
+    def releaseTypeClass = Class.forName("me.modmuss50.mpp.ReleaseType")
+
+    ext.modrinth { mr ->
+        mr.accessToken.set(getCredential(project, "MODRINTH_TOKEN"))
+        mr.projectId.set(velthoric.modrinthProjectId)
+        mr.type.set(Enum.valueOf(releaseTypeClass, "BETA"))
+        mr.minecraftVersions.add(mcVersion)
+        mr.modLoaders.addAll(loaderConfig.modrinthTags)
+
+        if (!loaderConfig.dependencies.isEmpty()) {
+            mr.requires(loaderConfig.dependencies as String[])
+        }
+    }
+}
+
+/**
+ * Configures the GitHub release block on the subproject.
+ *
+ * @param project The subproject instance.
+ * @param ext The target ModPublishExtension instance.
+ * @param modVersion The current version of the mod.
+ * @param changelog The resolved release changelog text.
+ */
+def configureGitHub(Project project, def ext, String modVersion, String changelog) {
+    // Dynamically load the ReleaseType enum to avoid static compilation errors in the IDE
+    def releaseTypeClass = Class.forName("me.modmuss50.mpp.ReleaseType")
+
+    ext.github { gh ->
+        gh.accessToken.set(getCredential(project, "GITHUB_TOKEN"))
+        gh.repository.set("velthoric/Velthoric")
+        gh.tagName.set(modVersion)
+        gh.displayName.set(modVersion)
+        gh.commitish.set("master")
+        gh.type.set(Enum.valueOf(releaseTypeClass, "STABLE"))
+        gh.changelog.set(changelog)
+        gh.file.set(project.layout.file(project.provider { null }))
+        gh.allowEmptyFiles.set(true)
+    }
+}
+
+/**
+ * Configures the Maven publication repository block on the subproject.
+ *
+ * @param project The subproject instance.
+ * @param extension The configuration extension defined on the root project.
+ * @param artifactFile The lazy provider pointing to the compiled build artifact.
+ */
+def configureMaven(Project project, VelthoricExtension extension, Provider<RegularFile> artifactFile) {
+    project.extensions.configure("publishing") { publishing ->
+        def repoName = project.findProperty("maven_repo_name") as String
+        def repoUrl = project.findProperty("maven_url") as String
+
+        publishing.repositories.maven { repository ->
+            repository.name = repoName
+            repository.url = repoUrl
+            repository.credentials { credentials ->
+                credentials.username = getCredential(project, "MAVEN_USER")
+                credentials.password = getCredential(project, "MAVEN_TOKEN")
+            }
+        }
+
+        def publication = publishing.publications.maybeCreate("mavenJava", MavenPublication)
+        publication.artifacts.clear()
+
+        publication.artifact(artifactFile) { artifact ->
+            artifact.classifier = ""
+        }
+
+        project.tasks.named("sourcesJar") { task ->
+            publication.artifact(task) { artifact ->
+                artifact.classifier = "sources"
+            }
+        }
+    }
+}
+
+/**
+ * Resolves the artifact representation as a standardized Provider pointer.
+ *
+ * @param project The project instance.
+ * @param input The raw input target task or file representation.
+ * @return The lazy provider pointing to the compiled resource.
+ */
+def normalizeArtifact(Project project, Object input) {
+    if (input instanceof TaskProvider) {
+        return input.flatMap { task ->
+            if (task instanceof org.gradle.api.tasks.bundling.AbstractArchiveTask) {
+                return task.archiveFile
+            }
+            throw new GradleException("Task '" + task.name + "' provided as an artifact is not an Archive Task (Jar/Zip). " +
+                    "It is of type: " + task.getClass().getName())
+        }
+    }
+
+    if (input instanceof org.gradle.api.tasks.bundling.AbstractArchiveTask) {
+        return input.archiveFile
+    }
+
+    return project.layout.file(project.provider { project.file(input) })
+}
+
+/**
+ * Resolves key credentials from project properties or fallback system environment variables.
+ *
+ * @param project The project context instance.
+ * @param key The logical key name.
+ * @return The resolved credential text or null.
+ */
+def getCredential(Project project, String key) {
+    def prop = project.findProperty(key)
+    if (prop != null) {
+        return prop.toString()
+    }
+    return System.getenv(key)
+}
+
+/**
+ * Verifies the presence of release credentials and fails early if requirements are unsatisfied.
+ *
+ * @param project The root project context instance.
+ * @param isSnapshot Whether the current targets are snapshots.
+ */
+def validateCredentials(Project project, boolean isSnapshot) {
+    def missing = []
+    if (!isSnapshot) {
+        if (getCredential(project, "MODRINTH_TOKEN") == null) {
+            missing.add("MODRINTH_TOKEN")
+        }
+        if (getCredential(project, "CURSEFORGE_TOKEN") == null) {
+            missing.add("CURSEFORGE_TOKEN")
+        }
+        if (project.findProperty("curse_project_id") == null) {
+            missing.add("curse_project_id")
+        }
+        if (project.findProperty("modrinth_project_id") == null) {
+            missing.add("modrinth_project_id")
+        }
+    }
+    if (getCredential(project, "MAVEN_USER") == null) {
+        missing.add("MAVEN_USER")
+    }
+    if (getCredential(project, "MAVEN_TOKEN") == null) {
+        missing.add("MAVEN_TOKEN")
+    }
+
+    if (!missing.isEmpty()) {
+        project.logger.error("Velthoric Release Failed: Missing required credentials or project IDs: " + missing.join(', '))
+        throw new GradleException("Velthoric Release Failed: Missing credentials/IDs for: " + missing.join(', '))
+    }
+}
+
+/**
+ * Resolves changelog documentation text from the filesystem directories.
+ *
+ * @param project The root project context instance.
+ * @param version The targeted version string.
+ * @return The resolved changelog text.
+ */
+def resolveChangelog(Project project, String version) {
+    def file = project.file("changelog/${version}.md")
+    if (file.exists()) {
+        return file.text
+    }
+    return "No changelog provided for version " + version
+}
+
+/**
+ * Configuration properties model representing centralized publishing options.
+ */
+class VelthoricExtension {
+    boolean dryRun = false
+    String curseProjectId
+    String modrinthProjectId
+    String gitHubReleaseLeader
+    Boolean snapshot
+
+    /**
+     * Initializes project IDs by fetching them from properties without fallback values.
+     *
+     * @param project The target project instance.
+     */
+    VelthoricExtension(Project project) {
+        def curseProp = project.findProperty("curse_project_id")
+        if (curseProp != null) {
+            curseProjectId = curseProp.toString()
+        }
+
+        def modrinthProp = project.findProperty("modrinth_project_id")
+        if (modrinthProp != null) {
+            modrinthProjectId = modrinthProp.toString()
+        }
+    }
+
+    /**
+     * Resolves the fallback snapshot state from the project properties.
+     *
+     * @param project The targeted project instance.
+     * @return The fallback snapshot state.
+     */
+    boolean isSnapshotDefault(Project project) {
+        def prop = project.findProperty("velthoric.snapshot")
+        if (prop != null) {
+            return Boolean.parseBoolean(prop.toString())
+        }
+        return false
+    }
+}
