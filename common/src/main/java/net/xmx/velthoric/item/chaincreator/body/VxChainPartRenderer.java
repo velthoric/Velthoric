@@ -7,6 +7,7 @@ package net.xmx.velthoric.item.chaincreator.body;
 import com.github.stephengold.joltjni.Quat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.world.level.block.Blocks;
@@ -26,11 +27,10 @@ import org.joml.Quaternionf;
  * @author xI-Mx-Ix
  */
 public class VxChainPartRenderer extends VxBodyRenderer<VxBody> {
-
     private static final BlockState CHAIN_BLOCK_STATE = Blocks.CHAIN.defaultBlockState();
 
     @Override
-    public void render(VxBody body, PoseStack poseStack, MultiBufferSource bufferSource, float partialTicks, int packedLight, VxRenderState renderState) {
+    public void render(VxBody body, LevelRenderer levelRenderer, PoseStack poseStack, MultiBufferSource bufferSource, float partialTicks, int packedLight, VxRenderState renderState) {
         poseStack.pushPose();
 
         Quat rot = renderState.transform.getRotation();

@@ -7,9 +7,13 @@ package net.xmx.velthoric.init;
 import dev.architectury.platform.Platform;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+// todo
+//? if <=1.21.1 {
 import net.minecraft.gametest.framework.GameTestRegistry;
-import net.xmx.velthoric.builtin.VxRegisteredBodies;
 import net.xmx.velthoric.gametest.*;
+//? }
+import net.minecraft.resources.ResourceLocation;
+import net.xmx.velthoric.builtin.VxRegisteredBodies;
 import net.xmx.velthoric.init.registry.KeyMappings;
 import net.xmx.velthoric.init.registry.ModRegistries;
 import net.xmx.velthoric.natives.impl.NativeJolt;
@@ -31,10 +35,13 @@ import org.apache.logging.log4j.Logger;
  * and the critical loading of Jolt Physics native libraries.
  *
  * @author xI-Mx-Ix
+ * @author timtaran
  */
 public class VxMainClass {
     public static final String MODID = "velthoric";
     public static final Logger LOGGER = LogManager.getLogger("Velthoric");
+
+    private static final ResourceLocation TERRAIN_MATERIAL_LOADER_ID = ResourceLocation.tryBuild("velthoric", "terrain_material_loader");
 
     /**
      * Called during the common initialization phase (Server and Client).
@@ -46,7 +53,7 @@ public class VxMainClass {
         VxPacketRegistry.registerPackets();
         RegisterEvents.register();
         
-        ReloadListenerRegistry.register(PackType.SERVER_DATA, new VxTerrainMaterialLoader());
+        ReloadListenerRegistry.register(PackType.SERVER_DATA, new VxTerrainMaterialLoader(), TERRAIN_MATERIAL_LOADER_ID);
 
         // Register native libraries in order of dependency
         NativeManager.register(new NativeZstd());
@@ -58,11 +65,14 @@ public class VxMainClass {
 
         VxPhysicsBootstrap.initialize();
 
+        // todo
+        //? <=1.21.1 {
         // Register gametests
         // Fabric gametests are registered in fabric.mod.json
         if (!Platform.isFabric()) {
             GameTestRegistry.register(VelthoricGameTestUtils.class);
         }
+        //? }
     }
 
     /**

@@ -8,6 +8,9 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.PlayerModel;
+//? if >=26.1 {
+/*import net.minecraft.client.renderer.entity.state.HumanoidRenderState;
+*///? }
 import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.multiplayer.PlayerInfo;
@@ -15,11 +18,13 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.resources.DefaultPlayerSkin;
-/*? if >=1.21.1 {*/
+/*? if 1.21.1 {*/
 import net.minecraft.client.resources.PlayerSkin;
 /*? }*/
-import net.minecraft.resources.ResourceLocation;
+//? if <=1.21.1 {
 import net.minecraft.world.entity.LivingEntity;
+//? }
+import net.minecraft.resources.ResourceLocation;
 import net.xmx.velthoric.core.body.client.VxRenderState;
 import net.xmx.velthoric.core.body.client.renderer.VxBodyRenderer;
 import net.xmx.velthoric.core.body.VxBody;

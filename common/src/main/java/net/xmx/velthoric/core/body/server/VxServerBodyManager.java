@@ -34,6 +34,7 @@ import net.xmx.velthoric.core.physics.VxJoltBridge;
 import net.xmx.velthoric.core.physics.world.VxPhysicsWorld;
 import net.xmx.velthoric.init.VxMainClass;
 import net.xmx.velthoric.math.VxTransform;
+import net.xmx.velthoric.util.VxChunkPosUtil;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -519,7 +520,7 @@ public class VxServerBodyManager extends VxAbstractBodyManager implements VxChun
         spatialManager.move(body, fromKey, toKey);
 
         // Notify the network dispatcher about the movement for client-side tracking updates.
-        networkDispatcher.onBodyMoved(body, new ChunkPos(fromKey), new ChunkPos(toKey));
+        networkDispatcher.onBodyMoved(body, VxChunkPosUtil.unpackLong(fromKey), VxChunkPosUtil.unpackLong(toKey));
     }
 
     //================================================================================
@@ -654,7 +655,7 @@ public class VxServerBodyManager extends VxAbstractBodyManager implements VxChun
         VxServerBodyDataContainer c = dataStore.serverCurrent();
         long persistenceMask = VxPersistenceBehavior.ID.getMask();
 
-        spatialManager.forEachInChunk(pos.toLong(), body -> {
+        spatialManager.forEachInChunk(VxChunkPosUtil.packLong(pos), body -> {
             int index = body.getDataStoreIndex();
             // Bounds check for race condition during container resize
             if (index != -1 && index < c.getCapacity()) {
@@ -675,7 +676,7 @@ public class VxServerBodyManager extends VxAbstractBodyManager implements VxChun
      */
     @Override
     public void onChunkUnload(ChunkPos pos) {
-        List<VxBody> bodiesToUnload = spatialManager.removeAllInChunk(pos.toLong());
+        List<VxBody> bodiesToUnload = spatialManager.removeAllInChunk(VxChunkPosUtil.packLong(pos));
         if (bodiesToUnload.isEmpty()) return;
 
         for (VxBody body : bodiesToUnload) {

@@ -14,6 +14,7 @@ import net.xmx.velthoric.network.VxByteBuf;
 import net.xmx.velthoric.core.body.client.VxClientBodyDataContainer;
 import net.xmx.velthoric.core.body.client.VxClientBodyDataStore;
 import net.xmx.velthoric.core.body.client.VxClientBodyManager;
+import net.xmx.velthoric.util.VxChunkPosUtil;
 
 import java.nio.ByteBuffer;
 
@@ -140,9 +141,13 @@ public class S2CUpdateBodyStateBatchPacket implements IVxNetPacket {
                 long timestamp = db.readLong();
                 long chunkPosLong = db.readLong();
 
-                ChunkPos cp = new ChunkPos(chunkPosLong);
+                ChunkPos cp = VxChunkPosUtil.unpackLong(chunkPosLong);
                 double baseX = cp.getMinBlockX();
+                //? if >=26.1 {
+                /*double baseY = context.getPlayer().level().getMinY();
+                *///? } else {
                 double baseY = context.getPlayer().level().getMinBuildHeight();
+                 //? }
                 double baseZ = cp.getMinBlockZ();
 
                 // Feed clock sync sample

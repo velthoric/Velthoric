@@ -13,6 +13,7 @@ import net.xmx.velthoric.core.persistence.VxChunkPersistenceHandler;
 import net.xmx.velthoric.core.physics.ignore.persistence.VxIgnoreStorage;
 import net.xmx.velthoric.core.physics.world.VxPhysicsWorld;
 import net.xmx.velthoric.jni.BodyPairIgnoreHandler;
+import net.xmx.velthoric.util.VxChunkPosUtil;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -215,7 +216,7 @@ public class VxBodyPairIgnoreManager implements VxChunkPersistenceHandler {
             world.execute(() -> {
                 if (ignores.isEmpty()) return;
                 
-                Set<VxBodyPairIgnore> set = chunkToIgnores.computeIfAbsent(pos.toLong(), k -> ConcurrentHashMap.newKeySet());
+                Set<VxBodyPairIgnore> set = chunkToIgnores.computeIfAbsent(VxChunkPosUtil.packLong(pos), k -> ConcurrentHashMap.newKeySet());
                 for (VxBodyPairIgnore ignore : ignores) {
                     set.add(ignore);
                     addPendingIgnore(ignore);
@@ -234,7 +235,7 @@ public class VxBodyPairIgnoreManager implements VxChunkPersistenceHandler {
      */
     @Override
     public void onChunkUnload(ChunkPos pos) {
-        Set<VxBodyPairIgnore> ignores = chunkToIgnores.remove(pos.toLong());
+        Set<VxBodyPairIgnore> ignores = chunkToIgnores.remove(VxChunkPosUtil.packLong(pos));
         if (ignores != null) {
             for (VxBodyPairIgnore ignore : ignores) {
                 removeIfOrphaned(ignore);
@@ -276,7 +277,7 @@ public class VxBodyPairIgnoreManager implements VxChunkPersistenceHandler {
      */
     @Override
     public void onChunkSave(ChunkPos pos) {
-        Set<VxBodyPairIgnore> ignores = chunkToIgnores.get(pos.toLong());
+        Set<VxBodyPairIgnore> ignores = chunkToIgnores.get(VxChunkPosUtil.packLong(pos));
         if (ignores != null) {
             ignoreStorage.saveChunk(pos, ignores);
         } else {

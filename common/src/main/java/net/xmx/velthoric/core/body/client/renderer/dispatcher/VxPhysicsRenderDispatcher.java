@@ -75,16 +75,18 @@ public class VxPhysicsRenderDispatcher {
         if (manager.getAllBodies().isEmpty()) return;
 
         MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
+        LevelRenderer levelRenderer = event.getLevelRenderer();
         PoseStack poseStack = event.getPoseStack();
         float partialTicks = event.getPartialTick();
-        Vec3 cameraPos = mc.gameRenderer.getMainCamera().getPosition();
-        Frustum frustum = ((LevelRendererAccessor) mc.levelRenderer).velthoric_getCullingFrustum();
+        Vec3 cameraPos = mc.gameRenderer.getMainCamera() //$ if >=26.1 '.entity().getPosition(partialTicks);' else '.getPosition();'
+        .getPosition();
 
+        Frustum frustum = ((LevelRendererAccessor) mc.levelRenderer).velthoric_getCullingFrustum();
         poseStack.pushPose();
 
         for (VxBody body : manager.getAllBodies()) {
             if (shouldRender(body, frustum)) {
-                render(body, level, poseStack, bufferSource, cameraPos, partialTicks);
+                render(body, levelRenderer, level, poseStack, bufferSource, cameraPos, partialTicks);
             }
         }
 
@@ -126,7 +128,7 @@ public class VxPhysicsRenderDispatcher {
      * @param cameraPos    The absolute camera position.
      * @param partialTicks The partial tick time for interpolation.
      */
-    private static void render(VxBody body, Level level, PoseStack poseStack, MultiBufferSource bufferSource, Vec3 cameraPos, float partialTicks) {
+    private static void render(VxBody body, LevelRenderer levelRenderer, Level level, PoseStack poseStack, MultiBufferSource bufferSource, Vec3 cameraPos, float partialTicks) {
         try {
             // Interpolate physics state
             body.calculateRenderState(partialTicks, sharedRenderState, interpolatedPosition, interpolatedRotation);
@@ -143,7 +145,7 @@ public class VxPhysicsRenderDispatcher {
             poseStack.pushPose();
             poseStack.translate(relX, relY, relZ);
 
-            renderBodyInternal(body, poseStack, bufferSource, partialTicks, packedLight, sharedRenderState);
+            renderBodyInternal(body, levelRenderer, poseStack, bufferSource, partialTicks, packedLight, sharedRenderState);
 
             poseStack.popPose();
 
@@ -161,12 +163,12 @@ public class VxPhysicsRenderDispatcher {
      * Internal method to look up the registry and dispatch to the specific {@link VxBodyRenderer}.
      */
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private static void renderBodyInternal(VxBody body, PoseStack poseStack, MultiBufferSource bufferSource, float partialTicks, int packedLight, VxRenderState state) {
+    private static void renderBodyInternal(VxBody body, LevelRenderer levelRenderer, PoseStack poseStack, MultiBufferSource bufferSource, float partialTicks, int packedLight, VxRenderState state) {
         ResourceLocation typeId = body.getTypeId();
         VxBodyRenderer renderer = VxBodyRegistry.getInstance().getClientRenderer(typeId);
 
         if (renderer != null) {
-            renderer.render(body, poseStack, bufferSource, partialTicks, packedLight, state);
+            renderer.render(body, levelRenderer, poseStack, bufferSource, partialTicks, packedLight, state);
         } else {
             VxMainClass.LOGGER.warn("No renderer registered for physics body type: {}", typeId);
         }
@@ -183,6 +185,7 @@ public class VxPhysicsRenderDispatcher {
         } else {
             lightPos = BlockPos.containing(absPos.xx(), absPos.yy(), absPos.zz());
         }
-        return LevelRenderer.getLightColor(level, lightPos);
+        return LevelRenderer //$ if >=26.1 '.getLightCoords(level, lightPos);' else '.getLightColor(level, lightPos);'
+                .getLightColor(level, lightPos);
     }
 }
