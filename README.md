@@ -85,8 +85,9 @@ repositories {
 ```gradle
 dependencies {
     // Replace [loader] with 'fabric' or 'neoforge'
+    // Replace [minecraft_version] with your minecraft version
     // Replace [version] with the desired version (e.g., 0.8.0)
-    modImplementation "net.xmx.velthoric:velthoric-[loader]:[version]"
+    modImplementation "net.xmx.velthoric:velthoric-[minecraft_version]-[loader]:[version]"
 }
 ```
 
