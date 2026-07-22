@@ -11,10 +11,13 @@ import net.minecraft.client.DeltaTracker;
 /*? }*/
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.LevelRenderer;
+//? if <=1.21.1 {
 import net.minecraft.client.renderer.LightTexture;
+//? }
 import net.xmx.velthoric.event.api.VxRenderEvent;
 import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -26,7 +29,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(LevelRenderer.class)
 public class MixinLevelRenderer {
-
 /*? if >=1.21.1 {*/
     /**
      * Injects into level rendering after entities are fully processed to trigger custom rendering.
@@ -45,14 +47,20 @@ public class MixinLevelRenderer {
             boolean renderBlockOutline,
             Camera camera,
             GameRenderer gameRenderer,
+            //? if 1.21.1 {
             LightTexture lightTexture,
+            //?}
             Matrix4f frustumMatrix,
             Matrix4f projectionMatrix,
             CallbackInfo ci) {
         PoseStack poseStack = new PoseStack();
         float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
         VxRenderEvent.EVENT.invoker().onRenderLevel(
-                new VxRenderEvent((LevelRenderer) (Object) this, poseStack, partialTick, lightTexture, projectionMatrix)
+                new VxRenderEvent(
+                        (LevelRenderer) (Object) this,
+                        poseStack, partialTick,
+                        projectionMatrix
+                )
         );
     }
 /*? } else {*/
@@ -79,7 +87,7 @@ public class MixinLevelRenderer {
             Matrix4f projectionMatrix,
             CallbackInfo ci) {
         VxRenderEvent.EVENT.invoker().onRenderLevel(
-                new VxRenderEvent((LevelRenderer) (Object) this, poseStack, partialTick, lightTexture, projectionMatrix)
+                new VxRenderEvent((LevelRenderer) (Object) this, poseStack, partialTick, projectionMatrix)
         );
     }
 *//*? }*/

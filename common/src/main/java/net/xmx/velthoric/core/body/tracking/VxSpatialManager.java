@@ -7,8 +7,8 @@ package net.xmx.velthoric.core.body.tracking;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.core.SectionPos;
-import net.minecraft.world.level.ChunkPos;
 import net.xmx.velthoric.core.body.VxBody;
+import net.xmx.velthoric.util.VxChunkPosUtil;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -19,7 +19,7 @@ import java.util.function.Consumer;
  * Manages the spatial partitioning of physics bodies into chunks.
  * This class is responsible for tracking which objects reside in which chunk,
  * facilitating efficient proximity queries and handling chunk-based operations.
- * 
+ * <p>
  * This manager is independent of the physics engine and data store, 
  * operating purely on long-encoded chunk keys and body references.
  *
@@ -130,7 +130,7 @@ public class VxSpatialManager {
      * @return The packed chunk coordinates as a long.
      */
     public static long calculateChunkKey(double x, double z) {
-        return ChunkPos.asLong(
+        return VxChunkPosUtil.packLong(
                 SectionPos.posToSectionCoord(x),
                 SectionPos.posToSectionCoord(z)
         );

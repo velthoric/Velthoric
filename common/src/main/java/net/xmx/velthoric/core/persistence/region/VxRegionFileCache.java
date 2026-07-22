@@ -56,7 +56,11 @@ public class VxRegionFileCache {
      * @throws IOException If the file cannot be opened.
      */
     public synchronized VxRegionFile getRegionFile(ChunkPos chunkPos, boolean create) throws IOException {
+        //? if >=26.1 {
+        /*RegionPos regionPos = new RegionPos(chunkPos.x() >> 5, chunkPos.z() >> 5);
+        *///? } else {
         RegionPos regionPos = new RegionPos(chunkPos.x >> 5, chunkPos.z >> 5);
+        //? }
 
         // Check if we have a cached instance
         VxRegionFile existing = cache.get(regionPos);

@@ -38,7 +38,13 @@ public final class VxSummonCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(
                 Commands.literal("vxsummon")
-                        .requires(source -> source.hasPermission(2))
+                        .requires(
+                                //? if >= 26.1 {
+                                /*Commands.hasPermission(Commands.LEVEL_GAMEMASTERS)
+                                *///? } else {
+                                source -> source.hasPermission(2)
+                                 //? }
+                        )
                         .then(Commands.argument("type", ResourceLocationArgument.id())
                                 .suggests((context, builder) -> {
                                     var registry = VxBodyRegistry.getInstance();

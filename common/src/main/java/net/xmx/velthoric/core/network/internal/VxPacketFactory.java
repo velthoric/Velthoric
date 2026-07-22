@@ -19,6 +19,7 @@ import net.xmx.velthoric.core.network.internal.packet.S2CUpdateBodyStateBatchPac
 import net.xmx.velthoric.core.network.internal.packet.S2CUpdateShapeBatchPacket;
 import net.xmx.velthoric.core.network.internal.packet.S2CUpdateVerticesBatchPacket;
 import net.xmx.velthoric.network.VxByteBuf;
+import net.xmx.velthoric.util.VxChunkPosUtil;
 
 import java.nio.ByteBuffer;
 
@@ -91,9 +92,13 @@ public class VxPacketFactory {
         ByteBuf rawBuf = ALLOCATOR.directBuffer(estimatedSize);
 
         try {
-            ChunkPos chunkPos = new ChunkPos(chunkPosLong);
+            ChunkPos chunkPos = VxChunkPosUtil.unpackLong(chunkPosLong);
             double chunkBaseX = chunkPos.getMinBlockX();
+            //? if >=26.1 {
+            /*double chunkBaseY = serverLevel.getMinY();
+            *///? } else {
             double chunkBaseY = serverLevel.getMinBuildHeight();
+            //? }
             double chunkBaseZ = chunkPos.getMinBlockZ();
 
             // Write Header

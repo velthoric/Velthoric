@@ -5,13 +5,14 @@
 package net.xmx.velthoric.core.body.client.renderer;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.xmx.velthoric.core.body.client.VxRenderState;
 import net.xmx.velthoric.core.body.VxBody;
+import net.xmx.velthoric.core.body.client.VxRenderState;
 
 /**
  * An abstract base class for rendering a specific type of {@link VxBody}.
- * Concrete implementations of this class are responsible for the actual OpenGL drawing calls.
+ * Concrete implementations of this class are responsible for the actual drawing calls.
  *
  * @param <T> The specific type of VxBody this renderer can draw.
  * @author xI-Mx-Ix
@@ -21,12 +22,13 @@ public abstract class VxBodyRenderer<T extends VxBody> {
     /**
      * Renders the physics body in the world.
      *
-     * @param body         The specific body instance to render.
-     * @param poseStack    The current pose stack for transformations.
-     * @param bufferSource The buffer source for drawing.
-     * @param partialTicks The fraction of the current tick.
-     * @param packedLight  The calculated light value at the body's position.
-     * @param renderState  The final interpolated state that should be rendered.
+     * @param body          The specific body instance to render.
+     * @param levelRenderer The LevelRenderer instance for accessing rendering context and utilities.
+     * @param poseStack     The current pose stack for transformations.
+     * @param bufferSource  The buffer source for drawing.
+     * @param partialTicks  The fraction of the current tick.
+     * @param packedLight   The calculated light value at the body's position.
+     * @param renderState   The final interpolated state that should be rendered.
      */
-    public abstract void render(T body, PoseStack poseStack, MultiBufferSource bufferSource, float partialTicks, int packedLight, VxRenderState renderState);
+    public abstract void render(T body, LevelRenderer levelRenderer, PoseStack poseStack, MultiBufferSource bufferSource, float partialTicks, int packedLight, VxRenderState renderState);
 }

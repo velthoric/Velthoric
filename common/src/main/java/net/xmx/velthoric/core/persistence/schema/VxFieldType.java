@@ -41,7 +41,7 @@ public enum VxFieldType {
      */
     BOOLEAN(7, 1),
     /**
-     * A Universally Unique Identifier. Length: 16 bytes.
+     * A Universally Unique identifier. Length: 16 bytes.
      */
     UUID(8, 16),
     /**

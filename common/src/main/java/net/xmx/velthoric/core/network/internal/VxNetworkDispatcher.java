@@ -26,6 +26,7 @@ import net.xmx.velthoric.init.VxMainClass;
 import net.xmx.velthoric.network.IVxNetPacket;
 import net.xmx.velthoric.network.VxNetworking;
 import net.xmx.velthoric.util.VxChunkUtil;
+import net.xmx.velthoric.util.VxChunkPosUtil;
 
 import java.nio.ByteBuffer;
 import java.util.*;
@@ -366,7 +367,7 @@ public class VxNetworkDispatcher {
         int index = body.getDataStoreIndex();
         if (index == -1) return;
         VxServerBodyDataContainer c = dataStore.serverCurrent();
-        ChunkPos bodyChunk = new ChunkPos(c.chunkKey.get(index));
+        ChunkPos bodyChunk = VxChunkPosUtil.unpackLong(c.chunkKey.get(index));
 
         // Iterate all players to see who needs to be notified of this new body
         for (ServerPlayer player : this.level.players()) {
@@ -389,7 +390,7 @@ public class VxNetworkDispatcher {
         if (index == -1) return;
 
         VxServerBodyDataContainer c = dataStore.serverCurrent();
-        ChunkPos chunkPos = new ChunkPos(c.chunkKey.get(index));
+        ChunkPos chunkPos = VxChunkPosUtil.unpackLong(c.chunkKey.get(index));
         // Use the vanilla ChunkMap to find players who are currently watching this chunk.
         List<ServerPlayer> players = level.getChunkSource().chunkMap.getPlayers(chunkPos, false);
 
@@ -437,7 +438,7 @@ public class VxNetworkDispatcher {
      */
     public void trackBodiesInChunkForPlayer(ServerPlayer player, ChunkPos chunkPos) {
         UUID uuid = player.getUUID();
-        long chunkKey = chunkPos.toLong();
+        long chunkKey = VxChunkPosUtil.packLong(chunkPos);
         knownPlayers.put(uuid, player);
         chunkWatchers.computeIfAbsent(chunkKey, k -> ConcurrentHashMap.newKeySet()).add(uuid);
         playerToChunks.computeIfAbsent(uuid, k -> ConcurrentHashMap.newKeySet()).add(chunkKey);
@@ -453,7 +454,7 @@ public class VxNetworkDispatcher {
      */
     public void untrackBodiesInChunkForPlayer(ServerPlayer player, ChunkPos chunkPos) {
         UUID uuid = player.getUUID();
-        long chunkKey = chunkPos.toLong();
+        long chunkKey = VxChunkPosUtil.packLong(chunkPos);
         Set<UUID> watchers = chunkWatchers.get(chunkKey);
         if (watchers != null) {
             watchers.remove(uuid);
@@ -577,7 +578,7 @@ public class VxNetworkDispatcher {
 
                     VxServerBodyDataContainer c = dataStore.serverCurrent();
                     // Retrieve the cached chunk key and convert to ChunkPos for the vanilla visibility check
-                    ChunkPos bodyChunk = new ChunkPos(c.chunkKey.get(index));
+                    ChunkPos bodyChunk = VxChunkPosUtil.unpackLong(c.chunkKey.get(index));
 
                     // Only spawn if the player has received the chunk
                     if (chunkMap.getPlayers(bodyChunk, false).contains(player)) {

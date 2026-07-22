@@ -2,6 +2,7 @@
  * This file is part of Velthoric.
  * Licensed under LGPL 3.0.
  */
+//? if <=1.21.1 {
 package net.xmx.velthoric.gametest;
 
 import net.minecraft.gametest.framework.GameTestGenerator;
@@ -92,3 +93,4 @@ public final class VelthoricGameTestUtils {
         return world.getBodyManager();
     }
 }
+//? }

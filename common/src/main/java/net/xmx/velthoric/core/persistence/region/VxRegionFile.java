@@ -395,7 +395,13 @@ public class VxRegionFile implements AutoCloseable {
      * Helper to calculate the flat index (0-1023) for a chunk within the region.
      */
     private int getIndex(ChunkPos pos) {
-        return (pos.x & 31) + (pos.z & 31) * 32;
+        return
+                //? if >= 26.1 {
+                /*(pos.x() & 31) + (pos.z() & 31)
+                *///? } else {
+                (pos.x & 31) + (pos.z & 31)
+                //? }
+                        * 32;
     }
 
     /**

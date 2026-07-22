@@ -15,7 +15,6 @@
     "network.AccessorClientCommonPacketListenerImpl",
     "network.MixinClientLevel",
     "network.MixinClientPacketListener",
-    "render.MixinGui",
     "render.MixinLevelRenderer"
   ],
   "injectors": {

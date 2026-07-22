@@ -8,12 +8,17 @@ import com.github.stephengold.joltjni.Quat;
 import com.github.stephengold.joltjni.Vec3;
 import com.github.stephengold.joltjni.operator.Op;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+//? if >=26.1 {
+/*import net.minecraft.client.resources.model.sprite.SpriteId;
+import net.minecraft.data.AtlasIds;
+*///? } else {
+import net.minecraft.client.renderer.texture.TextureAtlas;
+//? }
 import net.minecraft.resources.ResourceLocation;
 import net.xmx.velthoric.core.body.client.VxRenderState;
 import net.xmx.velthoric.core.body.client.renderer.VxBodyRenderer;
@@ -26,14 +31,13 @@ import net.xmx.velthoric.core.body.VxBody;
  * @author xI-Mx-Ix
  */
 public class RopeRenderer extends VxBodyRenderer<VxBody> {
-
     private static final ResourceLocation YELLOW_WOOL_BLOCK_TEXTURE = ResourceLocation.tryParse("minecraft:block/yellow_wool");
     private static final int SIDES = 12;
     private static final Vec3 JOLT_UNIT_X = new Vec3(1, 0, 0);
     private static final Vec3 JOLT_UNIT_Y = new Vec3(0, 1, 0);
 
     @Override
-    public void render(VxBody body, PoseStack poseStack, MultiBufferSource bufferSource, float partialTicks, int packedLight, VxRenderState renderState) {
+    public void render(VxBody body, LevelRenderer levelRenderer, PoseStack poseStack, MultiBufferSource bufferSource, float partialTicks, int packedLight, VxRenderState renderState) {
         float[] renderVertexData = renderState.vertexData;
         if (renderVertexData == null || renderVertexData.length < 6) {
             return;
@@ -51,8 +55,16 @@ public class RopeRenderer extends VxBodyRenderer<VxBody> {
     }
 
     private void renderSmoothRope(float[] vertexData, int numNodes, float ropeRadius, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, VxRenderState renderState) {
-        VxVertexConsumer buffer = VxVertexConsumer.wrap(bufferSource.getBuffer(RenderType.cutoutMipped()));
+        VxVertexConsumer buffer = VxVertexConsumer.wrap(bufferSource.getBuffer(RenderType
+                //$ if >=26.1 '.cutoutMovingBlock()' else '.cutoutMipped()'
+                .cutoutMipped()
+        ));
+
+        //? if >=26.1 {
+        /*TextureAtlasSprite sprite = Minecraft.getInstance().getAtlasManager().get(new SpriteId(AtlasIds.BLOCKS, YELLOW_WOOL_BLOCK_TEXTURE));
+        *///? } else {
         TextureAtlasSprite sprite = Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_BLOCKS).apply(YELLOW_WOOL_BLOCK_TEXTURE);
+         //? }
 
         // Get Center of Mass to convert absolute vertices to local
         double comX = renderState.transform.getTranslation().x();

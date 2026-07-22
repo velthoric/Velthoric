@@ -8,6 +8,7 @@ import com.github.stephengold.joltjni.Quat;
 import com.github.stephengold.joltjni.Vec3;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.world.level.block.state.BlockState;
@@ -24,7 +25,7 @@ import org.joml.Quaternionf;
 public class BoxRenderer extends VxBodyRenderer<VxBody> {
 
     @Override
-    public void render(VxBody body, PoseStack poseStack, MultiBufferSource bufferSource, float partialTicks, int packedLight, VxRenderState renderState) {
+    public void render(VxBody body, LevelRenderer levelRenderer, PoseStack poseStack, MultiBufferSource bufferSource, float partialTicks, int packedLight, VxRenderState renderState) {
         int colorOrdinal = body.get(BoxRigidBody.DATA_COLOR_ORDINAL);
         BoxColor color = BoxColor.fromOrdinal(colorOrdinal);
         BlockState blockState = color.getBlock().defaultBlockState();

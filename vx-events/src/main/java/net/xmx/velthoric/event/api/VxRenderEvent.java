@@ -8,7 +8,6 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import dev.architectury.event.Event;
 import dev.architectury.event.EventFactory;
 import net.minecraft.client.renderer.LevelRenderer;
-import net.minecraft.client.renderer.LightTexture;
 import org.joml.Matrix4f;
 
 /**
@@ -45,24 +44,17 @@ public class VxRenderEvent {
     private final Matrix4f projectionMatrix;
 
     /**
-     * The light texture currently bound and used for rendering.
-     */
-    private final LightTexture lightTexture;
-
-    /**
      * Constructs a new VxRenderEvent instance.
      *
      * @param levelRenderer    the level renderer
      * @param poseStack        the current pose stack
      * @param partialTick      the partial ticks interpolation factor
-     * @param lightTexture     the active light texture
      * @param projectionMatrix the projection matrix
      */
-    public VxRenderEvent(LevelRenderer levelRenderer, PoseStack poseStack, float partialTick, LightTexture lightTexture, Matrix4f projectionMatrix) {
+    public VxRenderEvent(LevelRenderer levelRenderer, PoseStack poseStack, float partialTick, Matrix4f projectionMatrix) {
         this.levelRenderer = levelRenderer;
         this.poseStack = poseStack;
         this.partialTick = partialTick;
-        this.lightTexture = lightTexture;
         this.projectionMatrix = projectionMatrix;
     }
 
@@ -100,15 +92,6 @@ public class VxRenderEvent {
      */
     public Matrix4f getProjectionMatrix() {
         return projectionMatrix;
-    }
-
-    /**
-     * Gets the light texture.
-     *
-     * @return the light texture
-     */
-    public LightTexture getLightTexture() {
-        return lightTexture;
     }
 
     /**

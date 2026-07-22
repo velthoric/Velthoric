@@ -12,8 +12,6 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.phys.Vec3;
 import net.xmx.velthoric.builtin.VxRegisteredBodies;
 import net.xmx.velthoric.builtin.box.BoxColor;
-import net.xmx.velthoric.builtin.box.BoxRigidBody;
-import net.xmx.velthoric.builtin.cloth.ClothSoftBody;
 import net.xmx.velthoric.core.body.VxBody;
 import net.xmx.velthoric.core.body.server.VxServerBodyManager;
 import net.xmx.velthoric.math.VxTransform;

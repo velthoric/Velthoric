@@ -51,6 +51,10 @@ public class VxChunkUtil {
         int viewDistance = player.level().getServer().getPlayerList().getViewDistance();
 
         ChunkPos playerPos = player.chunkPosition();
+        //? if >=26.1 {
+        /*return isChunkInRange(chunkPos.x(), chunkPos.z(), playerPos.x(), playerPos.z(), viewDistance);
+        *///? } else {
         return isChunkInRange(chunkPos.x, chunkPos.z, playerPos.x, playerPos.z, viewDistance);
+        //? }
     }
 }

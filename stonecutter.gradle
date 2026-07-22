@@ -77,3 +77,33 @@ tasks.register("printStonecutterMatrix") {
         println "JSON_MATRIX:" + JsonOutput.toJson(matrixList)
     }
 }
+
+stonecutter {
+    parameters {
+        replacements {
+            string(current.parsed.matches('>=26.1')) {
+                replace 'net.minecraft.advancements.critereon', 'net.minecraft.advancements.criterion'
+                replace 'PlayerModel<LivingEntity>', 'HumanoidModel<HumanoidRenderState>'
+                replace 'PlayerModel', 'HumanoidModel'
+            }
+
+            string(current.parsed.matches('>=26.1'), '!render_types') {
+                replace 'net.minecraft.client.renderer.RenderType', 'net.minecraft.client.renderer.rendertype.RenderTypes'
+                replace 'RenderType', 'RenderTypes'
+            }
+
+            string(current.parsed.matches('>=26.1'), '!identifiers') {
+                replace 'ResourceLocation', 'Identifier'
+                replace '.location()', '.identifier()'
+            }
+
+            string(current.parsed.matches('>=26.1'), '!gui_graphics') {
+                replace 'GuiGraphics', 'GuiGraphicsExtractor'
+                replace '.hLine(', '.horizontalLine('
+                replace '.vLine(', '.verticalLine('
+                replace '.drawString(', '.text('
+                replace '.drawCenteredString(', '.centeredText('
+            }
+        }
+    }
+}

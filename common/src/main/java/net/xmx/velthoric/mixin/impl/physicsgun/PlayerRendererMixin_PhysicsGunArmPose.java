@@ -5,10 +5,12 @@
 package net.xmx.velthoric.mixin.impl.physicsgun;
 
 import net.minecraft.client.player.AbstractClientPlayer;
-import net.minecraft.client.renderer.entity.player.PlayerRenderer;
+import net.minecraft.client.renderer.entity.player.
+        //$ if >=26.1 'AvatarRenderer;' else 'PlayerRenderer;'
+        PlayerRenderer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.client.model.HumanoidModel;
+import net.minecraft.client.model.PlayerModel;
 import net.xmx.velthoric.item.physicsgun.VxPhysicsGunItem;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -23,18 +25,21 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  *
  * @author xI-Mx-Ix
  */
-@Mixin(PlayerRenderer.class)
+@Mixin(
+        //$ if >=26.1 'AvatarRenderer.class' else 'PlayerRenderer.class'
+        PlayerRenderer.class
+)
 public class PlayerRendererMixin_PhysicsGunArmPose {
 
     @Inject(
-        method = "getArmPose(Lnet/minecraft/client/player/AbstractClientPlayer;Lnet/minecraft/world/InteractionHand;)Lnet/minecraft/client/model/HumanoidModel$ArmPose;",
+        method = "getArmPose(Lnet/minecraft/client/player/AbstractClientPlayer;Lnet/minecraft/world/InteractionHand;)Lnet/minecraft/client/model/PlayerModel$ArmPose;",
         at = @At("RETURN"),
         cancellable = true
     )
-    private static void onGetArmPose(AbstractClientPlayer pPlayer, InteractionHand pHand, CallbackInfoReturnable<HumanoidModel.ArmPose> cir) {
+    private static void onGetArmPose(AbstractClientPlayer pPlayer, InteractionHand pHand, CallbackInfoReturnable<PlayerModel.ArmPose> cir) {
         ItemStack itemstack = pPlayer.getItemInHand(pHand);
         if (itemstack.getItem() instanceof VxPhysicsGunItem) {
-            cir.setReturnValue(HumanoidModel.ArmPose.CROSSBOW_HOLD);
+            cir.setReturnValue(PlayerModel.ArmPose.CROSSBOW_HOLD);
         }
     }
 }
