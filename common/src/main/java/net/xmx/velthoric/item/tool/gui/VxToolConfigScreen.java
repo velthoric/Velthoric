@@ -8,6 +8,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -19,7 +20,9 @@ import net.xmx.velthoric.item.tool.packet.VxToolConfigPacket;
 import net.xmx.velthoric.network.VxNetworking;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * The configuration screen for the currently held tool.
@@ -40,6 +43,8 @@ public class VxToolConfigScreen extends Screen {
      * Stores the string representation of values to be sent to the server.
      */
     private final Map<String, String> edits = new HashMap<>();
+    private final Set<String> invalidFields = new HashSet<>();
+    private Button saveButton;
 
     public VxToolConfigScreen(Item item, VxToolMode mode) {
         super(Component.literal("Tool Configuration"));
@@ -80,24 +85,55 @@ public class VxToolConfigScreen extends Screen {
                 edits.put(key, String.valueOf(currentVal)); // Initialize edit map
 
             } else {
-                // EditBox for Numbers and Strings
-                EditBox box = new EditBox(this.font, centerX - 40, y, 100, 20, Component.literal(key));
-                box.setMaxLength(256);
-                box.setValue(String.valueOf(prop.getValue()));
+                Number min = prop.getMin();
+                Number max = prop.getMax();
+                boolean isBounded = min != null && max != null;
 
-                // Apply input filtering based on numeric types
+                EditBox box = new EditBox(this.font, centerX - 40, y, 100, 20, Component.literal(key)) {
+                    @Override
+                    public void setFocused(boolean focused) {
+                        super.setFocused(focused);
+                        if (!focused && isBounded) {
+                            String current = getValue();
+                            String clamped = clampStringValue(prop, current);
+                            if (!clamped.equals(current)) {
+                                setValue(clamped);
+                            }
+                        }
+                    }
+                };
+                box.setMaxLength(256);
+                String initialVal = String.valueOf(prop.getValue());
+                box.setValue(initialVal);
+
+                if (isBounded) {
+                    box.setTooltip(Tooltip.create(Component.literal("Min: " + min + " | Max: " + max)));
+                }
+
                 if (type == Integer.class || type == Long.class) {
-                    // Allow optional negative sign and digits only
                     box.setFilter(s -> s.isEmpty() || s.matches("-?\\d*"));
                 } else if (type == Float.class || type == Double.class) {
-                    // Allow optional negative sign, digits, and a single decimal point
                     box.setFilter(s -> s.isEmpty() || s.matches("-?\\d*(\\.\\d*)?"));
                 }
-                // String types accept any input, so no filter is applied
 
-                box.setResponder(val -> edits.put(key, val));
+                box.setResponder(val -> {
+                    if (isBounded && !isValid(prop, val)) {
+                        box.setTextColor(0xFF5555);
+                        box.setTooltip(Tooltip.create(Component.literal("Out of bounds! [" + min + " - " + max + "]")));
+                        invalidFields.add(key);
+                    } else {
+                        box.setTextColor(0xFFFFFF);
+                        if (isBounded) {
+                            box.setTooltip(Tooltip.create(Component.literal("Min: " + min + " | Max: " + max)));
+                        }
+                        invalidFields.remove(key);
+                        edits.put(key, val);
+                    }
+                    updateSaveButton();
+                });
+
                 this.addRenderableWidget(box);
-                edits.put(key, String.valueOf(prop.getValue())); // Initialize edit map
+                edits.put(key, initialVal);
             }
 
             y += 25;
@@ -106,15 +142,105 @@ public class VxToolConfigScreen extends Screen {
         // Reset to Defaults button (Left)
         this.addRenderableWidget(Button.builder(Component.literal("Reset to Defaults"), b -> {
             this.config.resetToDefaults();
-            // Clear edits map and refresh the screen widgets
             this.edits.clear();
+            this.invalidFields.clear();
             this.init(this.minecraft, this.width, this.height);
         }).bounds(centerX - 105, this.height - 30, 100, 20).build());
 
         // Save & Close button (Right)
-        this.addRenderableWidget(Button.builder(Component.literal("Save & Close"), b -> {
+        this.saveButton = this.addRenderableWidget(Button.builder(Component.literal("Save & Close"), b -> {
             this.onClose();
         }).bounds(centerX + 5, this.height - 30, 100, 20).build());
+
+        updateSaveButton();
+    }
+
+    /**
+     * Updates the active state of the Save button based on input validity.
+     */
+    private void updateSaveButton() {
+        if (this.saveButton != null) {
+            this.saveButton.active = this.invalidFields.isEmpty();
+        }
+    }
+
+    /**
+     * Clamps a raw string input to the defined property bounds.
+     *
+     * @param prop  The property configuration.
+     * @param value The string value to clamp.
+     * @return The clamped value as a string.
+     */
+    private String clampStringValue(VxToolProperty<?> prop, String value) {
+        if (value == null || value.isEmpty()) {
+            return String.valueOf(prop.getValue());
+        }
+        Class<?> type = prop.getType();
+        Number min = prop.getMin();
+        Number max = prop.getMax();
+        if (min == null || max == null) {
+            return value;
+        }
+
+        try {
+            if (type == Integer.class) {
+                int v = Integer.parseInt(value);
+                int clamped = Math.max(min.intValue(), Math.min(max.intValue(), v));
+                return String.valueOf(clamped);
+            } else if (type == Long.class) {
+                long v = Long.parseLong(value);
+                long clamped = Math.max(min.longValue(), Math.min(max.longValue(), v));
+                return String.valueOf(clamped);
+            } else if (type == Float.class) {
+                float v = Float.parseFloat(value);
+                if (Float.isNaN(v)) return String.valueOf(min.floatValue());
+                float clamped = Math.max(min.floatValue(), Math.min(max.floatValue(), v));
+                return String.valueOf(clamped);
+            } else if (type == Double.class) {
+                double v = Double.parseDouble(value);
+                if (Double.isNaN(v)) return String.valueOf(min.doubleValue());
+                double clamped = Math.max(min.doubleValue(), Math.min(max.doubleValue(), v));
+                return String.valueOf(clamped);
+            }
+        } catch (NumberFormatException e) {
+            return String.valueOf(prop.getValue());
+        }
+
+        return value;
+    }
+
+    /**
+     * Validates whether the given string value satisfies property bounds.
+     *
+     * @param prop  The property configuration.
+     * @param value The raw string input value.
+     * @return True if valid within defined bounds, false otherwise.
+     */
+    private boolean isValid(VxToolProperty<?> prop, String value) {
+        if (value == null || value.isEmpty()) {
+            return false;
+        }
+        Class<?> type = prop.getType();
+        Number min = prop.getMin();
+        Number max = prop.getMax();
+        try {
+            if (type == Integer.class) {
+                int v = Integer.parseInt(value);
+                return min == null || max == null || (v >= min.intValue() && v <= max.intValue());
+            } else if (type == Long.class) {
+                long v = Long.parseLong(value);
+                return min == null || max == null || (v >= min.longValue() && v <= max.longValue());
+            } else if (type == Float.class) {
+                float v = Float.parseFloat(value);
+                return !Float.isNaN(v) && (min == null || max == null || (v >= min.floatValue() && v <= max.floatValue()));
+            } else if (type == Double.class) {
+                double v = Double.parseDouble(value);
+                return !Double.isNaN(v) && (min == null || max == null || (v >= min.doubleValue() && v <= max.doubleValue()));
+            }
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     @Override
@@ -125,11 +251,32 @@ public class VxToolConfigScreen extends Screen {
          /*this.renderBackground(guiGraphics);
         *//*? }*/
         guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 15, 0xFFFFFF);
+
+        int y = 40;
+        int centerX = this.width / 2;
+        for (VxToolProperty<?> prop : config.getProperties().values()) {
+            if (prop.getMin() != null && prop.getMax() != null && prop.getType() != Boolean.class) {
+                String rangeText = "[" + prop.getMin() + " - " + prop.getMax() + "]";
+                guiGraphics.drawString(this.font, rangeText, centerX + 65, y + 6, 0x888888, false);
+            }
+            y += 25;
+        }
+
         super.render(guiGraphics, mouseX, mouseY, partialTick);
     }
 
     @Override
     public void removed() {
+        for (Map.Entry<String, VxToolProperty<?>> entry : config.getProperties().entrySet()) {
+            String key = entry.getKey();
+            VxToolProperty<?> prop = entry.getValue();
+            if (prop.getMin() != null && prop.getMax() != null && prop.getType() != Boolean.class) {
+                String val = edits.get(key);
+                if (val != null) {
+                    edits.put(key, clampStringValue(prop, val));
+                }
+            }
+        }
         // Apply current UI edits to the local configuration object
         this.config.applyEdits(this.edits);
         // Save the configuration to client's local storage
