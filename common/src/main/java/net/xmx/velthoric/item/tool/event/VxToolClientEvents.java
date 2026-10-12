@@ -5,17 +5,27 @@
 package net.xmx.velthoric.item.tool.event;
 
 import dev.architectury.event.EventResult;
+import dev.architectury.event.events.client.ClientTickEvent;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.Item;
+import net.xmx.velthoric.event.api.VxClientPlayerNetworkEvent;
 import net.xmx.velthoric.event.api.VxKeyEvent;
 import net.xmx.velthoric.event.api.VxMouseEvent;
 import net.xmx.velthoric.init.registry.KeyMappings;
 import net.xmx.velthoric.item.tool.VxToolMode;
+import net.xmx.velthoric.item.tool.config.VxToolConfig;
 import net.xmx.velthoric.item.tool.gui.VxToolConfigScreen;
 import net.xmx.velthoric.item.tool.packet.VxToolActionPacket;
+import net.xmx.velthoric.item.tool.packet.VxToolConfigPacket;
 import net.xmx.velthoric.item.tool.registry.VxToolRegistry;
 import net.xmx.velthoric.network.VxNetworking;
 import org.lwjgl.glfw.GLFW;
+
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * Handles client-side input events for the Tool API, including mouse clicks
@@ -25,12 +35,68 @@ import org.lwjgl.glfw.GLFW;
  */
 public class VxToolClientEvents {
 
+    private static boolean hasSyncedTools = false;
+    private static final Set<Item> syncedTools = new HashSet<>();
+
     /**
      * Registers the necessary event listeners for mouse and keyboard input.
      */
     public static void registerEvents() {
         VxMouseEvent.Press.EVENT.register(VxToolClientEvents::onMousePress);
         VxKeyEvent.EVENT.register(VxToolClientEvents::onKeyPress);
+        ClientTickEvent.CLIENT_PRE.register(VxToolClientEvents::onClientTick);
+        VxClientPlayerNetworkEvent.LoggingOut.EVENT.register(event -> resetSync());
+        VxClientPlayerNetworkEvent.Clone.EVENT.register(event -> resetSync());
+    }
+
+    /**
+     * Resets the synchronization state when logging out or respawning.
+     */
+    public static void resetSync() {
+        hasSyncedTools = false;
+        syncedTools.clear();
+    }
+
+    /**
+     * Ensures all tool configurations are loaded from disk and synchronized
+     * to the server as soon as the client player enters the world.
+     *
+     * @param client The Minecraft client instance.
+     */
+    private static void onClientTick(Minecraft client) {
+        if (client.player != null && client.level != null) {
+            if (!hasSyncedTools) {
+                syncAllTools(client.player.getUUID());
+                hasSyncedTools = true;
+            }
+        }
+    }
+
+    /**
+     * Loads and synchronizes all registered tools for the given player.
+     *
+     * @param playerUuid The local player's UUID.
+     */
+    public static void syncAllTools(UUID playerUuid) {
+        for (Map.Entry<Item, VxToolMode> entry : VxToolRegistry.getAll().entrySet()) {
+            syncTool(entry.getKey(), entry.getValue(), playerUuid);
+        }
+    }
+
+    /**
+     * Loads a single tool's configuration from disk and transmits it to the server.
+     *
+     * @param item       The tool item.
+     * @param mode       The tool mode logic.
+     * @param playerUuid The player's UUID.
+     */
+    public static void syncTool(Item item, VxToolMode mode, UUID playerUuid) {
+        String toolId = BuiltInRegistries.ITEM.getKey(item).getPath();
+        VxToolConfig config = mode.getConfig(playerUuid);
+        config.load(toolId);
+
+        VxNetworking.sendToServer(new VxToolConfigPacket(Item.getId(item), config.toStringMap()));
+        syncedTools.add(item);
     }
 
     /**
@@ -83,8 +149,13 @@ public class VxToolClientEvents {
         }
 
         Item heldItem = minecraft.player.getMainHandItem().getItem();
-        if (VxToolRegistry.get(heldItem) == null) {
+        VxToolMode mode = VxToolRegistry.get(heldItem);
+        if (mode == null) {
             return EventResult.pass();
+        }
+
+        if (!syncedTools.contains(heldItem)) {
+            syncTool(heldItem, mode, minecraft.player.getUUID());
         }
 
         // Map mouse buttons to tool action states

@@ -7,6 +7,7 @@ package net.xmx.velthoric.item.tool.registry;
 import net.minecraft.world.item.Item;
 import net.xmx.velthoric.item.tool.VxToolMode;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -37,5 +38,14 @@ public class VxToolRegistry {
      */
     public static VxToolMode get(Item item) {
         return TOOLS.get(item);
+    }
+
+    /**
+     * Retrieves all registered items and their corresponding tool modes.
+     *
+     * @return An unmodifiable map of registered tools.
+     */
+    public static Map<Item, VxToolMode> getAll() {
+        return Collections.unmodifiableMap(TOOLS);
     }
 }

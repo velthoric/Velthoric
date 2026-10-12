@@ -212,6 +212,19 @@ public class VxToolConfig {
     }
 
     /**
+     * Converts all registered properties to a map of string values.
+     *
+     * @return A map of property keys to their string representation.
+     */
+    public Map<String, String> toStringMap() {
+        Map<String, String> map = new LinkedHashMap<>();
+        for (Map.Entry<String, VxToolProperty<?>> entry : properties.entrySet()) {
+            map.put(entry.getKey(), String.valueOf(entry.getValue().getValue()));
+        }
+        return map;
+    }
+
+    /**
      * Applies a map of string-represented values to the configuration.
      *
      * @param edits A map of keys to string values.
